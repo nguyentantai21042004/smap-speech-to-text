@@ -1,0 +1,30 @@
+# FastAPI and Web Framework
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Database
+motor==3.3.2
+beanie==1.24.0
+pymongo==4.5.0
+
+# Message Queue
+aio-pika==9.3.1
+
+# HTTP Client
+httpx==0.25.2
+
+# Scheduler
+apscheduler==3.10.4
+
+# Development
+pytest==7.4.3
+pytest-asyncio==0.21.1
+black==23.11.0
+flake8==6.1.0
+mypy==1.7.1
+
+# Utils
+python-dotenv==1.0.0
