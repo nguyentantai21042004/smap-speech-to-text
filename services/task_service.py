@@ -2,8 +2,8 @@
 Task service for STT job management.
 Includes comprehensive logging and error handling.
 """
+
 from typing import Optional, BinaryIO
-import uuid
 from pathlib import Path
 
 from core.logger import logger
@@ -27,7 +27,7 @@ class TaskService:
         filename: str,
         file_size_mb: float,
         language: str = "vi",
-        model: str = "medium"
+        model: str = "medium",
     ) -> dict:
         """
         Create a new STT task.
@@ -46,7 +46,9 @@ class TaskService:
             Exception: If task creation fails
         """
         try:
-            logger.info(f"Creating STT task: filename={filename}, size={file_size_mb:.2f}MB, language={language}")
+            logger.info(
+                f"Creating STT task: filename={filename}, size={file_size_mb:.2f}MB, language={language}"
+            )
 
             # Validate file size
             if file_size_mb > 500:
@@ -54,29 +56,30 @@ class TaskService:
                 logger.error(f"❌ {error_msg}")
                 raise ValueError(error_msg)
 
-            # Generate job ID
-            job_id = str(uuid.uuid4())
-            logger.debug(f"Generated job_id: {job_id}")
+            # Generate temporary ID for MinIO upload (will use actual _id after DB creation)
+            import uuid
 
-            # Upload to MinIO
+            temp_id = str(uuid.uuid4())
+
+            # Upload to MinIO first (using temp ID for path)
             logger.info(f"Uploading audio to MinIO...")
-            minio_path = await self._upload_to_minio(audio_file, filename, job_id)
+            minio_path = await self._upload_to_minio(audio_file, filename, temp_id)
             logger.info(f"Audio uploaded: {minio_path}")
 
-            # Create job in database
+            # Create job in database (MongoDB will generate _id)
             logger.info(f"Creating job in database...")
             repo = get_task_repository()
             job_data = JobCreate(
                 language=language,
                 original_filename=filename,
-                minio_audio_path=minio_path,
+                minio_audio_path=minio_path,  # Use actual MinIO path
                 file_size_mb=file_size_mb,
                 model_used=model,
-                chunk_strategy="silence_based"
+                chunk_strategy="silence_based",
             )
 
             job = await repo.create_job(job_data)
-            logger.info(f"Job created in database: job_id={job.job_id}")
+            logger.info(f"Job created in database: id={job.id}")
 
             # Publish job to RabbitMQ queue
             logger.info(f"Publishing job to RabbitMQ queue...")
@@ -84,29 +87,26 @@ class TaskService:
 
             # Publish the job to RabbitMQ
             await queue_manager.publish_job(
-                job_id=job.job_id,
-                job_data={
-                    "language": language,
-                    "model": model,
-                    "filename": filename
-                },
-                priority=5  # Normal priority (0-10 scale)
+                job_id=job.id,
+                job_data={"language": language, "model": model, "filename": filename},
+                priority=5,  # Normal priority (0-10 scale)
             )
-            logger.info(f"Job published to RabbitMQ: job_id={job.job_id}")
+            logger.info(f"Job published to RabbitMQ: id={job.id}")
 
-            logger.info(f"STT task created successfully: job_id={job.job_id}")
+            logger.info(f"STT task created successfully: id={job.id}")
 
             return {
                 "status": "success",
-                "job_id": job.job_id,
+                "job_id": job.id,  # Keep job_id in response for backward compatibility
+                "id": job.id,  # Add id field
                 "message": "Task created and queued for processing",
                 "details": {
                     "filename": filename,
                     "size_mb": file_size_mb,
                     "language": language,
                     "model": model,
-                    "minio_path": minio_path
-                }
+                    "minio_path": minio_path,
+                },
             }
 
         except ValueError as e:
@@ -119,10 +119,7 @@ class TaskService:
             raise
 
     async def _upload_to_minio(
-        self,
-        file_data: BinaryIO,
-        filename: str,
-        job_id: str
+        self, file_data: BinaryIO, filename: str, job_id: str
     ) -> str:
         """
         Upload audio file to MinIO.
@@ -151,9 +148,7 @@ class TaskService:
 
             # Upload file
             minio_client.upload_file(
-                file_data=file_data,
-                object_name=minio_path,
-                content_type="audio/mpeg"
+                file_data=file_data, object_name=minio_path, content_type="audio/mpeg"
             )
 
             logger.debug(f"File uploaded to MinIO: {minio_path}")
@@ -197,7 +192,8 @@ class TaskService:
                 progress = (job.chunks_completed / job.chunks_total) * 100
 
             return {
-                "job_id": job.job_id,
+                "job_id": job.id,  # Keep job_id for backward compatibility
+                "id": job.id,
                 "status": job.status.value,
                 "filename": job.original_filename,
                 "language": job.language,
@@ -208,7 +204,9 @@ class TaskService:
                 "error_message": job.error_message,
                 "created_at": job.created_at.isoformat(),
                 "started_at": job.started_at.isoformat() if job.started_at else None,
-                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                "completed_at": (
+                    job.completed_at.isoformat() if job.completed_at else None
+                ),
             }
 
         except Exception as e:
@@ -241,15 +239,19 @@ class TaskService:
                 return None
 
             if job.status.value != "COMPLETED":
-                logger.warning(f"⚠️ Job not completed: job_id={job_id}, status={job.status}")
+                logger.warning(
+                    f"⚠️ Job not completed: job_id={job_id}, status={job.status}"
+                )
                 return {
                     "job_id": job_id,
                     "status": job.status.value,
                     "message": "Job not yet completed",
-                    "transcription": None
+                    "transcription": None,
                 }
 
-            logger.info(f"Job result retrieved: job_id={job_id}, text_length={len(job.transcription_text or '')}")
+            logger.info(
+                f"Job result retrieved: job_id={job_id}, text_length={len(job.transcription_text or '')}"
+            )
 
             # Generate presigned URL if result file exists
             download_url = None
@@ -257,15 +259,15 @@ class TaskService:
                 try:
                     minio_client = get_minio_client()
                     download_url = minio_client.generate_presigned_url(
-                        job.minio_result_path,
-                        expiry_seconds=3600  # 1 hour
+                        job.minio_result_path, expiry_seconds=3600  # 1 hour
                     )
                     logger.debug(f"Generated download URL for result file")
                 except Exception as e:
                     logger.warning(f"⚠️ Failed to generate download URL: {e}")
 
             return {
-                "job_id": job.job_id,
+                "job_id": job.id,  # Keep job_id for backward compatibility
+                "id": job.id,
                 "status": job.status.value,
                 "filename": job.original_filename,
                 "language": job.language,
@@ -278,7 +280,9 @@ class TaskService:
                     else None
                 ),
                 "created_at": job.created_at.isoformat(),
-                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                "completed_at": (
+                    job.completed_at.isoformat() if job.completed_at else None
+                ),
             }
 
         except Exception as e:
@@ -307,6 +311,7 @@ class TaskService:
 
             if status:
                 from repositories.models import JobStatus
+
                 jobs = await repo.get_jobs_by_status(JobStatus(status), limit)
             else:
                 # Get all recent jobs (you may want to add this method to repo)
@@ -316,12 +321,15 @@ class TaskService:
 
             return [
                 {
-                    "job_id": job.job_id,
+                    "job_id": job.id,  # Keep job_id for backward compatibility
+                    "id": job.id,
                     "filename": job.original_filename,
                     "status": job.status.value,
                     "language": job.language,
                     "created_at": job.created_at.isoformat(),
-                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                    "completed_at": (
+                        job.completed_at.isoformat() if job.completed_at else None
+                    ),
                 }
                 for job in jobs
             ]

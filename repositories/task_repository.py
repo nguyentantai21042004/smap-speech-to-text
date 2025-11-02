@@ -5,8 +5,8 @@ Includes comprehensive logging and error handling for all CRUD operations.
 
 from typing import Optional, List
 from datetime import datetime
-import uuid
 
+from bson import ObjectId
 from core.database import get_database
 from repositories.models import (
     JobModel,
@@ -15,6 +15,7 @@ from repositories.models import (
     JobStatus,
     JOBS_COLLECTION,
 )
+from repositories.objectid_utils import objectid_to_str, str_to_objectid
 from core.logger import logger
 
 
@@ -45,12 +46,8 @@ class TaskRepository:
             logger.info(f"Creating new job: filename={job_data.original_filename}")
             logger.debug(f"Job data: {job_data.dict()}")
 
-            # Generate unique job ID
-            job_id = str(uuid.uuid4())
-            logger.debug(f"Generated job_id: {job_id}")
-
-            # Create job model
-            job = JobModel(job_id=job_id, **job_data.dict())
+            # Create job model (without id - MongoDB will generate _id)
+            job = JobModel(**job_data.dict())
 
             # Get database collection
             db = await get_database()
@@ -58,9 +55,13 @@ class TaskRepository:
 
             # Insert into MongoDB
             result = await collection.insert_one(job.to_dict())
+            
+            # Get the inserted _id and set it as id in the model
+            job_id_str = objectid_to_str(result.inserted_id)
+            job.id = job_id_str
 
             logger.info(
-                f"Job created successfully: job_id={job_id}, mongo_id={result.inserted_id}"
+                f"Job created successfully: id={job_id_str}, mongo_id={result.inserted_id}"
             )
             logger.debug(
                 f"Job details: status={job.status}, language={job.language}, size={job.file_size_mb}MB"
@@ -75,10 +76,10 @@ class TaskRepository:
 
     async def get_job(self, job_id: str) -> Optional[JobModel]:
         """
-        Get job by ID.
+        Get job by ID (using MongoDB _id).
 
         Args:
-            job_id: Job identifier
+            job_id: Job identifier (ObjectId string)
 
         Returns:
             JobModel or None if not found
@@ -87,24 +88,27 @@ class TaskRepository:
             Exception: If database query fails
         """
         try:
-            logger.debug(f"🔍 Fetching job: job_id={job_id}")
+            logger.debug(f"🔍 Fetching job: id={job_id}")
+
+            # Convert string to ObjectId for query
+            object_id = str_to_objectid(job_id)
 
             # Get database collection
             db = await get_database()
             collection = await db.get_collection(self.collection_name)
 
-            # Find job by job_id
-            doc = await collection.find_one({"job_id": job_id})
+            # Find job by _id (ObjectId)
+            doc = await collection.find_one({"_id": object_id})
 
             if doc:
                 job = JobModel.from_dict(doc)
-                logger.info(f"Job found: job_id={job_id}, status={job.status}")
+                logger.info(f"Job found: id={job_id}, status={job.status}")
                 logger.debug(
                     f"Job details: created_at={job.created_at}, chunks={job.chunks_total}"
                 )
                 return job
             else:
-                logger.warning(f"⚠️ Job not found: job_id={job_id}")
+                logger.warning(f"⚠️ Job not found: id={job_id}")
                 return None
 
         except Exception as e:
@@ -114,10 +118,10 @@ class TaskRepository:
 
     async def update_job(self, job_id: str, update_data: JobUpdate) -> bool:
         """
-        Update job.
+        Update job by _id.
 
         Args:
-            job_id: Job identifier
+            job_id: Job identifier (ObjectId string)
             update_data: Update data
 
         Returns:
@@ -127,9 +131,12 @@ class TaskRepository:
             Exception: If update fails
         """
         try:
-            logger.info(f"Updating job: job_id={job_id}")
+            logger.info(f"Updating job: id={job_id}")
             update_dict = update_data.dict(exclude_unset=True)
             logger.debug(f"Update data: {update_dict}")
+
+            # Convert string to ObjectId for query
+            object_id = str_to_objectid(job_id)
 
             # Get database collection
             db = await get_database()
@@ -141,23 +148,23 @@ class TaskRepository:
 
             logger.debug(f"Final update document: {update_dict}")
 
-            # Update in MongoDB
+            # Update in MongoDB by _id
             result = await collection.update_one(
-                {"job_id": job_id}, {"$set": update_dict}
+                {"_id": object_id}, {"$set": update_dict}
             )
 
             if result.modified_count > 0:
                 logger.info(
-                    f"Job updated: job_id={job_id}, modified_count={result.modified_count}"
+                    f"Job updated: id={job_id}, modified_count={result.modified_count}"
                 )
                 return True
             elif result.matched_count > 0:
                 logger.info(
-                    f"⚠️ Job matched but not modified (no changes): job_id={job_id}"
+                    f"⚠️ Job matched but not modified (no changes): id={job_id}"
                 )
                 return True
             else:
-                logger.warning(f"⚠️ Job not found for update: job_id={job_id}")
+                logger.warning(f"⚠️ Job not found for update: id={job_id}")
                 return False
 
         except Exception as e:
@@ -249,7 +256,7 @@ class TaskRepository:
 
             logger.info(f"Found {len(jobs)} pending jobs")
             if jobs:
-                logger.debug(f"Pending job IDs: {[job.job_id for job in jobs]}")
+                logger.debug(f"Pending job IDs: {[job.id for job in jobs if job.id]}")
 
             return jobs
 
@@ -324,8 +331,11 @@ class TaskRepository:
             db = await get_database()
             collection = await db.get_collection(self.collection_name)
 
-            # Delete from MongoDB
-            result = await collection.delete_one({"job_id": job_id})
+            # Convert string to ObjectId for query
+            object_id = str_to_objectid(job_id)
+
+            # Delete from MongoDB by _id
+            result = await collection.delete_one({"_id": object_id})
 
             if result.deleted_count > 0:
                 logger.info(f"Job deleted: job_id={job_id}")
@@ -392,9 +402,12 @@ class TaskRepository:
             db = await get_database()
             collection = await db.get_collection(self.collection_name)
 
+            # Convert string to ObjectId for query
+            object_id = str_to_objectid(job_id)
+
             # Increment retry_count
             result = await collection.update_one(
-                {"job_id": job_id},
+                {"_id": object_id},
                 {"$inc": {"retry_count": 1}, "$set": {"updated_at": datetime.utcnow()}},
             )
 

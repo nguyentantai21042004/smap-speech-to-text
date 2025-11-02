@@ -2,6 +2,7 @@
 Main STT processor orchestrating the complete transcription pipeline.
 Includes extensive logging and comprehensive error handling.
 """
+
 import os
 import time
 import tempfile
@@ -19,9 +20,12 @@ from worker.chunking import AudioChunker, get_audio_duration
 from worker.transcriber import WhisperTranscriber
 from worker.merger import ResultMerger
 from worker.errors import (
-    TransientError, PermanentError,
-    InvalidAudioFormatError, CorruptedFileError,
-    WhisperCrashError, TimeoutError as STTTimeoutError
+    TransientError,
+    PermanentError,
+    InvalidAudioFormatError,
+    CorruptedFileError,
+    WhisperCrashError,
+    TimeoutError as STTTimeoutError,
 )
 
 settings = get_settings()
@@ -52,7 +56,9 @@ async def process_stt_job(job_id: str) -> dict:
     temp_dir = None
 
     try:
-        logger.info(f"========== Starting STT job processing: job_id={job_id} ==========")
+        logger.info(
+            f"========== Starting STT job processing: job_id={job_id} =========="
+        )
 
         # Get repository
         repo = get_task_repository()
@@ -66,7 +72,9 @@ async def process_stt_job(job_id: str) -> dict:
             logger.error(f"❌ {error_msg}")
             raise PermanentError(error_msg)
 
-        logger.info(f"Job found: file={job.original_filename}, language={job.language}, model={job.model_used}")
+        logger.info(
+            f"Job found: file={job.original_filename}, language={job.language}, model={job.model_used}"
+        )
 
         # Update status to PROCESSING
         logger.info(f"Updating job status to PROCESSING...")
@@ -120,28 +128,36 @@ async def process_stt_job(job_id: str) -> dict:
                 status=JobStatus.COMPLETED,
                 transcription_text=final_transcription,
                 minio_result_path=result_path,
-                chunks_completed=len(transcribed_chunks)
-            )
+                chunks_completed=len(transcribed_chunks),
+            ),
         )
 
         elapsed_time = time.time() - start_time
-        logger.info(f"========== STT job processing COMPLETED: job_id={job_id}, time={elapsed_time:.2f}s ==========")
+        logger.info(
+            f"========== STT job processing COMPLETED: job_id={job_id}, time={elapsed_time:.2f}s =========="
+        )
 
         # Log performance metrics
-        chars_per_second = len(final_transcription) / elapsed_time if elapsed_time > 0 else 0
-        logger.info(f"📊 Performance metrics: chars/sec={chars_per_second:.2f}, chunks={len(chunks)}, time={elapsed_time:.2f}s")
+        chars_per_second = (
+            len(final_transcription) / elapsed_time if elapsed_time > 0 else 0
+        )
+        logger.info(
+            f"📊 Performance metrics: chars/sec={chars_per_second:.2f}, chunks={len(chunks)}, time={elapsed_time:.2f}s"
+        )
 
         return {
             "status": "success",
             "job_id": job_id,
             "transcription": final_transcription,
             "chunks_processed": len(transcribed_chunks),
-            "processing_time_seconds": elapsed_time
+            "processing_time_seconds": elapsed_time,
         }
 
     except PermanentError as e:
         elapsed_time = time.time() - start_time
-        logger.error(f"❌ Permanent error processing job {job_id} after {elapsed_time:.2f}s: {e}")
+        logger.error(
+            f"❌ Permanent error processing job {job_id} after {elapsed_time:.2f}s: {e}"
+        )
         logger.exception("Permanent error details:")
 
         try:
@@ -154,7 +170,9 @@ async def process_stt_job(job_id: str) -> dict:
 
     except TransientError as e:
         elapsed_time = time.time() - start_time
-        logger.error(f"❌ Transient error processing job {job_id} after {elapsed_time:.2f}s: {e}")
+        logger.error(
+            f"❌ Transient error processing job {job_id} after {elapsed_time:.2f}s: {e}"
+        )
         logger.exception("Transient error details:")
 
         try:
@@ -167,7 +185,9 @@ async def process_stt_job(job_id: str) -> dict:
 
     except Exception as e:
         elapsed_time = time.time() - start_time
-        logger.error(f"❌ Unexpected error processing job {job_id} after {elapsed_time:.2f}s: {e}")
+        logger.error(
+            f"❌ Unexpected error processing job {job_id} after {elapsed_time:.2f}s: {e}"
+        )
         logger.exception("Processing error details:")
 
         try:
@@ -205,6 +225,12 @@ async def _download_audio_from_minio(job, temp_dir: str) -> str:
     """
     try:
         logger.debug(f"🔍 Downloading from MinIO: {job.minio_audio_path}")
+
+        # Validate minio_audio_path
+        if not job.minio_audio_path or job.minio_audio_path.strip() == "":
+            error_msg = f"MinIO audio path is empty for job {job.id}"
+            logger.error(f"❌ {error_msg}")
+            raise ValueError(error_msg)
 
         # Get MinIO client
         minio_client = get_minio_client()
@@ -254,7 +280,7 @@ async def _chunk_audio(audio_path: str, temp_dir: str, job) -> list:
             strategy=job.chunk_strategy,
             chunk_duration=settings.chunk_duration,
             min_silence_len=int(settings.min_silence_duration * 1000),
-            silence_thresh=settings.silence_threshold
+            silence_thresh=settings.silence_threshold,
         )
 
         logger.debug(f"Chunking complete: {len(chunks)} chunks")
@@ -299,20 +325,22 @@ async def _transcribe_chunks(chunks: list, job, repo, job_id: str) -> list:
 
         for i, chunk in enumerate(chunks):
             try:
-                logger.info(f"Transcribing chunk {i+1}/{len(chunks)}: {chunk['file_path']}")
+                logger.info(
+                    f"Transcribing chunk {i+1}/{len(chunks)}: {chunk['file_path']}"
+                )
 
                 # Transcribe with retry
                 transcription = transcriber.transcribe_with_retry(
-                    audio_path=chunk['file_path'],
+                    audio_path=chunk["file_path"],
                     language=job.language,
                     model=job.model_used,
-                    max_retries=settings.max_retries
+                    max_retries=settings.max_retries,
                 )
 
                 # Add transcription to chunk
-                chunk['transcription'] = transcription
-                chunk['status'] = JobStatus.COMPLETED
-                chunk['processed_at'] = datetime.utcnow()
+                chunk["transcription"] = transcription
+                chunk["status"] = JobStatus.COMPLETED
+                chunk["processed_at"] = datetime.utcnow()
 
                 transcribed_chunks.append(chunk)
 
@@ -320,34 +348,35 @@ async def _transcribe_chunks(chunks: list, job, repo, job_id: str) -> list:
 
                 # Update progress in database
                 await repo.update_job(
-                    job_id,
-                    JobUpdate(chunks_completed=len(transcribed_chunks))
+                    job_id, JobUpdate(chunks_completed=len(transcribed_chunks))
                 )
 
             except STTTimeoutError as e:
                 logger.error(f"❌ Timeout transcribing chunk {i}: {e}")
-                chunk['status'] = JobStatus.FAILED
-                chunk['error_message'] = str(e)
+                chunk["status"] = JobStatus.FAILED
+                chunk["error_message"] = str(e)
                 # Continue with other chunks
 
             except WhisperCrashError as e:
                 logger.error(f"❌ Whisper crash on chunk {i}: {e}")
-                chunk['status'] = JobStatus.FAILED
-                chunk['error_message'] = str(e)
+                chunk["status"] = JobStatus.FAILED
+                chunk["error_message"] = str(e)
                 # Continue with other chunks
 
             except Exception as e:
                 logger.error(f"❌ Failed to transcribe chunk {i}: {e}")
                 logger.exception("Chunk transcription error:")
-                chunk['status'] = JobStatus.FAILED
-                chunk['error_message'] = str(e)
+                chunk["status"] = JobStatus.FAILED
+                chunk["error_message"] = str(e)
                 # Continue with other chunks
 
         if not transcribed_chunks:
             raise PermanentError("All chunks failed to transcribe")
 
         success_rate = len(transcribed_chunks) / len(chunks) * 100
-        logger.info(f"📊 Transcription success rate: {success_rate:.1f}% ({len(transcribed_chunks)}/{len(chunks)})")
+        logger.info(
+            f"📊 Transcription success rate: {success_rate:.1f}% ({len(transcribed_chunks)}/{len(chunks)})"
+        )
 
         return transcribed_chunks
 
@@ -386,8 +415,10 @@ async def _merge_results(chunks: list) -> str:
         # Fallback: simple concatenation
         try:
             logger.warning("⚠️ Using fallback: simple concatenation")
-            texts = [c.get('transcription', '') for c in chunks if c.get('transcription')]
-            return ' '.join(texts)
+            texts = [
+                c.get("transcription", "") for c in chunks if c.get("transcription")
+            ]
+            return " ".join(texts)
         except Exception as fallback_error:
             logger.error(f"❌ Fallback merge also failed: {fallback_error}")
             raise PermanentError(f"Merge failed: {e}")
@@ -415,17 +446,18 @@ async def _upload_results_to_minio(job_id: str, transcription: str) -> str:
         minio_path = f"results/{result_filename}"
 
         # Convert to bytes
-        content = transcription.encode('utf-8')
+        content = transcription.encode("utf-8")
 
         # Get MinIO client
         minio_client = get_minio_client()
 
         # Upload
         import io
+
         minio_client.upload_file(
             file_data=io.BytesIO(content),
             object_name=minio_path,
-            content_type="text/plain"
+            content_type="text/plain",
         )
 
         logger.debug(f"Results uploaded: {minio_path}, size={len(content)} bytes")

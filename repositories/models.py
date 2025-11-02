@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+from bson import ObjectId
 
 # Suppress Pydantic protected namespace warnings for 'model_*' fields
 warnings.filterwarnings("ignore", message=".*protected namespace.*", category=UserWarning)
@@ -49,8 +50,8 @@ class ChunkModel(BaseModel):
 class JobModel(BaseModel):
     """Model for STT job (MongoDB document)."""
 
-    # IDs
-    job_id: str = Field(..., description="Unique job identifier")
+    # IDs - Using MongoDB _id as primary identifier
+    id: Optional[str] = Field(None, description="MongoDB _id as string (primary identifier)")
 
     # Status
     status: JobStatus = Field(
@@ -112,6 +113,7 @@ class JobModel(BaseModel):
     def to_dict(self) -> dict:
         """
         Convert to dictionary for MongoDB.
+        Excludes 'id' field as it will be stored as '_id' in MongoDB.
 
         Returns:
             Dictionary representation
@@ -120,8 +122,8 @@ class JobModel(BaseModel):
             Exception: If conversion fails
         """
         try:
-            data = self.dict()
-            logger.debug(f"Converted JobModel to dict: job_id={self.job_id}")
+            data = self.dict(exclude={"id"})
+            logger.debug(f"Converted JobModel to dict: id={self.id}")
             return data
 
         except Exception as e:
@@ -133,6 +135,7 @@ class JobModel(BaseModel):
     def from_dict(cls, data: dict) -> "JobModel":
         """
         Create from MongoDB document.
+        Converts MongoDB _id (ObjectId) to string 'id' field.
 
         Args:
             data: MongoDB document dictionary
@@ -144,12 +147,21 @@ class JobModel(BaseModel):
             Exception: If creation fails
         """
         try:
-            # Remove MongoDB _id field if present
+            # Convert MongoDB _id (ObjectId) to string 'id' field
             if "_id" in data:
-                data.pop("_id")
+                from repositories.objectid_utils import objectid_to_str
+                data["id"] = objectid_to_str(data.pop("_id"))
+            
+            # Remove job_id if present (for backward compatibility)
+            if "job_id" in data:
+                # If id is not set, use job_id as id (migration support)
+                if "id" not in data or data.get("id") is None:
+                    data["id"] = data.pop("job_id")
+                else:
+                    data.pop("job_id")
 
             job = cls(**data)
-            logger.debug(f"Created JobModel from dict: job_id={job.job_id}")
+            logger.debug(f"Created JobModel from dict: id={job.id}")
             return job
 
         except Exception as e:
