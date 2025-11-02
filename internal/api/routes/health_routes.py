@@ -29,6 +29,7 @@ def create_health_routes(app) -> APIRouter:
         response_model=Dict,
         summary="Root Endpoint",
         description="Get basic API information",
+        operation_id="get_root",
         responses={
             200: {
                 "description": "API information",
@@ -66,6 +67,7 @@ def create_health_routes(app) -> APIRouter:
         response_model=HealthResponse,
         summary="Health Check",
         description="Check service health and dependencies status",
+        operation_id="health_check",
         responses={
             200: {
                 "description": "Health status",

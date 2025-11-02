@@ -395,59 +395,6 @@ async def list_jobs(status: Optional[str] = None, limit: int = 10):
         )
 
 
-@router.get(
-    "/health", summary="Health Check", description="Check if the API is healthy"
-)
-async def health_check():
-    """
-    Health check endpoint.
-
-    **Returns:**
-    Service health status.
-    """
-    try:
-        logger.debug("🔍 API: Health check requested")
-
-        # Check database connection
-        from core.database import get_database
-
-        db = await get_database()
-        db_healthy = await db.health_check()
-
-        # Check Redis connection
-        from core.messaging import get_queue_manager
-
-        queue_manager = get_queue_manager()
-        redis_healthy = queue_manager.health_check()
-
-        overall_healthy = db_healthy and redis_healthy
-
-        status_code = (
-            status.HTTP_200_OK
-            if overall_healthy
-            else status.HTTP_503_SERVICE_UNAVAILABLE
-        )
-
-        result = {
-            "status": "healthy" if overall_healthy else "unhealthy",
-            "services": {
-                "mongodb": "healthy" if db_healthy else "unhealthy",
-                "redis": "healthy" if redis_healthy else "unhealthy",
-            },
-        }
-
-        logger.debug(f"API: Health check result: {result['status']}")
-
-        return result
-
-    except Exception as e:
-        logger.error(f"❌ API: Health check failed: {e}")
-        logger.exception("Health check error details:")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unhealthy"
-        )
-
-
 def create_task_routes() -> APIRouter:
     """
     Factory function to create task routes.

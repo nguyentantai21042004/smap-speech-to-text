@@ -30,8 +30,11 @@ class MongoDB:
             Exception: If connection fails
         """
         try:
+            # Get MongoDB connection URL (with auth if credentials provided)
+            connection_url = settings.mongodb_connection_url
+            
             # Mask password in URL for logging
-            masked_url = settings.mongodb_url
+            masked_url = connection_url
             if "@" in masked_url:
                 parts = masked_url.split("@")
                 if "://" in parts[0]:
@@ -40,12 +43,12 @@ class MongoDB:
                         user = protocol_user[1].split(":")[0]
                         masked_url = f"{protocol_user[0]}://{user}:****@{parts[1]}"
 
-            logger.info(f"Connecting to MongoDB: {masked_url}")
+            logger.info(f"📝 Connecting to MongoDB: {masked_url}")
             logger.debug(f"Database name: {settings.mongodb_database}")
 
             # Create client with connection pooling
             self.client = AsyncIOMotorClient(
-                settings.mongodb_url,
+                connection_url,
                 maxPoolSize=settings.mongodb_max_pool_size,
                 minPoolSize=settings.mongodb_min_pool_size,
                 serverSelectionTimeoutMS=5000,

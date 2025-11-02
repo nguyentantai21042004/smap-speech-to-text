@@ -258,18 +258,11 @@ class SchedulerService:
             # Get statistics
             task_stats = await self.task_service.get_statistics()
 
-            # Import KeywordService
-            from services import KeywordService
-
-            keyword_service = KeywordService()
-            keyword_stats = await keyword_service.get_statistics()
-
             # Generate report
             report = {
                 "timestamp": datetime.utcnow().isoformat(),
                 "period": "weekly",
                 "task_statistics": task_stats,
-                "keyword_statistics": keyword_stats,
             }
 
             logger.info(f"Weekly report generated: {report}")

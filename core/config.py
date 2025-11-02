@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     # MongoDB Settings (Primary Database)
     mongodb_url: str = Field(default="mongodb://localhost:27017", alias="MONGODB_URL")
     mongodb_database: str = Field(default="stt_system", alias="MONGODB_DATABASE")
+    mongodb_root_user: Optional[str] = Field(default=None, alias="MONGODB_ROOT_USER")
+    mongodb_root_password: Optional[str] = Field(default=None, alias="MONGODB_ROOT_PASSWORD")
     mongodb_max_pool_size: int = Field(default=10, alias="MONGODB_MAX_POOL_SIZE")
     mongodb_min_pool_size: int = Field(default=1, alias="MONGODB_MIN_POOL_SIZE")
 
@@ -100,6 +102,41 @@ class Settings(BaseSettings):
             f"amqp://{self.rabbitmq_user}:{self.rabbitmq_password}"
             f"@{self.rabbitmq_host}:{self.rabbitmq_port}/{self.rabbitmq_vhost}"
         )
+
+    @property
+    def mongodb_connection_url(self) -> str:
+        """Construct MongoDB connection URL with authentication if credentials provided."""
+        # If MONGODB_URL already contains credentials (@), use it as-is
+        if "@" in self.mongodb_url:
+            return self.mongodb_url
+        
+        # If MONGODB_ROOT_USER and MONGODB_ROOT_PASSWORD are provided, build auth URL
+        if self.mongodb_root_user and self.mongodb_root_password:
+            # Extract host and port from existing URL
+            # Remove "mongodb://" prefix
+            url_without_protocol = self.mongodb_url.replace("mongodb://", "")
+            
+            # Split by "/" to separate host:port and database path
+            url_parts = url_without_protocol.split("/")
+            host_port = url_parts[0]
+            
+            # Build authenticated URL
+            auth_url = f"mongodb://{self.mongodb_root_user}:{self.mongodb_root_password}@{host_port}"
+            
+            # Add database to path (use mongodb_database from config)
+            # This is required for authentication to work
+            if self.mongodb_database:
+                auth_url += f"/{self.mongodb_database}"
+            
+            # Add authSource parameter (required for MongoDB authentication)
+            # Use the same database name as authSource
+            if self.mongodb_database:
+                auth_url += f"?authSource={self.mongodb_database}"
+            
+            return auth_url
+        
+        # Otherwise, use original MONGODB_URL
+        return self.mongodb_url
 
 
 @lru_cache()

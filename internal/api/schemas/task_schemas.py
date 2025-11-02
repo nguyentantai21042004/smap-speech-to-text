@@ -17,21 +17,14 @@ class TaskCreateRequest(BaseModel):
         json_schema_extra = {
             "examples": [
                 {
-                    "task_type": "keyword_extraction",
+                    "task_type": "stt_transcription",
                     "payload": {
-                        "text": "Artificial intelligence and machine learning are transforming industries",
-                        "method": "default",
-                        "num_keywords": 10,
+                        "filename": "audio.mp3",
+                        "file_url": "https://minio.tantai.dev/audio/test.mp3",
+                        "language": "vi",
+                        "model": "medium",
                     },
                     "priority": 5,
-                },
-                {
-                    "task_type": "sentiment_analysis",
-                    "payload": {
-                        "texts": ["Tôi rất thích sản phẩm này", "Dịch vụ rất tốt"],
-                        "batch": True,
-                    },
-                    "priority": 8,
                 },
             ]
         }
@@ -50,7 +43,7 @@ class TaskResponse(BaseModel):
                     "status": "success",
                     "data": {
                         "id": "task_abc123xyz",
-                        "task_type": "keyword_extraction",
+                        "task_type": "stt_transcription",
                         "status": "pending",
                         "priority": 5,
                         "created_at": "2025-10-30T10:30:00Z",

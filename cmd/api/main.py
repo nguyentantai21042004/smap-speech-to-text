@@ -11,7 +11,9 @@ import warnings
 from contextlib import asynccontextmanager
 
 # Suppress expected warnings at startup
-warnings.filterwarnings("ignore", message=".*protected namespace.*", category=UserWarning)
+warnings.filterwarnings(
+    "ignore", message=".*protected namespace.*", category=UserWarning
+)
 warnings.filterwarnings("ignore", message=".*ffmpeg.*", category=RuntimeWarning)
 warnings.filterwarnings("ignore", message=".*avconv.*", category=RuntimeWarning)
 
@@ -24,9 +26,6 @@ from core.database import get_database
 from core.messaging import get_queue_manager
 from internal.api.routes.task_routes import router as task_router
 from internal.api.routes.health_routes import create_health_routes
-from internal.api.routes.keyword_routes import create_keyword_routes
-from internal.api.routes.sentiment_routes import create_sentiment_routes
-from services import KeywordService, SentimentService
 
 
 # Lifespan context manager
@@ -147,7 +146,7 @@ def create_app() -> FastAPI:
         description = """
 ## SMAP Speech-to-Text API
 
-A production-ready Speech-to-Text service powered by Whisper.cpp with MongoDB and RabbitMQ.
+A Speech-to-Text service powered by Whisper.cpp with MongoDB and RabbitMQ.
 
 ### Key Features
 
@@ -170,9 +169,6 @@ A production-ready Speech-to-Text service powered by Whisper.cpp with MongoDB an
 
 MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
 
-### Authentication
-
-Currently no authentication required. Add authentication headers as needed for production deployment.
         """
 
         tags_metadata = [
@@ -183,14 +179,6 @@ Currently no authentication required. Add authentication headers as needed for p
             {
                 "name": "Health",
                 "description": "Health check endpoints for monitoring API status and dependencies (MongoDB, RabbitMQ).",
-            },
-            {
-                "name": "Keywords",
-                "description": "Keyword extraction from Vietnamese text using various algorithms (TF-IDF, TextRank, etc.).",
-            },
-            {
-                "name": "Sentiment Analysis",
-                "description": "Sentiment analysis for Vietnamese text with batch processing support.",
             },
         ]
 
@@ -203,13 +191,10 @@ Currently no authentication required. Add authentication headers as needed for p
             lifespan=lifespan,
             openapi_tags=tags_metadata,
             contact={
-                "name": "SMAP AI Team",
-                "email": "support@smap.ai",
+                "name": "SMAP Team",
+                "email": "nguyentantai.dev@gmail.com",
             },
-            license_info={
-                "name": "MIT License",
-                "url": "https://opensource.org/licenses/MIT",
-            },
+            license_info={},
             docs_url="/docs",
             redoc_url="/redoc",
             openapi_url="/openapi.json",
@@ -229,27 +214,15 @@ Currently no authentication required. Add authentication headers as needed for p
 
         # Include all API routes
         logger.debug("Including API routes...")
-        
+
         # Task routes (STT)
         app.include_router(task_router)
-        logger.info("✅ Task routes registered")
-        
+        logger.info("Task routes registered")
+
         # Health routes (no prefix - uses root "/" and "/health")
         health_router = create_health_routes(app)
         app.include_router(health_router)
-        logger.info("✅ Health routes registered")
-        
-        # Keyword routes
-        keyword_service = KeywordService()
-        keyword_router = create_keyword_routes(keyword_service)
-        app.include_router(keyword_router)
-        logger.info("✅ Keyword routes registered")
-        
-        # Sentiment routes
-        sentiment_service = SentimentService()
-        sentiment_router = create_sentiment_routes(sentiment_service)
-        app.include_router(sentiment_router)
-        logger.info("✅ Sentiment routes registered")
+        logger.info("Health routes registered")
 
         logger.info("FastAPI application created successfully")
         return app
@@ -288,16 +261,22 @@ if __name__ == "__main__":
 
         # When using reload=True, uvicorn spawns subprocess which needs PYTHONPATH
         # Ensure project root is in PYTHONPATH for subprocess
-        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        project_root = os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        )
         if project_root not in sys.path:
             sys.path.insert(0, project_root)
-        
+
         # Set PYTHONPATH environment variable for subprocess (uvicorn reload)
-        current_pythonpath = os.environ.get('PYTHONPATH', '')
+        current_pythonpath = os.environ.get("PYTHONPATH", "")
         if project_root not in current_pythonpath:
-            new_pythonpath = f"{project_root}:{current_pythonpath}" if current_pythonpath else project_root
-            os.environ['PYTHONPATH'] = new_pythonpath
-        
+            new_pythonpath = (
+                f"{project_root}:{current_pythonpath}"
+                if current_pythonpath
+                else project_root
+            )
+            os.environ["PYTHONPATH"] = new_pythonpath
+
         # Use string path when reload=True, app instance when reload=False
         if settings.api_reload:
             # For reload, uvicorn needs string path and will import it
