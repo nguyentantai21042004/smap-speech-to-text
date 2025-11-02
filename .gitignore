@@ -1,6 +1,4 @@
-# -----------------------
 # Python
-# -----------------------
 myenv/
 venv/
 env/
@@ -29,64 +27,59 @@ wheels/
 .installed.cfg
 *.egg
 
-# -----------------------
 # Environment Variables
-# -----------------------
 .env
 .env.local
 .env.*.local
 
-# -----------------------
 # Log files
-# -----------------------
 logs/
 *.log
 
-# -----------------------
 # IDE files
-# -----------------------
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# -----------------------
 # Operating System files
-# -----------------------
 .DS_Store
 Thumbs.db
 
-# -----------------------
 # Test outputs
-# -----------------------
 .pytest_cache/
 .coverage
 htmlcov/
 .tox/
 
-# -----------------------
 # Docker
-# -----------------------
 .docker/
 
-# -----------------------
 # Temporary files
-# -----------------------
 tmp/
 temp/
 
-# -----------------------
 # Whisper Models (Large files not committed to Git)
-# -----------------------
-# Ignore all model files
 whisper/models/*
 whisper/models/*.bin
 whisper/models/*.pt
 whisper/models/*.onnx
+whisper/models/*.json
 
 # Keep the directory structure
 !whisper/models/.gitkeep
 
 # Model cache file
 whisper/models/.model_cache.json
+
+# Docker build artifacts
+.dockerignore
+
+# IDE and editor files
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
