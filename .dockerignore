@@ -1,0 +1,112 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw
+*.pyzwz
+*.pyzwz
+.Python
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+myenv/
+venv/
+env/
+ENV/
+.venv/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Log files
+logs/
+*.log
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.cursor/
+
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Test files and outputs
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+test/
+tests/
+*_test.py
+test_*.py
+
+# Documentation (not needed in Docker image)
+docs/
+*.md
+!README.md
+
+# Docker files (not needed inside image)
+.docker/
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile*
+.dockerignore
+
+# Git files (not needed in Docker image)
+.git/
+.gitignore
+.gitattributes
+
+# Temporary files
+tmp/
+temp/
+/tmp/
+
+# Whisper Models (Downloaded from MinIO at runtime)
+# IMPORTANT: Do NOT copy whisper models into Docker image
+# Models will be downloaded from MinIO private storage at runtime
+whisper/models/*
+whisper/models/*.bin
+whisper/models/*.pt
+whisper/models/*.onnx
+whisper/models/*.json
+whisper/models/.model_cache.json
+
+# Keep whisper/bin/ and scripts (executables needed)
+# Keep whisper/models/.gitkeep (to maintain directory structure)
+
+# Makefile and build files
+Makefile
+*.sh
+!scripts/*.sh
+!whisper/*.sh
+
+# Other unnecessary files
+.cursorignore
+*.bak
+*.tmp
+*.cache
+

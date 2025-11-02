@@ -73,9 +73,6 @@ whisper/models/*.json
 # Model cache file
 whisper/models/.model_cache.json
 
-# Docker build artifacts
-.dockerignore
-
 # IDE and editor files
 .cursor/
 .vscode/
