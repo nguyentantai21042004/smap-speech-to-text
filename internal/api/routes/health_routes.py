@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from typing import Dict
 
 from internal.api.schemas import HealthResponse
+from internal.api.utils import success_response, error_response
 from core import get_settings
 from core.database import get_database
 
@@ -56,11 +57,14 @@ def create_health_routes(app) -> APIRouter:
         Service metadata and status information.
         """
         settings = get_settings()
-        return {
-            "service": settings.app_name,
-            "version": settings.app_version,
-            "status": "running",
-        }
+        return success_response(
+            message="API service is running",
+            data={
+                "service": settings.app_name,
+                "version": settings.app_version,
+                "status": "running",
+            },
+        )
 
     @router.get(
         "/health",
@@ -141,12 +145,20 @@ def create_health_routes(app) -> APIRouter:
         except Exception:
             mq_status = "disconnected"
 
-        return HealthResponse(
+        health_data = HealthResponse(
             status="healthy" if db_status == "connected" else "unhealthy",
             service=settings.app_name,
             version=settings.app_version,
             database=db_status,
             message_broker=mq_status,
         )
+
+        # Convert Pydantic model to dict for response
+        health_dict = health_data.model_dump()
+
+        message = (
+            "Service is healthy" if db_status == "connected" else "Service is unhealthy"
+        )
+        return success_response(message=message, data=health_dict)
 
     return router

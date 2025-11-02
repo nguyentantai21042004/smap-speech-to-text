@@ -9,8 +9,8 @@ from .task_schemas import (
     TaskStatistics,
 )
 from .common_schemas import (
+    StandardResponse,
     HealthResponse,
-    ErrorResponse,
 )
 
 __all__ = [
@@ -20,7 +20,6 @@ __all__ = [
     "TaskDetail",
     "TaskStatistics",
     # Common schemas
+    "StandardResponse",
     "HealthResponse",
-    "ErrorResponse",
 ]
-

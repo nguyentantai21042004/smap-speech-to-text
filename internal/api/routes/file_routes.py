@@ -7,6 +7,7 @@ import time
 from fastapi import APIRouter, File, UploadFile, HTTPException, status
 from core.logger import logger
 from services.file_service import get_file_service
+from internal.api.utils import success_response, error_response
 
 router = APIRouter(prefix="/files", tags=["Files"])
 
@@ -67,9 +68,7 @@ async def upload_file(
         # Validate file
         if not file.filename:
             logger.error("No filename provided")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="No filename provided"
-            )
+            return error_response(message="No filename provided", error_code=1)
 
         # Get file size
         file_content = await file.read()
@@ -81,9 +80,9 @@ async def upload_file(
         # Validate file size
         if file_size_mb > 500:
             logger.error(f"File too large: {file_size_mb:.2f}MB")
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"File too large: {file_size_mb:.2f}MB. Maximum size is 500MB",
+            return error_response(
+                message=f"File too large: {file_size_mb:.2f}MB. Maximum size is 500MB",
+                error_code=1,
             )
 
         # Upload file
@@ -102,18 +101,20 @@ async def upload_file(
             f"API: File upload successful: file_id={result['file_id']}, time={elapsed_time:.2f}s"
         )
 
-        return result
+        return success_response(
+            message=result.get("message", "File uploaded successfully"), data=result
+        )
 
-    except HTTPException:
-        raise
+    except HTTPException as e:
+        elapsed_time = time.time() - start_time
+        logger.error(f"API: HTTP error after {elapsed_time:.2f}s: {e.detail}")
+        return error_response(message=e.detail, error_code=1)
     except ValueError as e:
-        logger.error(f"Validation error: {e}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        elapsed_time = time.time() - start_time
+        logger.error(f"Validation error after {elapsed_time:.2f}s: {e}")
+        return error_response(message=str(e), error_code=1)
     except Exception as e:
         elapsed_time = time.time() - start_time
         logger.error(f"File upload failed after {elapsed_time:.2f}s: {e}")
         logger.exception("File upload error details:")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="File upload failed",
-        )
+        return error_response(message=f"File upload failed: {str(e)}", error_code=1)

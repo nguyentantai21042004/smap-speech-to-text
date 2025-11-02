@@ -17,8 +17,10 @@ warnings.filterwarnings(
 warnings.filterwarnings("ignore", message=".*ffmpeg.*", category=RuntimeWarning)
 warnings.filterwarnings("ignore", message=".*avconv.*", category=RuntimeWarning)
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, HTTPException, status as http_status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 
 from core.config import get_settings
 from core.logger import logger
@@ -28,6 +30,7 @@ from core.dependencies import validate_dependencies
 from internal.api.routes.task_routes import router as task_router
 from internal.api.routes.file_routes import router as file_router
 from internal.api.routes.health_routes import create_health_routes
+from internal.api.utils import error_response
 
 
 # Lifespan context manager
@@ -243,6 +246,43 @@ MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
         health_router = create_health_routes(app)
         app.include_router(health_router)
         logger.info("Health routes registered")
+
+        # Add exception handlers for standard response format
+        @app.exception_handler(RequestValidationError)
+        async def validation_exception_handler(
+            request: Request, exc: RequestValidationError
+        ):
+            """Handle validation errors with standard response format."""
+            errors = exc.errors()
+            error_msg = "; ".join([f"{e['loc'][-1]}: {e['msg']}" for e in errors])
+            logger.error(f"Validation error: {error_msg}")
+            return JSONResponse(
+                status_code=http_status.HTTP_200_OK,
+                content=error_response(
+                    message=f"Validation error: {error_msg}", error_code=1
+                ),
+            )
+
+        @app.exception_handler(HTTPException)
+        async def http_exception_handler(request: Request, exc: HTTPException):
+            """Handle HTTP exceptions with standard response format."""
+            logger.error(f"HTTP error: {exc.detail}")
+            return JSONResponse(
+                status_code=http_status.HTTP_200_OK,
+                content=error_response(message=exc.detail, error_code=1),
+            )
+
+        @app.exception_handler(Exception)
+        async def general_exception_handler(request: Request, exc: Exception):
+            """Handle all other exceptions with standard response format."""
+            logger.error(f"Unhandled exception: {str(exc)}")
+            logger.exception("Exception details:")
+            return JSONResponse(
+                status_code=http_status.HTTP_200_OK,
+                content=error_response(
+                    message=f"Internal server error: {str(exc)}", error_code=1
+                ),
+            )
 
         logger.info("FastAPI application created successfully")
         return app
