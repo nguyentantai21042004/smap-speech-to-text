@@ -27,11 +27,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy only essential application code (no docs, tests, logs, IDE files)
 # Using .dockerignore to exclude unnecessary files
+COPY cmd/ ./cmd/
 COPY core/ ./core/
+COPY internal/ ./internal/
 COPY repositories/ ./repositories/
 COPY services/ ./services/
-COPY internal/ ./internal/
-COPY cmd/ ./cmd/
+COPY worker/ ./worker/
 
 # Create logs directory (empty, logs are written at runtime)
 RUN mkdir -p logs

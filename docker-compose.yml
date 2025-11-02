@@ -104,6 +104,7 @@ services:
     build:
       context: .
       dockerfile: cmd/consumer/Dockerfile
+    container_name: smap-consumer
     restart: unless-stopped
     environment:
       APP_NAME: ${APP_NAME:-SMAP Speech-to-Text}
@@ -170,8 +171,6 @@ services:
       - whisper_models:/app/whisper/models
     networks:
       - smap-network
-    deploy:
-      replicas: ${CONSUMER_REPLICAS:-2}
 
 networks:
   smap-network:

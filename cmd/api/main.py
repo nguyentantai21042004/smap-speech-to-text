@@ -49,15 +49,15 @@ async def lifespan(app: FastAPI):
         logger.info(f"Debug mode: {settings.debug}")
         logger.info(f"API: {settings.api_host}:{settings.api_port}")
 
-        # Validate system dependencies (ffmpeg/ffprobe)
-        # Note: API service doesn't process audio directly, but validation helps catch issues early
+        # Validate system dependencies
+        # Note: API service doesn't need ffmpeg (only Consumer service needs it)
+        # Skip ffmpeg check to avoid unnecessary warnings
         try:
-            validate_dependencies()
+            validate_dependencies(check_ffmpeg=False)
             logger.info("System dependencies validated")
         except Exception as e:
             # For API service, dependency check is optional (warn, don't fail)
             logger.warning(f"Dependency validation warning: {e}")
-            logger.warning("API service can start, but audio processing will fail")
 
         # Initialize MongoDB connection
         try:
