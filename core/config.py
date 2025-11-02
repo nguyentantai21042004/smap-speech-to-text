@@ -78,6 +78,26 @@ class Settings(BaseSettings):
     )
     default_whisper_model: str = Field(default="medium", alias="DEFAULT_WHISPER_MODEL")
 
+    # Whisper Quality/Accuracy Flags
+    whisper_max_context: int = Field(
+        default=0, alias="WHISPER_MAX_CONTEXT"
+    )  # 0 = disable context reuse
+    whisper_no_speech_thold: float = Field(
+        default=0.7, alias="WHISPER_NO_SPEECH_THOLD"
+    )  # Higher = less false positives
+    whisper_entropy_thold: float = Field(
+        default=2.6, alias="WHISPER_ENTROPY_THOLD"
+    )  # Higher = less hallucination
+    whisper_logprob_thold: float = Field(
+        default=-0.8, alias="WHISPER_LOGPROB_THOLD"
+    )  # Higher = filter low quality
+    whisper_no_fallback: bool = Field(
+        default=True, alias="WHISPER_NO_FALLBACK"
+    )  # Disable temperature fallback
+    whisper_suppress_regex: Optional[str] = Field(
+        default=None, alias="WHISPER_SUPPRESS_REGEX"
+    )  # Suppress specific tokens
+
     # Chunking Settings
     chunk_duration: int = Field(default=30, alias="CHUNK_DURATION")
     silence_threshold: int = Field(default=-40, alias="SILENCE_THRESHOLD")

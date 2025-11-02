@@ -128,15 +128,37 @@ class WhisperTranscriber:
             elapsed_time = time.time() - start_time
             logger.debug(f"⏱️ Whisper execution completed in {elapsed_time:.2f}s")
 
+            # Log full stderr for debugging (especially if stdout is empty)
+            if result.stderr:
+                logger.debug(f"Whisper stderr (full): {result.stderr}")
+
             # Check for errors
             if result.returncode != 0:
                 error_msg = f"Whisper process failed with code {result.returncode}"
                 logger.error(f"{error_msg}")
-                logger.error(f"Stderr: {result.stderr}")
+                logger.error(
+                    f"Stderr: {result.stderr[:1000] if result.stderr else 'No stderr'}"
+                )
+                logger.error(
+                    f"Stdout: {result.stdout[:500] if result.stdout else 'No stdout'}"
+                )
                 raise WhisperCrashError(error_msg)
 
             # Parse output
-            transcription = self._parse_output(result.stdout, result.stderr)
+            # When using --output-txt, Whisper writes to file instead of stdout
+            # Need to read from output file
+            transcription = self._parse_output(result.stdout, result.stderr, audio_path)
+
+            # If stdout is empty but process succeeded, check output file
+            if not transcription and result.returncode == 0:
+                logger.debug(f"Whisper stdout empty, checking output file...")
+                logger.debug(f"Command: {' '.join(command)}")
+                logger.debug(
+                    f"Stdout: {result.stdout[:200] if result.stdout else '(empty)'}"
+                )
+                logger.debug(
+                    f"Stderr: {result.stderr[:200] if result.stderr else '(empty)'}"
+                )
 
             logger.info(
                 f"Transcription successful: length={len(transcription)} chars, time={elapsed_time:.2f}s"
@@ -198,7 +220,17 @@ class WhisperTranscriber:
 
             logger.debug(f"Using model: {model_path}")
 
-            # Build command with anti-hallucination flags
+            # Build command with optimized flags for quality and accuracy
+            # Anti-repetition flags:
+            # - --max-context 0: Disable context reuse between chunks (prevents repetition)
+            # Anti-hallucination flags:
+            # - --suppress-nst: Suppress non-speech tokens (removes [music], [noise], etc.)
+            # - --no-speech-thold: Higher threshold = less false positives (default 0.6, we use 0.7)
+            # - --entropy-thold: Higher threshold = less hallucination (default 2.4, we use 2.6)
+            # - --logprob-thold: Higher threshold = filter low-quality predictions (default -1.0, we use -0.8)
+            # Quality flags:
+            # - --no-fallback: Disable temperature fallback for consistent output
+            # - --suppress-regex: Optional regex to suppress specific tokens
             command = [
                 settings.whisper_executable,
                 "-m",
@@ -207,11 +239,33 @@ class WhisperTranscriber:
                 audio_path,
                 "-l",
                 language,
-                "--output-txt",  # Output as text
                 "--no-timestamps",  # No timestamps in output
-                "--no-context",  # Disable context reuse between chunks (reduces repetition)
-                "--suppress-hallucination",  # Suppress hallucinated text (reduces false predictions)
+                "--max-context",
+                str(
+                    settings.whisper_max_context
+                ),  # Disable context reuse (anti-repetition)
+                "--suppress-nst",  # Suppress non-speech tokens (anti-hallucination)
+                "--no-speech-thold",
+                str(
+                    settings.whisper_no_speech_thold
+                ),  # Higher threshold for speech detection
+                "--entropy-thold",
+                str(
+                    settings.whisper_entropy_thold
+                ),  # Higher threshold (less hallucination)
+                "--logprob-thold",
+                str(
+                    settings.whisper_logprob_thold
+                ),  # Higher threshold (filter low quality)
             ]
+
+            # Add --no-fallback if enabled
+            if settings.whisper_no_fallback:
+                command.append("--no-fallback")
+
+            # Add --suppress-regex if configured
+            if settings.whisper_suppress_regex:
+                command.extend(["--suppress-regex", settings.whisper_suppress_regex])
 
             logger.debug(f"Command built: {len(command)} arguments")
 
@@ -222,13 +276,15 @@ class WhisperTranscriber:
             logger.exception("Command build error:")
             raise
 
-    def _parse_output(self, stdout: str, stderr: str) -> str:
+    def _parse_output(self, stdout: str, stderr: str, audio_path: str = None) -> str:
         """
         Parse Whisper output to extract transcription.
+        Whisper outputs transcription to stdout by default.
 
         Args:
             stdout: Standard output from Whisper
             stderr: Standard error from Whisper
+            audio_path: Path to input audio file (for finding output file if needed)
 
         Returns:
             Transcribed text
@@ -240,21 +296,45 @@ class WhisperTranscriber:
             if stderr:
                 logger.debug(f"Whisper stderr: {stderr[:500]}...")
 
-            # Whisper outputs to stdout
-            if not stdout:
-                logger.warning("No output from Whisper")
+            # Whisper outputs transcription to stdout (when not using --output-txt)
+            transcription_text = ""
+
+            if stdout and stdout.strip():
+                transcription_text = stdout.strip()
+                logger.debug(
+                    f"Found transcription in stdout: {len(transcription_text)} chars"
+                )
+            else:
+                logger.debug(
+                    "No transcription in stdout, checking if transcription is in stderr..."
+                )
+                # Sometimes Whisper might output to stderr (unlikely but possible)
+                if stderr and stderr.strip():
+                    # Check if stderr looks like transcription (not error message)
+                    stderr_lower = stderr.lower()
+                    is_error = any(
+                        word in stderr_lower
+                        for word in ["error", "warning", "failed", "usage", "help"]
+                    )
+
+                    if not is_error and len(stderr.strip()) > 10:
+                        logger.debug(
+                            "Stderr might contain transcription, trying to parse..."
+                        )
+                        transcription_text = stderr.strip()
+
+            if not transcription_text:
+                logger.warning("No transcription found in stdout or stderr")
                 return ""
 
             # Clean up output
-            # Whisper.cpp outputs the transcription directly
-            transcription = stdout.strip()
-
+            transcription_text = transcription_text.strip()
             # Remove any leading/trailing whitespace and newlines
-            transcription = " ".join(transcription.split())
+            transcription_text = " ".join(transcription_text.split())
 
-            logger.debug(f"Output parsed: {len(transcription)} chars")
+            logger.debug(f"Output parsed: {len(transcription_text)} chars")
 
-            return transcription
+            return transcription_text
 
         except Exception as e:
             logger.error(f"Failed to parse Whisper output: {e}")

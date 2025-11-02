@@ -43,7 +43,7 @@ class MongoDB:
                         user = protocol_user[1].split(":")[0]
                         masked_url = f"{protocol_user[0]}://{user}:****@{parts[1]}"
 
-            logger.info(f"📝 Connecting to MongoDB: {masked_url}")
+            logger.info(f"Connecting to MongoDB: {masked_url}")
             logger.debug(f"Database name: {settings.mongodb_database}")
 
             # Create client with connection pooling

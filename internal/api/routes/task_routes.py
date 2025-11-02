@@ -375,7 +375,7 @@ async def list_jobs(status: Optional[str] = None, limit: int = 10):
 
     except Exception as e:
         logger.error(f"API: Failed to list jobs: {e}")
-        error_msg = format_exception_short(e, f"API: Task listing failed after {elapsed_time:.2f}s")
+        error_msg = format_exception_short(e, "API: Task listing failed")
         logger.error(f"{error_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

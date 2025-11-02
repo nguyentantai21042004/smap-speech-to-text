@@ -123,8 +123,10 @@ async def process_stt_job(job_id: str) -> dict:
 
         # Step 6: Update job as completed
         logger.info(f"Step 6: Updating job status to COMPLETED...")
-        logger.info(f"📝 Saving transcription_text to database: length={len(final_transcription)} chars")
-        logger.debug(f"📝 Transcription preview: {final_transcription[:200]}...")
+        logger.info(
+            f"Saving transcription_text to database: length={len(final_transcription)} chars"
+        )
+        logger.debug(f"Transcription preview: {final_transcription[:200]}...")
         await repo.update_job(
             job_id,
             JobUpdate(
@@ -135,7 +137,9 @@ async def process_stt_job(job_id: str) -> dict:
                 completed_at=datetime.utcnow(),
             ),
         )
-        logger.info(f"Job updated with transcription_text: length={len(final_transcription)} chars")
+        logger.info(
+            f"Job updated with transcription_text: length={len(final_transcription)} chars"
+        )
 
         elapsed_time = time.time() - start_time
         logger.info(
@@ -160,26 +164,34 @@ async def process_stt_job(job_id: str) -> dict:
 
     except MissingDependencyError as e:
         elapsed_time = time.time() - start_time
-        error_msg = format_exception_short(e, f"Missing dependency error after {elapsed_time:.2f}s")
+        error_msg = format_exception_short(
+            e, f"Missing dependency error after {elapsed_time:.2f}s"
+        )
         logger.error(f"{error_msg}")
-    
+
     except PermanentError as e:
         elapsed_time = time.time() - start_time
-        error_msg = format_exception_short(e, f"Permanent error processing job {job_id} after {elapsed_time:.2f}s")
+        error_msg = format_exception_short(
+            e, f"Permanent error processing job {job_id} after {elapsed_time:.2f}s"
+        )
         logger.error(f"{error_msg}")
 
         try:
             repo = get_task_repository()
             await repo.update_status(job_id, JobStatus.FAILED, str(e))
         except Exception as update_error:
-            error_formatted = format_exception_short(update_error, "Failed to update job status")
+            error_formatted = format_exception_short(
+                update_error, "Failed to update job status"
+            )
             logger.error(f"{error_formatted}")
 
         raise
 
     except TransientError as e:
         elapsed_time = time.time() - start_time
-        error_msg = format_exception_short(e, f"Transient error processing job {job_id} after {elapsed_time:.2f}s")
+        error_msg = format_exception_short(
+            e, f"Transient error processing job {job_id} after {elapsed_time:.2f}s"
+        )
         logger.error(f"{error_msg}")
 
         try:
@@ -192,14 +204,18 @@ async def process_stt_job(job_id: str) -> dict:
 
     except Exception as e:
         elapsed_time = time.time() - start_time
-        error_msg = format_exception_short(e, f"Unexpected error processing job {job_id} after {elapsed_time:.2f}s")
+        error_msg = format_exception_short(
+            e, f"Unexpected error processing job {job_id} after {elapsed_time:.2f}s"
+        )
         logger.error(f"{error_msg}")
 
         try:
             repo = get_task_repository()
             await repo.update_status(job_id, JobStatus.FAILED, str(e))
         except Exception as update_error:
-            error_formatted = format_exception_short(update_error, "Failed to update job status")
+            error_formatted = format_exception_short(
+                update_error, "Failed to update job status"
+            )
             logger.error(f"{error_formatted}")
 
         raise
@@ -208,7 +224,7 @@ async def process_stt_job(job_id: str) -> dict:
         # Cleanup temporary directory
         if temp_dir and os.path.exists(temp_dir):
             try:
-                logger.info(f"🧹 Cleaning up temp directory: {temp_dir}")
+                logger.info(f"Cleaning up temp directory: {temp_dir}")
                 shutil.rmtree(temp_dir)
                 logger.debug(f"Temp directory cleaned")
             except Exception as e:
@@ -297,7 +313,7 @@ async def _chunk_audio(audio_path: str, temp_dir: str, job) -> list:
         # Missing dependencies (ffmpeg) are permanent errors - cannot be fixed by retry
         logger.error(f"Missing dependency: {e}")
         raise PermanentError(f"Missing dependency: {e}")
-    
+
     except InvalidAudioFormatError as e:
         logger.error(f"Invalid audio format: {e}")
         raise PermanentError(f"Invalid audio format: {e}")

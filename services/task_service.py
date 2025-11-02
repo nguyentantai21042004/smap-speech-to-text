@@ -412,13 +412,8 @@ class TaskService:
 
             repo = get_task_repository()
 
-            if status:
-                from repositories.models import JobStatus
-
-                jobs = await repo.get_jobs_by_status(JobStatus(status), limit)
-            else:
-                # Get all recent jobs (you may want to add this method to repo)
-                jobs = []
+            # Use list_jobs method which handles both filtered and unfiltered queries
+            jobs = await repo.list_jobs(limit=limit, status=status)
 
             logger.info(f"Retrieved {len(jobs)} tasks")
 

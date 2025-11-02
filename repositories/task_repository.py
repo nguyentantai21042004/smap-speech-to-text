@@ -55,7 +55,7 @@ class TaskRepository:
 
             # Insert into MongoDB
             result = await collection.insert_one(job.to_dict())
-            
+
             # Get the inserted _id and set it as id in the model
             job_id_str = objectid_to_str(result.inserted_id)
             job.id = job_id_str
@@ -71,6 +71,7 @@ class TaskRepository:
 
         except Exception as e:
             from core.logger import format_exception_short
+
             error_formatted = format_exception_short(e, "Failed to create job")
             logger.error(f"{error_formatted}")
             raise
@@ -149,13 +150,23 @@ class TaskRepository:
 
             # Log transcription_text if being saved (for debugging)
             if "transcription_text" in update_dict:
-                transcription_length = len(update_dict["transcription_text"]) if update_dict["transcription_text"] else 0
-                logger.info(f"💾 Saving transcription_text to MongoDB: length={transcription_length} chars")
+                transcription_length = (
+                    len(update_dict["transcription_text"])
+                    if update_dict["transcription_text"]
+                    else 0
+                )
+                logger.info(
+                    f"Saving transcription_text to MongoDB: length={transcription_length} chars"
+                )
                 if transcription_length > 0:
-                    preview = update_dict['transcription_text'][:200] if len(update_dict['transcription_text']) > 200 else update_dict['transcription_text']
-                    logger.debug(f"💾 Transcription preview: {preview}...")
+                    preview = (
+                        update_dict["transcription_text"][:200]
+                        if len(update_dict["transcription_text"]) > 200
+                        else update_dict["transcription_text"]
+                    )
+                    logger.debug(f"Transcription preview: {preview}...")
                 else:
-                    logger.warning("⚠️ Transcription text is empty!")
+                    logger.warning("Transcription text is empty!")
 
             logger.debug(f"Final update document keys: {list(update_dict.keys())}")
 
@@ -170,9 +181,7 @@ class TaskRepository:
                 )
                 return True
             elif result.matched_count > 0:
-                logger.info(
-                    f"Job matched but not modified (no changes): id={job_id}"
-                )
+                logger.info(f"Job matched but not modified (no changes): id={job_id}")
                 return True
             else:
                 logger.warning(f"Job not found for update: id={job_id}")
@@ -301,7 +310,7 @@ class TaskRepository:
 
             # Query jobs by status
             cursor = (
-                collection.find({"status": status}).sort("created_at", -1).limit(limit)
+                collection.find({"status": status.value}).sort("created_at", -1).limit(limit)
             )
 
             jobs = []
@@ -320,6 +329,58 @@ class TaskRepository:
         except Exception as e:
             logger.error(f"Failed to get jobs by status: {e}")
             logger.exception("Jobs query error details:")
+            raise
+
+    async def list_jobs(self, limit: int = 100, status: Optional[str] = None) -> List[JobModel]:
+        """
+        List jobs with optional status filter.
+
+        Args:
+            limit: Maximum number of jobs to return
+            status: Optional status filter (PENDING, PROCESSING, COMPLETED, FAILED)
+
+        Returns:
+            List of jobs, sorted by created_at (newest first)
+
+        Raises:
+            Exception: If query fails
+        """
+        try:
+            logger.debug(f"🔍 Listing jobs: limit={limit}, status={status}")
+
+            # Get database collection
+            db = await get_database()
+            collection = await db.get_collection(self.collection_name)
+
+            # Build query filter
+            query_filter = {}
+            if status:
+                try:
+                    query_filter["status"] = JobStatus(status).value
+                    logger.debug(f"Filtering by status: {status}")
+                except ValueError:
+                    logger.warning(f"Invalid status filter: {status}, ignoring")
+                    # Invalid status, ignore filter
+
+            # Query jobs (sorted by created_at descending - newest first)
+            cursor = collection.find(query_filter).sort("created_at", -1).limit(limit)
+
+            jobs = []
+            async for doc in cursor:
+                try:
+                    job = JobModel.from_dict(doc)
+                    jobs.append(job)
+                except Exception as e:
+                    logger.error(f"Failed to parse job document: {e}")
+                    continue
+
+            logger.info(f"Found {len(jobs)} jobs (limit={limit}, status={status or 'all'})")
+
+            return jobs
+
+        except Exception as e:
+            logger.error(f"Failed to list jobs: {e}")
+            logger.exception("Jobs listing error details:")
             raise
 
     async def delete_job(self, job_id: str) -> bool:

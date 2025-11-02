@@ -258,7 +258,7 @@ class AudioChunker:
             List of chunk file dictionaries
         """
         try:
-            logger.info(f"💾 Saving {len(chunks)} chunks to disk...")
+            logger.info(f"Saving {len(chunks)} chunks to disk...")
 
             # Create temporary directory
             temp_dir = Path(tempfile.mkdtemp(prefix="stt_chunks_"))
