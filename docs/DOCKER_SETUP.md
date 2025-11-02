@@ -98,10 +98,10 @@ CONSUMER_REPLICAS=2
 **Dockerfile:** `cmd/consumer/Dockerfile`
 
 **Features:**
-- ✅ Tự động download Whisper models từ MinIO
-- ✅ Cache models trong Docker volume
-- ✅ Xử lý STT jobs từ Redis Queue
-- ✅ Support audio chunking và merging
+- Tự động download Whisper models từ MinIO
+- Cache models trong Docker volume
+- Xử lý STT jobs từ Redis Queue
+- Support audio chunking và merging
 
 **Environment Variables:**
 - `SKIP_MODEL_DOWNLOAD` - Skip model download (default: false)
@@ -354,7 +354,7 @@ secrets:
 
 ---
 
-## ✅ Checklist
+## Checklist
 
 Deployment checklist:
 

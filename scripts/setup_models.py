@@ -36,7 +36,7 @@ def main():
 
         if models_to_download:
             # Download specific models
-            logger.info(f"📝 Downloading specific models: {models_to_download}")
+            logger.info(f"Downloading specific models: {models_to_download}")
 
             for model in models_to_download:
                 if model not in MODEL_CONFIGS:
@@ -48,12 +48,12 @@ def main():
                 try:
                     logger.info(f"\n📥 Downloading model: {model}")
                     model_path = downloader.ensure_model_exists(model)
-                    logger.info(f"✅ Model ready: {model_path}")
+                    logger.info(f"Model ready: {model_path}")
                 except Exception as e:
                     logger.error(f"❌ Failed to download model '{model}': {e}")
         else:
             # Download all models
-            logger.info("📝 Downloading ALL models (this may take a while)...")
+            logger.info("Downloading ALL models (this may take a while)...")
             downloader.download_all_models()
 
         # Show status
@@ -70,7 +70,7 @@ def main():
             )
 
         logger.info("\n" + "=" * 70)
-        logger.info("✅ Model setup complete!")
+        logger.info("Model setup complete!")
         logger.info("=" * 70)
 
     except KeyboardInterrupt:

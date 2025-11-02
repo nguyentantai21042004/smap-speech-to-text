@@ -4,10 +4,16 @@ Includes detailed logging and comprehensive error handling.
 """
 
 import os
+import warnings
 from typing import List, Optional, Tuple
 from pathlib import Path
-from pydub import AudioSegment
-from pydub.silence import detect_nonsilent
+
+# Suppress pydub ffmpeg warning - it's expected if ffmpeg is not installed
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message=".*ffmpeg.*", category=RuntimeWarning)
+    warnings.filterwarnings("ignore", message=".*avconv.*", category=RuntimeWarning)
+    from pydub import AudioSegment
+    from pydub.silence import detect_nonsilent
 
 from core.config import get_settings
 from core.logger import logger
@@ -58,7 +64,7 @@ class AudioChunker:
         """
         try:
             logger.info(
-                f"📝 Starting audio chunking: file={audio_path}, strategy={strategy}"
+                f"Starting audio chunking: file={audio_path}, strategy={strategy}"
             )
             logger.debug(
                 f"Parameters: chunk_duration={chunk_duration}s, min_silence={min_silence_len}ms, thresh={silence_thresh}dB"
@@ -73,7 +79,7 @@ class AudioChunker:
             # Get audio info
             duration_seconds = len(audio) / 1000.0
             logger.info(
-                f"✅ Audio loaded: duration={duration_seconds:.2f}s, format={audio.frame_rate}Hz"
+                f"Audio loaded: duration={duration_seconds:.2f}s, format={audio.frame_rate}Hz"
             )
 
             # Create output directory
@@ -88,7 +94,7 @@ class AudioChunker:
             else:
                 chunks = self._chunk_fixed_duration(audio, output_dir, chunk_duration)
 
-            logger.info(f"✅ Audio chunking complete: total_chunks={len(chunks)}")
+            logger.info(f"Audio chunking complete: total_chunks={len(chunks)}")
             logger.debug(f"Chunk details: {chunks}")
 
             # Log statistics
@@ -140,7 +146,7 @@ class AudioChunker:
                 logger.error(f"❌ {error_msg}")
                 raise InvalidAudioFormatError(error_msg)
 
-            logger.debug(f"✅ Audio file validation passed: format={file_ext}")
+            logger.debug(f"Audio file validation passed: format={file_ext}")
 
         except Exception as e:
             logger.error(f"❌ Audio validation failed: {e}")
@@ -169,7 +175,7 @@ class AudioChunker:
             audio = AudioSegment.from_file(audio_path, format=file_ext)
 
             logger.debug(
-                f"✅ Audio loaded: channels={audio.channels}, frame_rate={audio.frame_rate}Hz, sample_width={audio.sample_width}"
+                f"Audio loaded: channels={audio.channels}, frame_rate={audio.frame_rate}Hz, sample_width={audio.sample_width}"
             )
 
             return audio
@@ -201,7 +207,7 @@ class AudioChunker:
         """
         try:
             logger.info(
-                f"📝 Chunking by silence: min_silence={min_silence_len}ms, thresh={silence_thresh}dB"
+                f"Chunking by silence: min_silence={min_silence_len}ms, thresh={silence_thresh}dB"
             )
 
             # Detect non-silent regions
@@ -265,7 +271,7 @@ class AudioChunker:
                     }
                     chunks.append(chunk_info)
 
-                    logger.debug(f"✅ Chunk {i} saved: {chunk_path}")
+                    logger.debug(f"Chunk {i} saved: {chunk_path}")
 
                 except Exception as e:
                     logger.error(f"❌ Failed to process chunk {i}: {e}")
@@ -274,7 +280,7 @@ class AudioChunker:
                     continue
 
             logger.info(
-                f"✅ Silence-based chunking complete: {len(chunks)} chunks created"
+                f"Silence-based chunking complete: {len(chunks)} chunks created"
             )
 
             return chunks
@@ -303,7 +309,7 @@ class AudioChunker:
             List of chunk metadata
         """
         try:
-            logger.info(f"📝 Chunking by fixed duration: duration={chunk_duration}s")
+            logger.info(f"Chunking by fixed duration: duration={chunk_duration}s")
 
             chunk_duration_ms = chunk_duration * 1000
             audio_length_ms = len(audio)
@@ -333,7 +339,7 @@ class AudioChunker:
                     }
                     chunks.append(chunk_info)
 
-                    logger.debug(f"✅ Chunk {i} saved: {chunk_path}")
+                    logger.debug(f"Chunk {i} saved: {chunk_path}")
 
                 except Exception as e:
                     logger.error(f"❌ Failed to process chunk {i}: {e}")
@@ -341,7 +347,7 @@ class AudioChunker:
                     continue
 
             logger.info(
-                f"✅ Fixed duration chunking complete: {len(chunks)} chunks created"
+                f"Fixed duration chunking complete: {len(chunks)} chunks created"
             )
 
             return chunks
@@ -400,7 +406,7 @@ class AudioChunker:
                 sub_chunks.append(chunk_info)
 
                 logger.debug(
-                    f"✅ Sub-chunk {i} created: {start_sec:.2f}s - {end_sec:.2f}s"
+                    f"Sub-chunk {i} created: {start_sec:.2f}s - {end_sec:.2f}s"
                 )
 
             return sub_chunks
@@ -431,7 +437,7 @@ def get_audio_duration(audio_path: str) -> float:
         audio = AudioSegment.from_file(audio_path, format=file_ext)
         duration = len(audio) / 1000.0
 
-        logger.debug(f"✅ Audio duration: {duration:.2f}s")
+        logger.debug(f"Audio duration: {duration:.2f}s")
 
         return duration
 

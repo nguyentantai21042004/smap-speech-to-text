@@ -245,14 +245,14 @@ The following fields are **defined in core/config.py** but are **NOT currently u
 
 | Field | Status | Recommendation |
 |-------|--------|----------------|
-| `MAX_UPLOAD_SIZE_MB` | Defined but not enforced | ✅ **Keep** - Should be used for validation |
+| `MAX_UPLOAD_SIZE_MB` | Defined but not enforced | **Keep** - Should be used for validation |
 | `DEFAULT_MODEL` | Defined but not enforced | ❌ **Remove** - Model comes from API request |
 | `DEFAULT_LANGUAGE` | Defined but not enforced | ❌ **Remove** - Language comes from API request |
 | `CHUNK_STRATEGY` | Defined but not used | ❌ **Remove** - Strategy is hardcoded |
 | `CHUNK_OVERLAP` | Defined but not used | ❌ **Remove** - Not implemented |
 | `RETRY_DELAY` | Defined but not used | ❌ **Remove** - Retry delay not configurable |
-| `LOG_LEVEL` | Defined but not used | ✅ **Keep** - Should be used instead of DEBUG |
-| `LOG_FILE` | Defined but not used | ✅ **Keep** - Should be used for file logging |
+| `LOG_LEVEL` | Defined but not used | **Keep** - Should be used instead of DEBUG |
+| `LOG_FILE` | Defined but not used | **Keep** - Should be used for file logging |
 
 ---
 
@@ -262,7 +262,7 @@ The following field is **used in code** but **NOT defined in core/config.py**:
 
 | Field | Used In | Recommendation |
 |-------|---------|----------------|
-| `API_WORKERS` | cmd/api/main.py:234 | ✅ **Add to config.py** |
+| `API_WORKERS` | cmd/api/main.py:234 | **Add to config.py** |
 
 ---
 

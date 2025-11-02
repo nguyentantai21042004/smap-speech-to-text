@@ -147,7 +147,7 @@ RUN
 chmod +x "$OUT_DIR/run_whisper.sh"
 
 echo
-echo "✅ Bundle ready: $OUT_DIR"
+echo "Bundle ready: $OUT_DIR"
 echo "   Try:"
 echo "   $OUT_DIR/run_whisper.sh -f $OUT_DIR/samples/jfk.wav"
 

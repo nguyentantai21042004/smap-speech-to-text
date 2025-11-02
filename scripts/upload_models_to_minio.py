@@ -53,7 +53,7 @@ def upload_model(model_name: str, local_dir: Path) -> bool:
         # Check file size
         file_size_mb = local_path.stat().st_size / (1024 * 1024)
         logger.info(
-            f"📝 Uploading {model_name} model: {file_size_mb:.2f}MB → {config['minio_path']}"
+            f"Uploading {model_name} model: {file_size_mb:.2f}MB → {config['minio_path']}"
         )
 
         # Get MinIO client
@@ -65,7 +65,7 @@ def upload_model(model_name: str, local_dir: Path) -> bool:
                 file_data=f, object_name=config["minio_path"], content_type="application/octet-stream"
             )
 
-        logger.info(f"✅ Model uploaded successfully: {model_name}")
+        logger.info(f"Model uploaded successfully: {model_name}")
         return True
 
     except Exception as e:
@@ -101,7 +101,7 @@ def main():
         # Determine which models to upload
         if models_to_upload:
             models = models_to_upload
-            logger.info(f"📝 Uploading specific models: {models}")
+            logger.info(f"Uploading specific models: {models}")
         else:
             # Upload all models found in local directory
             models = []
@@ -117,7 +117,7 @@ def main():
                 )
                 sys.exit(1)
 
-            logger.info(f"📝 Found {len(models)} models to upload: {models}")
+            logger.info(f"Found {len(models)} models to upload: {models}")
 
         # Upload each model
         success_count = 0
@@ -137,7 +137,7 @@ def main():
         logger.info("=" * 70)
 
         if success_count == len(models):
-            logger.info("✅ All models uploaded successfully!")
+            logger.info("All models uploaded successfully!")
             logger.info(
                 "\n💡 Next steps:"
                 "\n   1. Start worker service: docker-compose up worker"

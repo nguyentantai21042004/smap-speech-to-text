@@ -12,7 +12,7 @@ Dự án sử dụng Whisper models để chuyển đổi giọng nói thành v�
    - Docker images rất nặng
    - Model files missing khi build Docker
 
-2. ✅ **Giải pháp hiện tại:**
+2. **Giải pháp hiện tại:**
    - Models lưu trong MinIO (object storage)
    - Tự động download từ MinIO khi cần
    - Docker images nhẹ hơn
@@ -108,7 +108,7 @@ docker build -f cmd/worker/Dockerfile -t stt-worker:latest .
 
 **Image size:**
 - ❌ Trước: ~4-5GB (with models)
-- ✅ Sau: ~1-2GB (without models)
+- Sau: ~1-2GB (without models)
 
 ### 3. Run with Docker Compose
 
@@ -187,7 +187,7 @@ bucket: stt-audio-files/
 
 ---
 
-## 📝 Usage Examples
+## Usage Examples
 
 ### Example 1: Local Development
 
@@ -282,7 +282,7 @@ ERROR: whisper/models/ggml-medium.bin not found
 ```
 
 **Solutions:**
-- ✅ This is EXPECTED! Models should NOT be in Docker image
+- This is EXPECTED! Models should NOT be in Docker image
 - Models will be downloaded at runtime
 - Make sure entrypoint script is configured
 
@@ -383,7 +383,7 @@ class WhisperTranscriber:
 
 ---
 
-## ✅ Checklist
+## Checklist
 
 ### For Developers:
 
@@ -413,11 +413,11 @@ class WhisperTranscriber:
 ## 🎉 Summary
 
 **Benefits:**
-- ✅ No large files in Git
-- ✅ Smaller Docker images
-- ✅ Automatic model management
-- ✅ Easy to update models (just update MinIO)
-- ✅ Models shared across deployments
+- No large files in Git
+- Smaller Docker images
+- Automatic model management
+- Easy to update models (just update MinIO)
+- Models shared across deployments
 
 **Tradeoffs:**
 - ⚠️ First startup slower (download time)

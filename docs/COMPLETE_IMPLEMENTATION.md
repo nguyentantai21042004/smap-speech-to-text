@@ -2,7 +2,7 @@
 
 This document contains all the code needed to complete the STT system. Copy each section to the appropriate file.
 
-## ✅ Already Completed
+## Already Completed
 
 1. `requirements.txt` - Updated with STT dependencies
 2. `core/config.py` - Updated with Redis + SQLite configuration
@@ -290,7 +290,7 @@ python -c "from core.database import init_db; init_db()"
 
 ---
 
-## 📝 Next Steps
+## Next Steps
 
 1. Copy the code above into the respective files
 2. See `COMPLETE_IMPLEMENTATION_PART2.md` for worker modules

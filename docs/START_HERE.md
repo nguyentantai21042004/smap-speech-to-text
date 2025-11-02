@@ -8,9 +8,9 @@ This guide will help you implement the complete Speech-to-Text system with your 
 
 ## 📋 Your Requirements
 
-✅ **Database:** MongoDB (not SQLite/PostgreSQL)
-✅ **Logging:** Detailed logs in ALL logic using existing `core.logger`
-✅ **Error Handling:** Try-catch everywhere to catch bugs
+**Database:** MongoDB (not SQLite/PostgreSQL)
+**Logging:** Detailed logs in ALL logic using existing `core.logger`
+**Error Handling:** Try-catch everywhere to catch bugs
 
 ---
 
@@ -178,11 +178,11 @@ logger = get_logger(__name__)
 
 def example_function(param):
     try:
-        logger.info(f"📝 Starting operation: param={param}")
+        logger.info(f"Starting operation: param={param}")
 
         result = do_work(param)
 
-        logger.info(f"✅ Operation successful: result={result}")
+        logger.info(f"Operation successful: result={result}")
         return result
 
     except SpecificError as e:
@@ -197,8 +197,8 @@ def example_function(param):
 ```
 
 ### Logging Icons
-- 📝 Starting operation
-- ✅ Success
+- Starting operation
+- Success
 - ❌ Error
 - 🔍 Debug/Investigation
 - ⚠️ Warning
@@ -243,7 +243,7 @@ def example_function(param):
 
 ---
 
-## ✅ Success Criteria
+## Success Criteria
 
 After completing all tasks, you should be able to:
 
@@ -259,9 +259,9 @@ After completing all tasks, you should be able to:
 10. **Retrieve** results via API
 
 **And most importantly:**
-- ✅ Every operation is logged
-- ✅ Every error is caught and logged
-- ✅ You can see exactly what's happening
+- Every operation is logged
+- Every error is caught and logged
+- You can see exactly what's happening
 
 ---
 

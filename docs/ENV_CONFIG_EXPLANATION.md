@@ -34,7 +34,7 @@ DEFAULT_LANGUAGE=vi
 - Cấu hình engine STT (Whisper.cpp) để transcribe audio
 
 **Tác động vào source:**
-- ✅ **CÓ TÁC ĐỘNG** - Được sử dụng trong:
+- **CÓ TÁC ĐỘNG** - Được sử dụng trong:
   - `worker/transcriber.py`:
     - `settings.whisper_executable` - Đường dẫn đến file thực thi Whisper
     - `settings.whisper_models_dir` - Thư mục chứa models
@@ -73,7 +73,7 @@ MIN_SILENCE_DURATION=1.0
 - Audio dài cần chia nhỏ để xử lý hiệu quả hơn
 
 **Tác động vào source:**
-- ✅ **CÓ TÁC ĐỘNG MẠNH** - Được sử dụng trong:
+- **CÓ TÁC ĐỘNG MẠNH** - Được sử dụng trong:
   - `worker/chunking.py`: Logic chunking audio
   - `worker/processor.py`: Gọi chunking với settings
 
@@ -142,7 +142,7 @@ MAX_CONCURRENT_JOBS=4
 - Cấu hình retry logic và timeout để xử lý lỗi và tránh hang
 
 **Tác động vào source:**
-- ✅ **CÓ TÁC ĐỘNG** - Được sử dụng trong:
+- **CÓ TÁC ĐỘNG** - Được sử dụng trong:
 
 #### `MAX_RETRIES=3`
 - **Vai trò:** Số lần retry tối đa khi transcription fail
@@ -204,7 +204,7 @@ TEMP_DIR=/tmp/stt_processing
 - Thư mục tạm để lưu audio chunks trong quá trình xử lý
 
 **Tác động vào source:**
-- ✅ **CÓ TÁC ĐỘNG** - Được sử dụng trong:
+- **CÓ TÁC ĐỘNG** - Được sử dụng trong:
   - `worker/processor.py`: Tạo temp directory để lưu chunks
   - Mỗi job tạo 1 temp directory riêng trong `TEMP_DIR`
 
@@ -232,7 +232,7 @@ MINIO_USE_SSL=False
 - Cấu hình object storage cho audio files và results
 
 **Tác động vào source:**
-- ✅ **CÓ TÁC ĐỘNG** - Được sử dụng trong:
+- **CÓ TÁC ĐỘNG** - Được sử dụng trong:
   - `core/storage.py`: MinIOClient initialization
   - `services/task_service.py`: Upload audio lên MinIO
   - `worker/processor.py`: Download audio từ MinIO, upload results
@@ -278,21 +278,21 @@ RABBITMQ_ROUTING_KEY=stt.job
 
 | Field | Có tác động? | File sử dụng | Mức độ quan trọng |
 |-------|--------------|--------------|-------------------|
-| `WHISPER_EXECUTABLE` | ✅ **CÓ** | `worker/transcriber.py` | ⭐⭐⭐ Critical |
-| `WHISPER_MODELS_DIR` | ✅ **CÓ** | `worker/transcriber.py` | ⭐⭐⭐ Critical |
-| `DEFAULT_MODEL` | ✅ **CÓ** | Có thể dùng khi không specify model | ⭐⭐ High |
-| `DEFAULT_LANGUAGE` | ✅ **CÓ** | Có thể dùng khi không specify language | ⭐⭐ High |
-| `CHUNK_STRATEGY` | ✅ **CÓ** | `worker/chunking.py`, `worker/processor.py` | ⭐⭐⭐ Critical |
-| `CHUNK_DURATION` | ✅ **CÓ** | `worker/chunking.py`, `worker/processor.py` | ⭐⭐⭐ Critical |
-| `SILENCE_THRESHOLD` | ✅ **CÓ** | `worker/chunking.py`, `worker/processor.py` | ⭐⭐⭐ Critical |
-| `MIN_SILENCE_DURATION` | ✅ **CÓ** | `worker/chunking.py`, `worker/processor.py` | ⭐⭐⭐ Critical |
-| `MAX_RETRIES` | ✅ **CÓ** | `worker/transcriber.py` | ⭐⭐ High |
-| `CHUNK_TIMEOUT` | ✅ **CÓ** | `worker/transcriber.py` | ⭐⭐ High |
-| `JOB_TIMEOUT` | ✅ **CÓ** | `core/messaging.py` | ⭐⭐ High |
+| `WHISPER_EXECUTABLE` | **CÓ** | `worker/transcriber.py` | ⭐⭐⭐ Critical |
+| `WHISPER_MODELS_DIR` | **CÓ** | `worker/transcriber.py` | ⭐⭐⭐ Critical |
+| `DEFAULT_MODEL` | **CÓ** | Có thể dùng khi không specify model | ⭐⭐ High |
+| `DEFAULT_LANGUAGE` | **CÓ** | Có thể dùng khi không specify language | ⭐⭐ High |
+| `CHUNK_STRATEGY` | **CÓ** | `worker/chunking.py`, `worker/processor.py` | ⭐⭐⭐ Critical |
+| `CHUNK_DURATION` | **CÓ** | `worker/chunking.py`, `worker/processor.py` | ⭐⭐⭐ Critical |
+| `SILENCE_THRESHOLD` | **CÓ** | `worker/chunking.py`, `worker/processor.py` | ⭐⭐⭐ Critical |
+| `MIN_SILENCE_DURATION` | **CÓ** | `worker/chunking.py`, `worker/processor.py` | ⭐⭐⭐ Critical |
+| `MAX_RETRIES` | **CÓ** | `worker/transcriber.py` | ⭐⭐ High |
+| `CHUNK_TIMEOUT` | **CÓ** | `worker/transcriber.py` | ⭐⭐ High |
+| `JOB_TIMEOUT` | **CÓ** | `core/messaging.py` | ⭐⭐ High |
 | `MAX_CONCURRENT_JOBS` | ⚠️ **Chưa rõ** | `cmd/consumer/main.py` (chỉ log) | ⭐ Low |
 | `TEMP_DIR` | ⚠️ **Có thể** | Hệ thống temp, có thể override | ⭐ Low |
-| `MINIO_BUCKET` | ✅ **CÓ** | `core/storage.py` | ⭐⭐⭐ Critical |
-| `MINIO_USE_SSL` | ✅ **CÓ** | `core/storage.py` | ⭐⭐ High |
+| `MINIO_BUCKET` | **CÓ** | `core/storage.py` | ⭐⭐⭐ Critical |
+| `MINIO_USE_SSL` | **CÓ** | `core/storage.py` | ⭐⭐ High |
 | `API_WORKERS` | ❌ **KHÔNG** | `cmd/api/main.py` (chỉ log, không dùng) | ⭐ None |
 | `RABBITMQ_*` | ❌ **KHÔNG** | Legacy, đang migration | ⭐ None |
 
@@ -346,7 +346,7 @@ uvicorn.run(
     host=settings.api_host,
     port=settings.api_port,
     reload=settings.api_reload,
-    workers=settings.api_workers,  # ✅ Thêm dòng này
+    workers=settings.api_workers,  # Thêm dòng này
     log_level="info" if settings.debug else "warning",
 )
 ```

@@ -54,7 +54,7 @@ def print_header(message: str):
 
 def print_success(message: str):
     """Print a success message."""
-    print(f"{Colors.GREEN}✅ {message}{Colors.ENDC}")
+    print(f"{Colors.GREEN}{message}{Colors.ENDC}")
 
 
 def print_error(message: str):

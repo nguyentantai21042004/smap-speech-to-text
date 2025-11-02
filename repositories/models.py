@@ -3,10 +3,14 @@ MongoDB document models using Pydantic.
 Includes validation, logging, and error handling.
 """
 
-from pydantic import BaseModel, Field
+import warnings
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+
+# Suppress Pydantic protected namespace warnings for 'model_*' fields
+warnings.filterwarnings("ignore", message=".*protected namespace.*", category=UserWarning)
 
 from core.logger import logger
 
@@ -36,10 +40,10 @@ class ChunkModel(BaseModel):
         None, description="When chunk was processed"
     )
 
-    class Config:
-        """Pydantic config."""
-
-        json_encoders = {datetime: lambda v: v.isoformat() if v else None}
+    model_config = ConfigDict(
+        protected_namespaces=(),  # Allow 'model_*' fields
+        json_encoders={datetime: lambda v: v.isoformat() if v else None}
+    )
 
 
 class JobModel(BaseModel):
@@ -100,10 +104,10 @@ class JobModel(BaseModel):
         default_factory=datetime.utcnow, description="Last update time"
     )
 
-    class Config:
-        """Pydantic config."""
-
-        json_encoders = {datetime: lambda v: v.isoformat() if v else None}
+    model_config = ConfigDict(
+        protected_namespaces=(),  # Allow 'model_*' fields (e.g., model_used)
+        json_encoders={datetime: lambda v: v.isoformat() if v else None}
+    )
 
     def to_dict(self) -> dict:
         """
@@ -117,7 +121,7 @@ class JobModel(BaseModel):
         """
         try:
             data = self.dict()
-            logger.debug(f"✅ Converted JobModel to dict: job_id={self.job_id}")
+            logger.debug(f"Converted JobModel to dict: job_id={self.job_id}")
             return data
 
         except Exception as e:
@@ -145,7 +149,7 @@ class JobModel(BaseModel):
                 data.pop("_id")
 
             job = cls(**data)
-            logger.debug(f"✅ Created JobModel from dict: job_id={job.job_id}")
+            logger.debug(f"Created JobModel from dict: job_id={job.job_id}")
             return job
 
         except Exception as e:
@@ -188,4 +192,4 @@ class JobUpdate(BaseModel):
 # MongoDB collection names
 JOBS_COLLECTION = "stt_jobs"
 
-logger.info("✅ MongoDB models defined")
+logger.info("MongoDB models defined")

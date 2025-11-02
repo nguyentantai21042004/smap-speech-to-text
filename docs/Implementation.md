@@ -149,12 +149,12 @@ bash ./models/download-ggml-model.sh medium     # Multilingual (~1.5GB)
 # Optional: Download larger models if needed
 # bash ./models/download-ggml-model.sh large-v3  # Best quality (~3GB)
 
-echo "✅ Models downloaded successfully!"
+echo "Models downloaded successfully!"
 ls -lah $MODELS_DIR/
 
 # Make executable available globally
 sudo cp ./main /usr/local/bin/whisper-cpp
-echo "✅ whisper-cpp installed to /usr/local/bin/"
+echo "whisper-cpp installed to /usr/local/bin/"
 ```
 
 ---
@@ -1943,9 +1943,9 @@ python scripts/test_audio.py sample_audio.mp3
 
 ---
 
-## 📝 CHECKLIST HOÀN THÀNH
+## CHECKLIST HOÀN THÀNH
 
-### ✅ Chuẩn bị môi trường
+### Chuẩn bị môi trường
 - [ ] Cài đặt Python 3.11
 - [ ] Cài đặt PostgreSQL
 - [ ] Cài đặt Redis
@@ -1953,7 +1953,7 @@ python scripts/test_audio.py sample_audio.mp3
 - [ ] Build whisper.cpp
 - [ ] Download models
 
-### ✅ Code Implementation
+### Code Implementation
 - [ ] Tạo cấu trúc thư mục
 - [ ] Implement Common module
 - [ ] Implement Worker module
@@ -1961,14 +1961,14 @@ python scripts/test_audio.py sample_audio.mp3
 - [ ] Viết Dockerfiles
 - [ ] Setup Docker Compose
 
-### ✅ Testing
+### Testing
 - [ ] Test chunking algorithm
 - [ ] Test whisper.cpp integration
 - [ ] Test API endpoints
 - [ ] Test worker processing
 - [ ] End-to-end testing
 
-### ✅ Deployment
+### Deployment
 - [ ] Configure production environment
 - [ ] Setup monitoring
 - [ ] Configure backup

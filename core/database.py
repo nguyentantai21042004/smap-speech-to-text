@@ -40,7 +40,7 @@ class MongoDB:
                         user = protocol_user[1].split(":")[0]
                         masked_url = f"{protocol_user[0]}://{user}:****@{parts[1]}"
 
-            logger.info(f"📝 Connecting to MongoDB: {masked_url}")
+            logger.info(f"Connecting to MongoDB: {masked_url}")
             logger.debug(f"Database name: {settings.mongodb_database}")
 
             # Create client with connection pooling
@@ -60,7 +60,7 @@ class MongoDB:
             self.db = self.client[settings.mongodb_database]
 
             logger.info(
-                f"✅ Connected to MongoDB database: {settings.mongodb_database}"
+                f"Connected to MongoDB database: {settings.mongodb_database}"
             )
             logger.debug(
                 f"Connection pool: min={settings.mongodb_min_pool_size}, "
@@ -68,17 +68,17 @@ class MongoDB:
             )
 
         except ConnectionError as e:
-            logger.error(f"❌ MongoDB connection error: {e}")
+            logger.error(f"MongoDB connection error: {e}")
             logger.exception("Connection error details:")
             raise
 
         except TimeoutError as e:
-            logger.error(f"❌ MongoDB connection timeout: {e}")
+            logger.error(f"MongoDB connection timeout: {e}")
             logger.exception("Timeout error details:")
             raise
 
         except Exception as e:
-            logger.error(f"❌ Failed to connect to MongoDB: {e}")
+            logger.error(f"Failed to connect to MongoDB: {e}")
             logger.exception("MongoDB connection error details:")
             raise
 
@@ -91,16 +91,16 @@ class MongoDB:
         """
         try:
             if self.client:
-                logger.info("📝 Disconnecting from MongoDB...")
+                logger.info("Disconnecting from MongoDB...")
                 self.client.close()
                 self.client = None
                 self.db = None
-                logger.info("✅ Disconnected from MongoDB")
+                logger.info("Disconnected from MongoDB")
             else:
                 logger.debug("MongoDB client not initialized, nothing to disconnect")
 
         except Exception as e:
-            logger.error(f"❌ Error disconnecting from MongoDB: {e}")
+            logger.error(f"Error disconnecting from MongoDB: {e}")
             logger.exception("MongoDB disconnection error details:")
 
     async def get_collection(self, collection_name: str):
@@ -118,13 +118,13 @@ class MongoDB:
             Exception: If collection access fails
         """
         try:
-            if not self.db:
+            if self.db is None:
                 error_msg = "Database not connected. Call connect() first."
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise RuntimeError(error_msg)
 
             collection = self.db[collection_name]
-            logger.debug(f"🔍 Accessed collection: {collection_name}")
+            logger.debug(f"Accessed collection: {collection_name}")
             return collection
 
         except RuntimeError as e:
@@ -132,7 +132,7 @@ class MongoDB:
             raise
 
         except Exception as e:
-            logger.error(f"❌ Failed to access collection {collection_name}: {e}")
+            logger.error(f"Failed to access collection {collection_name}: {e}")
             logger.exception("Collection access error details:")
             raise
 
@@ -145,24 +145,24 @@ class MongoDB:
         """
         try:
             if not self.client:
-                logger.warning("⚠️ MongoDB client not initialized")
+                logger.warning("MongoDB client not initialized")
                 return False
 
             # Ping the database
             await self.client.admin.command("ping")
-            logger.debug("✅ MongoDB health check passed")
+            logger.debug("MongoDB health check passed")
             return True
 
         except ConnectionError as e:
-            logger.error(f"❌ MongoDB health check failed - connection error: {e}")
+            logger.error(f"MongoDB health check failed - connection error: {e}")
             return False
 
         except TimeoutError as e:
-            logger.error(f"❌ MongoDB health check failed - timeout: {e}")
+            logger.error(f"MongoDB health check failed - timeout: {e}")
             return False
 
         except Exception as e:
-            logger.error(f"❌ MongoDB health check failed: {e}")
+            logger.error(f"MongoDB health check failed: {e}")
             logger.exception("Health check error details:")
             return False
 
@@ -173,9 +173,9 @@ class MongoDB:
         This should be called during application startup.
         """
         try:
-            logger.info("📝 Creating MongoDB indexes...")
+            logger.info("Creating MongoDB indexes...")
 
-            if not self.db:
+            if self.db is None:
                 raise RuntimeError("Database not connected")
 
             # Create indexes for stt_jobs collection
@@ -183,27 +183,36 @@ class MongoDB:
 
             # Index on job_id (unique)
             await jobs_collection.create_index("job_id", unique=True)
-            logger.debug("✅ Created unique index on job_id")
+            logger.debug("Created unique index on job_id")
 
             # Index on status for querying pending jobs
             await jobs_collection.create_index("status")
-            logger.debug("✅ Created index on status")
+            logger.debug("Created index on status")
 
             # Index on created_at for sorting
             await jobs_collection.create_index("created_at")
-            logger.debug("✅ Created index on created_at")
+            logger.debug("Created index on created_at")
 
             # Compound index for status + created_at (for efficient pending job queries)
             await jobs_collection.create_index([("status", 1), ("created_at", 1)])
-            logger.debug("✅ Created compound index on status + created_at")
+            logger.debug("Created compound index on status + created_at")
 
-            logger.info("✅ MongoDB indexes created successfully")
+            logger.info("MongoDB indexes created successfully")
 
         except Exception as e:
-            logger.error(f"❌ Failed to create indexes: {e}")
-            logger.exception("Index creation error details:")
+            # Indexes are optional - don't fail startup
+            # Log as warning for authentication/permission issues, error for other issues
+            error_msg = str(e)
+            error_code = getattr(e, 'code', None)
+            
+            # Authentication/authorization errors are expected if user doesn't have permissions
+            if "authentication" in error_msg.lower() or "unauthorized" in error_msg.lower() or error_code == 13:
+                logger.warning(f"Failed to create indexes (authentication required): {error_msg.split(',')[0] if ',' in error_msg else error_msg}")
+                logger.debug("Indexes will be created manually or when proper credentials are provided")
+            else:
+                logger.warning(f"Failed to create indexes: {error_msg.split(',')[0] if ',' in error_msg else error_msg}")
+                logger.debug(f"Index creation error: {e}")
             # Don't raise - indexes are optional for functionality
-            # but log the error for awareness
 
 
 # Global instance
@@ -224,7 +233,7 @@ async def get_database() -> MongoDB:
 
     try:
         if _mongodb is None:
-            logger.info("📝 Initializing MongoDB connection...")
+            logger.info("Initializing MongoDB connection...")
             _mongodb = MongoDB()
             await _mongodb.connect()
             # Create indexes after connection
@@ -233,7 +242,7 @@ async def get_database() -> MongoDB:
         return _mongodb
 
     except Exception as e:
-        logger.error(f"❌ Failed to get MongoDB instance: {e}")
+        logger.error(f"Failed to get MongoDB instance: {e}")
         logger.exception("Database initialization error:")
         raise
 
@@ -248,15 +257,15 @@ async def close_database() -> None:
 
     try:
         if _mongodb:
-            logger.info("📝 Closing global MongoDB connection...")
+            logger.info("Closing global MongoDB connection...")
             await _mongodb.disconnect()
             _mongodb = None
-            logger.info("✅ Global MongoDB connection closed")
+            logger.info("Global MongoDB connection closed")
         else:
             logger.debug("No global MongoDB connection to close")
 
     except Exception as e:
-        logger.error(f"❌ Error closing database: {e}")
+        logger.error(f"Error closing database: {e}")
         logger.exception("Database close error details:")
 
 
@@ -272,7 +281,7 @@ def get_database_sync() -> MongoDB:
         MongoDB instance
     """
     try:
-        logger.debug("📝 Getting database in sync context")
+        logger.debug("Getting database in sync context")
 
         # Try to get current event loop
         try:
@@ -285,11 +294,11 @@ def get_database_sync() -> MongoDB:
 
         # Run the async function
         db = loop.run_until_complete(get_database())
-        logger.debug("✅ Database retrieved in sync context")
+        logger.debug("Database retrieved in sync context")
         return db
 
     except Exception as e:
-        logger.error(f"❌ Failed to get database in sync context: {e}")
+        logger.error(f"Failed to get database in sync context: {e}")
         logger.exception("Sync database retrieval error:")
         raise
 

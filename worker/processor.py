@@ -52,7 +52,7 @@ async def process_stt_job(job_id: str) -> dict:
     temp_dir = None
 
     try:
-        logger.info(f"📝 ========== Starting STT job processing: job_id={job_id} ==========")
+        logger.info(f"========== Starting STT job processing: job_id={job_id} ==========")
 
         # Get repository
         repo = get_task_repository()
@@ -66,54 +66,54 @@ async def process_stt_job(job_id: str) -> dict:
             logger.error(f"❌ {error_msg}")
             raise PermanentError(error_msg)
 
-        logger.info(f"✅ Job found: file={job.original_filename}, language={job.language}, model={job.model_used}")
+        logger.info(f"Job found: file={job.original_filename}, language={job.language}, model={job.model_used}")
 
         # Update status to PROCESSING
-        logger.info(f"📝 Updating job status to PROCESSING...")
+        logger.info(f"Updating job status to PROCESSING...")
         await repo.update_status(job_id, JobStatus.PROCESSING)
 
         # Create temporary directory
         temp_dir = tempfile.mkdtemp(prefix=f"stt_{job_id}_")
-        logger.info(f"✅ Created temp directory: {temp_dir}")
+        logger.info(f"Created temp directory: {temp_dir}")
 
         # Step 1: Download audio from MinIO
-        logger.info(f"📝 Step 1: Downloading audio from MinIO...")
+        logger.info(f"Step 1: Downloading audio from MinIO...")
         audio_path = await _download_audio_from_minio(job, temp_dir)
-        logger.info(f"✅ Audio downloaded: {audio_path}")
+        logger.info(f"Audio downloaded: {audio_path}")
 
         # Get audio duration
         try:
             duration = get_audio_duration(audio_path)
             await repo.update_job(job_id, JobUpdate(audio_duration_seconds=duration))
-            logger.info(f"✅ Audio duration: {duration:.2f}s")
+            logger.info(f"Audio duration: {duration:.2f}s")
         except Exception as e:
             logger.warning(f"⚠️ Failed to get audio duration: {e}")
 
         # Step 2: Chunk audio
-        logger.info(f"📝 Step 2: Chunking audio...")
+        logger.info(f"Step 2: Chunking audio...")
         chunks = await _chunk_audio(audio_path, temp_dir, job)
-        logger.info(f"✅ Audio chunked: {len(chunks)} chunks created")
+        logger.info(f"Audio chunked: {len(chunks)} chunks created")
 
         # Update job with chunk info
         await repo.update_chunks(job_id, chunks)
 
         # Step 3: Transcribe chunks
-        logger.info(f"📝 Step 3: Transcribing chunks...")
+        logger.info(f"Step 3: Transcribing chunks...")
         transcribed_chunks = await _transcribe_chunks(chunks, job, repo, job_id)
-        logger.info(f"✅ Chunks transcribed: {len(transcribed_chunks)} successful")
+        logger.info(f"Chunks transcribed: {len(transcribed_chunks)} successful")
 
         # Step 4: Merge results
-        logger.info(f"📝 Step 4: Merging results...")
+        logger.info(f"Step 4: Merging results...")
         final_transcription = await _merge_results(transcribed_chunks)
-        logger.info(f"✅ Results merged: {len(final_transcription)} chars")
+        logger.info(f"Results merged: {len(final_transcription)} chars")
 
         # Step 5: Upload results to MinIO
-        logger.info(f"📝 Step 5: Uploading results to MinIO...")
+        logger.info(f"Step 5: Uploading results to MinIO...")
         result_path = await _upload_results_to_minio(job_id, final_transcription)
-        logger.info(f"✅ Results uploaded: {result_path}")
+        logger.info(f"Results uploaded: {result_path}")
 
         # Step 6: Update job as completed
-        logger.info(f"📝 Step 6: Updating job status to COMPLETED...")
+        logger.info(f"Step 6: Updating job status to COMPLETED...")
         await repo.update_job(
             job_id,
             JobUpdate(
@@ -125,7 +125,7 @@ async def process_stt_job(job_id: str) -> dict:
         )
 
         elapsed_time = time.time() - start_time
-        logger.info(f"✅ ========== STT job processing COMPLETED: job_id={job_id}, time={elapsed_time:.2f}s ==========")
+        logger.info(f"========== STT job processing COMPLETED: job_id={job_id}, time={elapsed_time:.2f}s ==========")
 
         # Log performance metrics
         chars_per_second = len(final_transcription) / elapsed_time if elapsed_time > 0 else 0
@@ -184,7 +184,7 @@ async def process_stt_job(job_id: str) -> dict:
             try:
                 logger.info(f"🧹 Cleaning up temp directory: {temp_dir}")
                 shutil.rmtree(temp_dir)
-                logger.debug(f"✅ Temp directory cleaned")
+                logger.debug(f"Temp directory cleaned")
             except Exception as e:
                 logger.warning(f"⚠️ Failed to clean temp directory: {e}")
 
@@ -214,7 +214,7 @@ async def _download_audio_from_minio(job, temp_dir: str) -> str:
         minio_client.download_file(job.minio_audio_path, local_path)
 
         file_size_mb = os.path.getsize(local_path) / (1024 * 1024)
-        logger.debug(f"✅ Downloaded: {local_path}, size={file_size_mb:.2f}MB")
+        logger.debug(f"Downloaded: {local_path}, size={file_size_mb:.2f}MB")
 
         return local_path
 
@@ -257,7 +257,7 @@ async def _chunk_audio(audio_path: str, temp_dir: str, job) -> list:
             silence_thresh=settings.silence_threshold
         )
 
-        logger.debug(f"✅ Chunking complete: {len(chunks)} chunks")
+        logger.debug(f"Chunking complete: {len(chunks)} chunks")
 
         return chunks
 
@@ -299,7 +299,7 @@ async def _transcribe_chunks(chunks: list, job, repo, job_id: str) -> list:
 
         for i, chunk in enumerate(chunks):
             try:
-                logger.info(f"📝 Transcribing chunk {i+1}/{len(chunks)}: {chunk['file_path']}")
+                logger.info(f"Transcribing chunk {i+1}/{len(chunks)}: {chunk['file_path']}")
 
                 # Transcribe with retry
                 transcription = transcriber.transcribe_with_retry(
@@ -316,7 +316,7 @@ async def _transcribe_chunks(chunks: list, job, repo, job_id: str) -> list:
 
                 transcribed_chunks.append(chunk)
 
-                logger.info(f"✅ Chunk {i+1} transcribed: {len(transcription)} chars")
+                logger.info(f"Chunk {i+1} transcribed: {len(transcription)} chars")
 
                 # Update progress in database
                 await repo.update_job(
@@ -376,7 +376,7 @@ async def _merge_results(chunks: list) -> str:
         merger = ResultMerger()
         merged_text = merger.merge_chunks(chunks)
 
-        logger.debug(f"✅ Merge complete: {len(merged_text)} chars")
+        logger.debug(f"Merge complete: {len(merged_text)} chars")
 
         return merged_text
 
@@ -428,7 +428,7 @@ async def _upload_results_to_minio(job_id: str, transcription: str) -> str:
             content_type="text/plain"
         )
 
-        logger.debug(f"✅ Results uploaded: {minio_path}, size={len(content)} bytes")
+        logger.debug(f"Results uploaded: {minio_path}, size={len(content)} bytes")
 
         return minio_path
 

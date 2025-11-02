@@ -42,7 +42,7 @@ class TaskRepository:
             Exception: If job creation fails
         """
         try:
-            logger.info(f"📝 Creating new job: filename={job_data.original_filename}")
+            logger.info(f"Creating new job: filename={job_data.original_filename}")
             logger.debug(f"Job data: {job_data.dict()}")
 
             # Generate unique job ID
@@ -60,7 +60,7 @@ class TaskRepository:
             result = await collection.insert_one(job.to_dict())
 
             logger.info(
-                f"✅ Job created successfully: job_id={job_id}, mongo_id={result.inserted_id}"
+                f"Job created successfully: job_id={job_id}, mongo_id={result.inserted_id}"
             )
             logger.debug(
                 f"Job details: status={job.status}, language={job.language}, size={job.file_size_mb}MB"
@@ -98,7 +98,7 @@ class TaskRepository:
 
             if doc:
                 job = JobModel.from_dict(doc)
-                logger.info(f"✅ Job found: job_id={job_id}, status={job.status}")
+                logger.info(f"Job found: job_id={job_id}, status={job.status}")
                 logger.debug(
                     f"Job details: created_at={job.created_at}, chunks={job.chunks_total}"
                 )
@@ -127,7 +127,7 @@ class TaskRepository:
             Exception: If update fails
         """
         try:
-            logger.info(f"📝 Updating job: job_id={job_id}")
+            logger.info(f"Updating job: job_id={job_id}")
             update_dict = update_data.dict(exclude_unset=True)
             logger.debug(f"Update data: {update_dict}")
 
@@ -148,7 +148,7 @@ class TaskRepository:
 
             if result.modified_count > 0:
                 logger.info(
-                    f"✅ Job updated: job_id={job_id}, modified_count={result.modified_count}"
+                    f"Job updated: job_id={job_id}, modified_count={result.modified_count}"
                 )
                 return True
             elif result.matched_count > 0:
@@ -183,7 +183,7 @@ class TaskRepository:
             Exception: If status update fails
         """
         try:
-            logger.info(f"📝 Updating job status: job_id={job_id}, status={status}")
+            logger.info(f"Updating job status: job_id={job_id}, status={status}")
 
             update_data = JobUpdate(status=status, error_message=error_message)
 
@@ -198,7 +198,7 @@ class TaskRepository:
             result = await self.update_job(job_id, update_data)
 
             if result:
-                logger.info(f"✅ Status updated: job_id={job_id}, new_status={status}")
+                logger.info(f"Status updated: job_id={job_id}, new_status={status}")
             else:
                 logger.warning(f"⚠️ Status update failed: job_id={job_id}")
 
@@ -247,7 +247,7 @@ class TaskRepository:
                     # Continue with other jobs
                     continue
 
-            logger.info(f"✅ Found {len(jobs)} pending jobs")
+            logger.info(f"Found {len(jobs)} pending jobs")
             if jobs:
                 logger.debug(f"Pending job IDs: {[job.job_id for job in jobs]}")
 
@@ -295,7 +295,7 @@ class TaskRepository:
                     logger.error(f"❌ Failed to parse job document: {e}")
                     continue
 
-            logger.info(f"✅ Found {len(jobs)} jobs with status {status}")
+            logger.info(f"Found {len(jobs)} jobs with status {status}")
 
             return jobs
 
@@ -328,7 +328,7 @@ class TaskRepository:
             result = await collection.delete_one({"job_id": job_id})
 
             if result.deleted_count > 0:
-                logger.info(f"✅ Job deleted: job_id={job_id}")
+                logger.info(f"Job deleted: job_id={job_id}")
                 return True
             else:
                 logger.warning(f"⚠️ Job not found for deletion: job_id={job_id}")
@@ -355,7 +355,7 @@ class TaskRepository:
         """
         try:
             logger.info(
-                f"📝 Updating chunks for job: job_id={job_id}, chunk_count={len(chunks)}"
+                f"Updating chunks for job: job_id={job_id}, chunk_count={len(chunks)}"
             )
 
             update_data = JobUpdate(chunks=chunks, chunks_total=len(chunks))
@@ -363,7 +363,7 @@ class TaskRepository:
             result = await self.update_job(job_id, update_data)
 
             if result:
-                logger.info(f"✅ Chunks updated: job_id={job_id}, total={len(chunks)}")
+                logger.info(f"Chunks updated: job_id={job_id}, total={len(chunks)}")
 
             return result
 
@@ -386,7 +386,7 @@ class TaskRepository:
             Exception: If update fails
         """
         try:
-            logger.info(f"📝 Incrementing retry count for job: job_id={job_id}")
+            logger.info(f"Incrementing retry count for job: job_id={job_id}")
 
             # Get database collection
             db = await get_database()
@@ -399,7 +399,7 @@ class TaskRepository:
             )
 
             if result.modified_count > 0:
-                logger.info(f"✅ Retry count incremented: job_id={job_id}")
+                logger.info(f"Retry count incremented: job_id={job_id}")
                 return True
             else:
                 logger.warning(f"⚠️ Failed to increment retry count: job_id={job_id}")

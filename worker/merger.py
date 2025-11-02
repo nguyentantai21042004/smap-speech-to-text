@@ -29,7 +29,7 @@ class ResultMerger:
             Exception: If merging fails
         """
         try:
-            logger.info(f"📝 Starting chunk merge: total_chunks={len(chunks)}")
+            logger.info(f"Starting chunk merge: total_chunks={len(chunks)}")
 
             if not chunks:
                 logger.warning("⚠️ No chunks to merge")
@@ -53,7 +53,7 @@ class ResultMerger:
                     transcription = self._clean_transcription(transcription)
 
                     transcriptions.append(transcription)
-                    logger.debug(f"✅ Chunk {i} transcription: length={len(transcription)} chars")
+                    logger.debug(f"Chunk {i} transcription: length={len(transcription)} chars")
 
                 except Exception as e:
                     logger.error(f"❌ Failed to process chunk {i}: {e}")
@@ -71,7 +71,7 @@ class ResultMerger:
             # Final cleanup
             merged_text = self._final_cleanup(merged_text)
 
-            logger.info(f"✅ Merge complete: final_length={len(merged_text)} chars")
+            logger.info(f"Merge complete: final_length={len(merged_text)} chars")
             logger.debug(f"Merged text preview: {merged_text[:200]}...")
 
             # Log statistics
@@ -147,7 +147,7 @@ class ResultMerger:
 
                 merged += current
 
-            logger.debug(f"✅ Overlap removal complete")
+            logger.debug(f"Overlap removal complete")
 
             return merged
 
@@ -222,7 +222,7 @@ class ResultMerger:
             # Strip final whitespace
             text = text.strip()
 
-            logger.debug("✅ Final cleanup complete")
+            logger.debug("Final cleanup complete")
 
             return text
 
@@ -242,7 +242,7 @@ class ResultMerger:
             Chunks with timestamp information
         """
         try:
-            logger.info(f"📝 Adding timestamps to {len(chunks)} chunks")
+            logger.info(f"Adding timestamps to {len(chunks)} chunks")
 
             timestamped_chunks = []
 
@@ -259,7 +259,7 @@ class ResultMerger:
                     timestamped_chunks.append(timestamped_chunk)
 
                     logger.debug(
-                        f"✅ Chunk {timestamped_chunk['chunk_index']}: "
+                        f"Chunk {timestamped_chunk['chunk_index']}: "
                         f"{timestamped_chunk['start_time']:.2f}s - {timestamped_chunk['end_time']:.2f}s"
                     )
 
@@ -267,7 +267,7 @@ class ResultMerger:
                     logger.error(f"❌ Failed to add timestamp to chunk: {e}")
                     continue
 
-            logger.info(f"✅ Timestamps added to {len(timestamped_chunks)} chunks")
+            logger.info(f"Timestamps added to {len(timestamped_chunks)} chunks")
 
             return timestamped_chunks
 

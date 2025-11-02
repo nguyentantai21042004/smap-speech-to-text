@@ -75,7 +75,7 @@ class ModelDownloader:
             Exception: If download fails
         """
         try:
-            logger.info(f"📝 Ensuring model exists: {model}")
+            logger.info(f"Ensuring model exists: {model}")
 
             # Validate model name
             if model not in MODEL_CONFIGS:
@@ -88,14 +88,14 @@ class ModelDownloader:
 
             # Check if model exists and is valid
             if self._is_model_valid(model, model_path):
-                logger.info(f"✅ Model already exists and is valid: {model_path}")
+                logger.info(f"Model already exists and is valid: {model_path}")
                 return str(model_path)
 
             # Download model from MinIO
             logger.info(f"📥 Model not found or invalid, downloading from MinIO...")
             self._download_model(model, model_path, config)
 
-            logger.info(f"✅ Model ready: {model_path}")
+            logger.info(f"Model ready: {model_path}")
             return str(model_path)
 
         except Exception as e:
@@ -140,7 +140,7 @@ class ModelDownloader:
                     )
                     return False
 
-            logger.debug(f"✅ Model validation passed: {model}")
+            logger.debug(f"Model validation passed: {model}")
             return True
 
         except Exception as e:
@@ -161,7 +161,7 @@ class ModelDownloader:
         """
         try:
             logger.info(
-                f"📝 Downloading model '{model}' from MinIO: {config['minio_path']}"
+                f"Downloading model '{model}' from MinIO: {config['minio_path']}"
             )
             logger.info(f"Expected size: {config['size_mb']}MB")
 
@@ -183,7 +183,7 @@ class ModelDownloader:
 
             # Validate downloaded file
             file_size_mb = model_path.stat().st_size / (1024 * 1024)
-            logger.info(f"✅ Download complete: {file_size_mb:.2f}MB")
+            logger.info(f"Download complete: {file_size_mb:.2f}MB")
 
             # Verify size
             if file_size_mb < config["size_mb"] * 0.9:
@@ -195,7 +195,7 @@ class ModelDownloader:
             # Update cache
             self._update_cache(model, model_path)
 
-            logger.info(f"✅ Model downloaded and validated: {model}")
+            logger.info(f"Model downloaded and validated: {model}")
 
         except Exception as e:
             logger.error(f"❌ Model download failed: {e}")
@@ -229,7 +229,7 @@ class ModelDownloader:
                     md5_hash.update(chunk)
 
             checksum = md5_hash.hexdigest()
-            logger.debug(f"✅ MD5: {checksum}")
+            logger.debug(f"MD5: {checksum}")
             return checksum
 
         except Exception as e:
@@ -259,7 +259,7 @@ class ModelDownloader:
             with open(self.cache_file, "w") as f:
                 json.dump(cache, f, indent=2)
 
-            logger.debug(f"✅ Cache updated for model: {model}")
+            logger.debug(f"Cache updated for model: {model}")
 
         except Exception as e:
             logger.warning(f"⚠️ Failed to update cache: {e}")
@@ -271,17 +271,17 @@ class ModelDownloader:
         Useful for initial setup or pre-warming.
         """
         try:
-            logger.info("📝 Downloading all Whisper models...")
+            logger.info("Downloading all Whisper models...")
 
             for model in MODEL_CONFIGS.keys():
                 try:
                     self.ensure_model_exists(model)
-                    logger.info(f"✅ Model '{model}' ready")
+                    logger.info(f"Model '{model}' ready")
                 except Exception as e:
                     logger.error(f"❌ Failed to download model '{model}': {e}")
                     # Continue with other models
 
-            logger.info("✅ All models download complete")
+            logger.info("All models download complete")
 
         except Exception as e:
             logger.error(f"❌ Failed to download all models: {e}")
@@ -322,7 +322,7 @@ def get_model_downloader() -> ModelDownloader:
 
     try:
         if _model_downloader is None:
-            logger.info("📝 Creating ModelDownloader instance...")
+            logger.info("Creating ModelDownloader instance...")
             _model_downloader = ModelDownloader()
 
         return _model_downloader

@@ -1,6 +1,6 @@
 # 🚀 Updated STT Implementation Guide (RabbitMQ + MinIO)
 
-## ✅ Architecture Clarifications
+## Architecture Clarifications
 
 ### **1. Project Structure (Parallel Design)**
 
@@ -37,28 +37,28 @@ Shared:
 ```
 
 **Key Points:**
-- ✅ `worker/` = Business logic for consumer (like `services/` for API)
-- ✅ `cmd/consumer/main.py` = Entry point (starts RabbitMQ consumer)
-- ✅ `internal/consumer/handlers/` = Message handlers (calls worker logic)
+- `worker/` = Business logic for consumer (like `services/` for API)
+- `cmd/consumer/main.py` = Entry point (starts RabbitMQ consumer)
+- `internal/consumer/handlers/` = Message handlers (calls worker logic)
 
 ---
 
 ### **2. Message Queue: RabbitMQ (Not Redis)**
 
-✅ **Using:** RabbitMQ with `aio-pika`
+**Using:** RabbitMQ with `aio-pika`
 ❌ **Removed:** Redis Queue (RQ)
 
 **Why RabbitMQ?**
-- ✅ You already have RabbitMQ infrastructure
-- ✅ Async message handling with `aio-pika`
-- ✅ Supports priority queues, dead letter queues
-- ✅ Better for microservices architecture
+- You already have RabbitMQ infrastructure
+- Async message handling with `aio-pika`
+- Supports priority queues, dead letter queues
+- Better for microservices architecture
 
 ---
 
 ### **3. Storage: MinIO (Not Local Filesystem)**
 
-✅ **Using:** MinIO for object storage
+**Using:** MinIO for object storage
 ❌ **Removed:** Local file storage
 
 **MinIO Configuration:**
@@ -87,7 +87,7 @@ docker run -d \
 
 ### **4. Chunking Strategy: Consumer Side (After Download)**
 
-**✅ CORRECT Workflow:**
+**CORRECT Workflow:**
 
 ```
 1. Client → API: Upload large audio file
@@ -119,10 +119,10 @@ docker run -d \
 ```
 
 **Why chunk on consumer side?**
-- ✅ API responds immediately (fast UX)
-- ✅ Consumer handles heavy processing
-- ✅ Can retry chunking without re-uploading
-- ✅ Parallel processing of multiple jobs
+- API responds immediately (fast UX)
+- Consumer handles heavy processing
+- Can retry chunking without re-uploading
+- Parallel processing of multiple jobs
 
 ---
 
@@ -246,11 +246,11 @@ def drop_db():
     Base.metadata.drop_all(bind=engine)
 ```
 
-#### **4.2 ✅ `core/messaging.py` - Already Good!**
+#### **4.2 `core/messaging.py` - Already Good!**
 
 Your existing `core/messaging.py` already has RabbitMQ with `aio-pika`. No changes needed!
 
-#### **4.3 ✅ `core/storage.py` - Already Created!**
+#### **4.3 `core/storage.py` - Already Created!**
 
 MinIO client is ready at `core/storage.py`.
 
@@ -329,7 +329,7 @@ class Chunk(Base):
 
 Now implement the business logic in `worker/` folder (consumer's "services" layer).
 
-#### **6.1 ✅ Already Created:**
+#### **6.1 Already Created:**
 - `worker/errors.py` - Error definitions
 - `worker/constants.py` - Constants
 
@@ -581,25 +581,25 @@ curl -X POST \
 
 ## 📊 Summary
 
-### **✅ What's Updated:**
-1. ✅ **RabbitMQ** instead of Redis (using existing `core/messaging.py`)
-2. ✅ **MinIO** for object storage (created `core/storage.py`)
-3. ✅ **Chunking on consumer side** (after downloading from MinIO)
-4. ✅ **Clear structure**: `worker/` = consumer's business logic
+### **What's Updated:**
+1. **RabbitMQ** instead of Redis (using existing `core/messaging.py`)
+2. **MinIO** for object storage (created `core/storage.py`)
+3. **Chunking on consumer side** (after downloading from MinIO)
+4. **Clear structure**: `worker/` = consumer's business logic
 
 ### **📁 File Structure:**
 ```
-✅ requirements.txt - RabbitMQ + MinIO dependencies
-✅ core/config.py - RabbitMQ + MinIO settings
-✅ core/storage.py - MinIO client (NEW)
-✅ core/messaging.py - RabbitMQ (EXISTING)
-✅ core/database.py - SQLAlchemy (UPDATE)
-✅ .env - RabbitMQ + MinIO config
+requirements.txt - RabbitMQ + MinIO dependencies
+core/config.py - RabbitMQ + MinIO settings
+core/storage.py - MinIO client (NEW)
+core/messaging.py - RabbitMQ (EXISTING)
+core/database.py - SQLAlchemy (UPDATE)
+.env - RabbitMQ + MinIO config
 
-📝 repositories/models.py - Job/Chunk models (CREATE)
-📝 worker/*.py - Chunking, Transcriber, Merger, Processor (CREATE)
-📝 internal/api/routes/task_routes.py - STT routes (UPDATE)
-📝 internal/consumer/handlers/stt_handler.py - Message handler (CREATE)
+repositories/models.py - Job/Chunk models (CREATE)
+worker/*.py - Chunking, Transcriber, Merger, Processor (CREATE)
+internal/api/routes/task_routes.py - STT routes (UPDATE)
+internal/consumer/handlers/stt_handler.py - Message handler (CREATE)
 ```
 
 ### **Next Steps:**

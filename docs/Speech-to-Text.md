@@ -111,9 +111,9 @@ Ví dụ: File 2 phút (120s)
 ```
 
 **Ưu điểm:**
-- ✅ Dễ implement
-- ✅ Memory usage dự đoán được
-- ✅ Dễ debug
+- Dễ implement
+- Memory usage dự đoán được
+- Dễ debug
 
 **Nhược điểm:**
 - ❌ Có thể cut giữa một từ
@@ -139,9 +139,9 @@ Kết quả chunks sẽ tự nhiên nằm tại các điểm tạm dừng → k�
 ```
 
 **Ưu điểm:**
-- ✅ Cắt tại điểm tự nhiên → merge kết quả mượt hơn
-- ✅ Ít overlap → tiết kiệm processing time
-- ✅ Độ chính xác cao hơn (khỏe từ lỡ cut giữa từ)
+- Cắt tại điểm tự nhiên → merge kết quả mượt hơn
+- Ít overlap → tiết kiệm processing time
+- Độ chính xác cao hơn (khỏe từ lỡ cut giữa từ)
 
 **Nhược điểm:**
 - ❌ Phức tạp hơn
@@ -307,10 +307,10 @@ def test_chunking():
 
 | Error | Nguyên nhân | Retry? | Strategy |
 |-------|-----------|--------|----------|
-| OOM (Out of Memory) | Chunk quá lớn | ✅ Có | Reduce chunk size + retry |
-| Timeout | Processing lâu | ✅ Có | Extend timeout + retry |
-| Temporary Network | Network hiccup | ✅ Có | Exponential backoff |
-| Whisper Crash | Model bug hiếm | ✅ Có | Restart worker + retry |
+| OOM (Out of Memory) | Chunk quá lớn | Có | Reduce chunk size + retry |
+| Timeout | Processing lâu | Có | Extend timeout + retry |
+| Temporary Network | Network hiccup | Có | Exponential backoff |
+| Whisper Crash | Model bug hiếm | Có | Restart worker + retry |
 
 #### **Category B: Permanent Errors (Không nên Retry)**
 
@@ -319,7 +319,7 @@ def test_chunking():
 | Invalid Audio Format | File corrupt | ❌ Không | → FAILED, notify user |
 | Unsupported Language | Lang không support | ❌ Không | → FAILED immediately |
 | File Too Large | >2GB | ❌ Không | → FAILED, check limits |
-| Disk Full | Storage hết chỗ | ✅ Có (1 lần) | Alert admin, then FAILED |
+| Disk Full | Storage hết chỗ | Có (1 lần) | Alert admin, then FAILED |
 
 ---
 
@@ -793,7 +793,7 @@ docker-compose down -v
 
 | Technique | Benefit | Example |
 |-----------|---------|---------|
-| Multi-stage build | Reduce final image size (remove build tools) | ✅ Used above |
+| Multi-stage build | Reduce final image size (remove build tools) | Used above |
 | Layer caching | Faster rebuild | Put `pip install` trước `COPY code` |
 | .dockerignore | Smaller build context | Exclude `*.log`, `__pycache__`, etc |
 | Non-root user | Security | `USER sttuser` |

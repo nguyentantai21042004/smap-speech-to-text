@@ -31,7 +31,7 @@ async def handle_stt_message(message: AbstractIncomingMessage) -> None:
 
     try:
         # Decode message body
-        logger.info(f"📝 ========== HANDLER: Message received ==========")
+        logger.info(f"========== HANDLER: Message received ==========")
         message_body = message.body.decode("utf-8")
         logger.debug(f"Message body: {message_body[:200]}...")  # Log first 200 chars
 
@@ -39,7 +39,7 @@ async def handle_stt_message(message: AbstractIncomingMessage) -> None:
         try:
             message_data = json.loads(message_body)
             job_id = message_data.get("job_id")
-            logger.info(f"📝 Processing job: job_id={job_id}")
+            logger.info(f"Processing job: job_id={job_id}")
             logger.debug(f"Message data: {message_data}")
         except json.JSONDecodeError as e:
             logger.error(f"❌ HANDLER: Failed to parse message JSON: {e}")
@@ -57,14 +57,14 @@ async def handle_stt_message(message: AbstractIncomingMessage) -> None:
             return
 
         # Process the STT job
-        logger.info(f"📝 ========== HANDLER: Starting STT processing: job_id={job_id} ==========")
+        logger.info(f"========== HANDLER: Starting STT processing: job_id={job_id} ==========")
         result = await process_stt_job(job_id)
-        logger.info(f"✅ ========== HANDLER: STT processing completed: job_id={job_id} ==========")
+        logger.info(f"========== HANDLER: STT processing completed: job_id={job_id} ==========")
         logger.debug(f"Processing result: {result}")
 
         # Acknowledge message (successfully processed)
         await message.ack()
-        logger.info(f"✅ HANDLER: Message acknowledged: job_id={job_id}")
+        logger.info(f"HANDLER: Message acknowledged: job_id={job_id}")
 
     except TransientError as e:
         # Transient errors - requeue for retry

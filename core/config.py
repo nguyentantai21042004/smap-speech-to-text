@@ -19,6 +19,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        protected_namespaces=(),  # Allow 'model_*' fields (e.g., model_used)
     )
 
     # Application
@@ -31,7 +32,7 @@ class Settings(BaseSettings):
     api_host: str = Field(default="0.0.0.0", alias="API_HOST")
     api_port: int = Field(default=8000, alias="API_PORT")
     api_reload: bool = Field(default=True, alias="API_RELOAD")
-    api_workers: int = Field(default=4, alias="API_WORKERS")
+    api_workers: int = Field(default=1, alias="API_WORKERS")
     max_upload_size_mb: int = Field(default=500, alias="MAX_UPLOAD_SIZE_MB")
 
     # MongoDB Settings (Primary Database)
@@ -81,7 +82,7 @@ class Settings(BaseSettings):
     max_retries: int = Field(default=3, alias="MAX_RETRIES")
     job_timeout: int = Field(default=3600, alias="JOB_TIMEOUT")
     chunk_timeout: int = Field(default=300, alias="CHUNK_TIMEOUT")
-    max_concurrent_jobs: int = Field(default=4, alias="MAX_CONCURRENT_JOBS")
+    max_concurrent_jobs: int = Field(default=1, alias="MAX_CONCURRENT_JOBS")
 
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")

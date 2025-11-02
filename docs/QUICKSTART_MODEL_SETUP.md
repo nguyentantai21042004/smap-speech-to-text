@@ -65,7 +65,7 @@ client.fput_object(
     "whisper/models/ggml-medium.bin"
 )
 
-print("✅ Model uploaded!")
+print("Model uploaded!")
 ```
 
 ### Step 3: Start Worker (Will Auto-Download Model)
@@ -83,14 +83,14 @@ docker logs smap-worker -f
 ================================================
 SMAP Speech-to-Text - Starting...
 ================================================
-📝 Checking Whisper models...
+Checking Whisper models...
 📥 Downloading model: medium
-📝 Downloading model 'medium' from MinIO: whisper-models/ggml-medium.bin
+Downloading model 'medium' from MinIO: whisper-models/ggml-medium.bin
 Expected size: 1500MB
 📥 Downloading to: /app/whisper/models/ggml-medium.bin
-✅ Download complete: 1500.00MB
-✅ Model downloaded and validated: medium
-✅ Model ready!
+Download complete: 1500.00MB
+Model downloaded and validated: medium
+Model ready!
 ================================================
 🚀 Starting application...
 ================================================
@@ -178,7 +178,7 @@ OSError: [Errno 28] No space left on device
 
 ---
 
-## 📝 Environment Variables
+## Environment Variables
 
 Create `.env` file:
 
@@ -202,7 +202,7 @@ DEFAULT_LANGUAGE=vi
 
 ---
 
-## ✅ Verification Checklist
+## Verification Checklist
 
 - [ ] MinIO running and accessible (http://localhost:9001)
 - [ ] Model uploaded to MinIO (`whisper-models/ggml-medium.bin`)
@@ -215,10 +215,10 @@ DEFAULT_LANGUAGE=vi
 ## 🎉 You're Ready!
 
 Your STT system is now configured with automatic model management. Models will be:
-- ✅ Downloaded automatically from MinIO
-- ✅ Cached in Docker volume
-- ✅ Reused across container restarts
-- ✅ Never committed to Git
+- Downloaded automatically from MinIO
+- Cached in Docker volume
+- Reused across container restarts
+- Never committed to Git
 
 **Next steps:**
 - See [MODEL_DOWNLOAD_GUIDE.md](./MODEL_DOWNLOAD_GUIDE.md) for detailed docs

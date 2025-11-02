@@ -4,17 +4,17 @@ This guide provides step-by-step instructions to complete the STT system impleme
 
 ## Prerequisites
 
-✅ **Completed Steps:**
+**Completed Steps:**
 - Step 1: Project initialization (already done)
 - Step 2: Whisper.cpp built and models downloaded in `whisper/` directory
 
 ## Current Status
 
 Your project structure is ready with:
-- ✅ Microservices architecture (API, Worker/Consumer, Scheduler)
-- ✅ Updated `requirements.txt` with STT dependencies
-- ✅ Updated `core/config.py` for Redis + SQLite/PostgreSQL
-- ✅ Updated `.env` file with STT configuration
+- Microservices architecture (API, Worker/Consumer, Scheduler)
+- Updated `requirements.txt` with STT dependencies
+- Updated `core/config.py` for Redis + SQLite/PostgreSQL
+- Updated `.env` file with STT configuration
 - ⏳ Need to implement: Worker modules, API routes, Services, Repositories
 
 ---

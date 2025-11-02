@@ -27,12 +27,12 @@ class ConsumerService:
     def __init__(self):
         """Initialize consumer service."""
         try:
-            logger.info("📝 Initializing Consumer Service...")
+            logger.info("Initializing Consumer Service...")
             self.settings = get_settings()
             self.db = None
             self.queue_manager = None
             self.shutdown_event = asyncio.Event()
-            logger.info("✅ Consumer Service initialized")
+            logger.info("Consumer Service initialized")
         except Exception as e:
             logger.error(f"❌ Failed to initialize Consumer Service: {e}")
             logger.exception("Consumer Service initialization error:")
@@ -44,28 +44,28 @@ class ConsumerService:
         Sets up MongoDB and RabbitMQ connections.
         """
         try:
-            logger.info(f"📝 ========== Starting {self.settings.app_name} Consumer Service ==========")
+            logger.info(f"========== Starting {self.settings.app_name} Consumer Service ==========")
             logger.info(f"🔍 Environment: {self.settings.environment}")
             logger.info(f"🔍 Debug mode: {self.settings.debug}")
             logger.info(f"🔍 Max concurrent jobs: {self.settings.max_concurrent_jobs}")
 
             # Connect to MongoDB
             try:
-                logger.info("📝 Connecting to MongoDB...")
+                logger.info("Connecting to MongoDB...")
                 self.db = await get_database()
                 await self.db.connect()
-                logger.info("✅ MongoDB connected successfully")
+                logger.info("MongoDB connected successfully")
 
                 # Create indexes
-                logger.info("📝 Creating database indexes...")
+                logger.info("Creating database indexes...")
                 await self.db.create_indexes()
-                logger.info("✅ Database indexes created")
+                logger.info("Database indexes created")
 
                 # Health check
-                logger.info("📝 Performing MongoDB health check...")
+                logger.info("Performing MongoDB health check...")
                 db_healthy = await self.db.health_check()
                 if db_healthy:
-                    logger.info("✅ MongoDB health check passed")
+                    logger.info("MongoDB health check passed")
                 else:
                     logger.warning("⚠️ MongoDB health check failed")
                     raise Exception("MongoDB health check failed")
@@ -77,18 +77,18 @@ class ConsumerService:
 
             # Initialize RabbitMQ
             try:
-                logger.info("📝 Initializing RabbitMQ connection...")
+                logger.info("Initializing RabbitMQ connection...")
                 self.queue_manager = get_queue_manager()
 
                 # Connect to RabbitMQ
                 await self.queue_manager.connect()
-                logger.info("✅ RabbitMQ connected successfully")
+                logger.info("RabbitMQ connected successfully")
 
                 # Health check
-                logger.info("📝 Performing RabbitMQ health check...")
+                logger.info("Performing RabbitMQ health check...")
                 rabbitmq_healthy = self.queue_manager.health_check()
                 if rabbitmq_healthy:
-                    logger.info("✅ RabbitMQ health check passed")
+                    logger.info("RabbitMQ health check passed")
                 else:
                     logger.warning("⚠️ RabbitMQ health check failed")
                     raise Exception("RabbitMQ health check failed")
@@ -98,7 +98,7 @@ class ConsumerService:
                 logger.exception("RabbitMQ initialization error details:")
                 raise
 
-            logger.info(f"✅ ========== Consumer Service startup complete ==========")
+            logger.info(f"========== Consumer Service startup complete ==========")
 
         except Exception as e:
             logger.error(f"❌ Consumer Service startup failed: {e}")
@@ -111,14 +111,14 @@ class ConsumerService:
         Closes RabbitMQ and MongoDB connections.
         """
         try:
-            logger.info("📝 ========== Shutting down Consumer Service ==========")
+            logger.info("========== Shutting down Consumer Service ==========")
 
             # Disconnect from RabbitMQ
             try:
                 if self.queue_manager:
-                    logger.info("📝 Disconnecting from RabbitMQ...")
+                    logger.info("Disconnecting from RabbitMQ...")
                     await self.queue_manager.disconnect()
-                    logger.info("✅ RabbitMQ disconnected successfully")
+                    logger.info("RabbitMQ disconnected successfully")
             except Exception as e:
                 logger.error(f"❌ Error disconnecting from RabbitMQ: {e}")
                 logger.exception("RabbitMQ disconnect error details:")
@@ -126,14 +126,14 @@ class ConsumerService:
             # Disconnect from MongoDB
             try:
                 if self.db:
-                    logger.info("📝 Disconnecting from MongoDB...")
+                    logger.info("Disconnecting from MongoDB...")
                     await self.db.disconnect()
-                    logger.info("✅ MongoDB disconnected successfully")
+                    logger.info("MongoDB disconnected successfully")
             except Exception as e:
                 logger.error(f"❌ Error disconnecting from MongoDB: {e}")
                 logger.exception("MongoDB disconnect error details:")
 
-            logger.info("✅ ========== Consumer Service stopped ==========")
+            logger.info("========== Consumer Service stopped ==========")
 
         except Exception as e:
             logger.error(f"❌ Error during shutdown: {e}")
@@ -145,7 +145,7 @@ class ConsumerService:
         Uses the message handler to process STT jobs.
         """
         try:
-            logger.info("📝 ========== Starting RabbitMQ Consumer ==========")
+            logger.info("========== Starting RabbitMQ Consumer ==========")
             logger.info(f"🔍 Queue: {self.settings.rabbitmq_queue_name}")
             logger.info(f"🔍 Prefetch: {self.settings.max_concurrent_jobs}")
 
@@ -155,13 +155,13 @@ class ConsumerService:
                 prefetch_count=self.settings.max_concurrent_jobs
             )
 
-            logger.info("✅ Consumer started successfully")
-            logger.info("📝 Press Ctrl+C to stop gracefully")
+            logger.info("Consumer started successfully")
+            logger.info("Press Ctrl+C to stop gracefully")
 
             # Wait for shutdown signal
             await self.shutdown_event.wait()
 
-            logger.info("📝 Shutdown signal received, stopping consumer...")
+            logger.info("Shutdown signal received, stopping consumer...")
 
         except Exception as e:
             logger.error(f"❌ Error in consumer: {e}")
@@ -197,7 +197,7 @@ async def main():
     service = None
 
     try:
-        logger.info("📝 ========== SMAP STT Consumer Service ==========")
+        logger.info("========== SMAP STT Consumer Service ==========")
 
         # Create consumer service
         service = ConsumerService()
@@ -206,14 +206,14 @@ async def main():
         loop = asyncio.get_running_loop()
 
         def handle_shutdown(signum):
-            logger.info(f"📝 Received shutdown signal: {signum}")
+            logger.info(f"Received shutdown signal: {signum}")
             service.shutdown_event.set()
 
         # Register signal handlers
         for sig in (signal.SIGTERM, signal.SIGINT):
             loop.add_signal_handler(sig, lambda s=sig: handle_shutdown(s))
 
-        logger.info("✅ Signal handlers registered (SIGTERM, SIGINT)")
+        logger.info("Signal handlers registered (SIGTERM, SIGINT)")
 
         # Run the consumer
         await service.run()
@@ -230,13 +230,13 @@ async def main():
         # Ensure cleanup
         if service:
             try:
-                logger.info("📝 Running final shutdown sequence...")
+                logger.info("Running final shutdown sequence...")
                 await service.shutdown()
             except Exception as e:
                 logger.error(f"❌ Error during final shutdown: {e}")
                 logger.exception("Final shutdown error details:")
 
-        logger.info("✅ Consumer service exited")
+        logger.info("Consumer service exited")
 
 
 if __name__ == "__main__":

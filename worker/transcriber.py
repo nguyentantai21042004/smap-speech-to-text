@@ -65,7 +65,7 @@ class WhisperTranscriber:
                 raise STTFileNotFoundError(error_msg)
 
             logger.debug(
-                f"✅ Whisper setup validated: executable={settings.whisper_executable}"
+                f"Whisper setup validated: executable={settings.whisper_executable}"
             )
 
         except Exception as e:
@@ -100,7 +100,7 @@ class WhisperTranscriber:
 
         try:
             logger.info(
-                f"📝 Starting transcription: file={audio_path}, language={language}, model={model}"
+                f"Starting transcription: file={audio_path}, language={language}, model={model}"
             )
 
             # Validate audio file exists
@@ -139,7 +139,7 @@ class WhisperTranscriber:
             transcription = self._parse_output(result.stdout, result.stderr)
 
             logger.info(
-                f"✅ Transcription successful: length={len(transcription)} chars, time={elapsed_time:.2f}s"
+                f"Transcription successful: length={len(transcription)} chars, time={elapsed_time:.2f}s"
             )
             logger.debug(f"Transcription preview: {transcription[:100]}...")
 
@@ -192,7 +192,7 @@ class WhisperTranscriber:
             )
 
             # Ensure model exists (download from MinIO if missing)
-            logger.info(f"📝 Ensuring model '{model}' is available...")
+            logger.info(f"Ensuring model '{model}' is available...")
             model_downloader = get_model_downloader()
             model_path = model_downloader.ensure_model_exists(model)
 
@@ -211,7 +211,7 @@ class WhisperTranscriber:
                 "--no-timestamps",  # No timestamps in output
             ]
 
-            logger.debug(f"✅ Command built: {len(command)} arguments")
+            logger.debug(f"Command built: {len(command)} arguments")
 
             return command
 
@@ -250,7 +250,7 @@ class WhisperTranscriber:
             # Remove any leading/trailing whitespace and newlines
             transcription = " ".join(transcription.split())
 
-            logger.debug(f"✅ Output parsed: {len(transcription)} chars")
+            logger.debug(f"Output parsed: {len(transcription)} chars")
 
             return transcription
 
@@ -288,12 +288,12 @@ class WhisperTranscriber:
 
         for attempt in range(max_retries):
             try:
-                logger.info(f"📝 Transcription attempt {attempt + 1}/{max_retries}")
+                logger.info(f"Transcription attempt {attempt + 1}/{max_retries}")
 
                 result = self.transcribe(audio_path, language, model, timeout)
 
                 if result:
-                    logger.info(f"✅ Transcription successful on attempt {attempt + 1}")
+                    logger.info(f"Transcription successful on attempt {attempt + 1}")
                     return result
                 else:
                     logger.warning(f"⚠️ Empty transcription on attempt {attempt + 1}")

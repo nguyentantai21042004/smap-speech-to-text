@@ -67,7 +67,7 @@ This document outlines the changes made to switch from Redis Queue (RQ) to Rabbi
 The following files still reference Redis Queue and need to be updated:
 
 #### cmd/api/main.py
-- ✅ Already updated to use RabbitMQ
+- Already updated to use RabbitMQ
 - Calls `queue_manager.connect()` (async)
 - Calls `queue_manager.disconnect()` (async)
 

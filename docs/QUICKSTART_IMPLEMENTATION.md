@@ -2,14 +2,14 @@
 
 This is your complete guide to finish the Speech-to-Text system. Follow these steps in order.
 
-## ✅ What's Already Done
+## What's Already Done
 
-1. ✅ `requirements.txt` - Updated with STT dependencies
-2. ✅ `core/config.py` - Redis + SQLite configuration
-3. ✅ `.env` - STT settings
-4. ✅ `worker/errors.py` - Error definitions
-5. ✅ `worker/constants.py` - Constants
-6. ✅ Whisper.cpp built in `whisper/` directory
+1. `requirements.txt` - Updated with STT dependencies
+2. `core/config.py` - Redis + SQLite configuration
+3. `.env` - STT settings
+4. `worker/errors.py` - Error definitions
+5. `worker/constants.py` - Constants
+6. Whisper.cpp built in `whisper/` directory
 
 ---
 
@@ -181,7 +181,7 @@ class Job(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now(), server_default=func.now())
 EOF
 
-echo "✅ Files created successfully!"
+echo "Files created successfully!"
 echo ""
 echo "Next steps:"
 echo "1. Run: chmod +x setup_stt.sh && ./setup_stt.sh"
@@ -356,12 +356,12 @@ python -c "from core.database import drop_db, init_db; drop_db(); init_db()"
 
 ## 📞 Next Steps
 
-1. ✅ Complete Steps 1-5 above
+1. Complete Steps 1-5 above
 2. 📖 Read `docs/Implementation.md` for complete worker module code
 3. 💻 Implement worker modules (chunking, transcriber, merger, processor)
 4. 🔌 Update API routes and services
 5. ⚡ Update consumer to use RQ worker
-6. ✅ Test end-to-end workflow
+6. Test end-to-end workflow
 
 **Current Status:** Infrastructure ready, Worker modules pending implementation
 

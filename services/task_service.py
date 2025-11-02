@@ -46,7 +46,7 @@ class TaskService:
             Exception: If task creation fails
         """
         try:
-            logger.info(f"📝 Creating STT task: filename={filename}, size={file_size_mb:.2f}MB, language={language}")
+            logger.info(f"Creating STT task: filename={filename}, size={file_size_mb:.2f}MB, language={language}")
 
             # Validate file size
             if file_size_mb > 500:
@@ -59,12 +59,12 @@ class TaskService:
             logger.debug(f"Generated job_id: {job_id}")
 
             # Upload to MinIO
-            logger.info(f"📝 Uploading audio to MinIO...")
+            logger.info(f"Uploading audio to MinIO...")
             minio_path = await self._upload_to_minio(audio_file, filename, job_id)
-            logger.info(f"✅ Audio uploaded: {minio_path}")
+            logger.info(f"Audio uploaded: {minio_path}")
 
             # Create job in database
-            logger.info(f"📝 Creating job in database...")
+            logger.info(f"Creating job in database...")
             repo = get_task_repository()
             job_data = JobCreate(
                 language=language,
@@ -76,10 +76,10 @@ class TaskService:
             )
 
             job = await repo.create_job(job_data)
-            logger.info(f"✅ Job created in database: job_id={job.job_id}")
+            logger.info(f"Job created in database: job_id={job.job_id}")
 
             # Publish job to RabbitMQ queue
-            logger.info(f"📝 Publishing job to RabbitMQ queue...")
+            logger.info(f"Publishing job to RabbitMQ queue...")
             queue_manager = get_queue_manager()
 
             # Publish the job to RabbitMQ
@@ -92,9 +92,9 @@ class TaskService:
                 },
                 priority=5  # Normal priority (0-10 scale)
             )
-            logger.info(f"✅ Job published to RabbitMQ: job_id={job.job_id}")
+            logger.info(f"Job published to RabbitMQ: job_id={job.job_id}")
 
-            logger.info(f"✅ STT task created successfully: job_id={job.job_id}")
+            logger.info(f"STT task created successfully: job_id={job.job_id}")
 
             return {
                 "status": "success",
@@ -156,7 +156,7 @@ class TaskService:
                 content_type="audio/mpeg"
             )
 
-            logger.debug(f"✅ File uploaded to MinIO: {minio_path}")
+            logger.debug(f"File uploaded to MinIO: {minio_path}")
 
             return minio_path
 
@@ -179,7 +179,7 @@ class TaskService:
             Exception: If status retrieval fails
         """
         try:
-            logger.info(f"📝 Getting task status: job_id={job_id}")
+            logger.info(f"Getting task status: job_id={job_id}")
 
             # Get job from database
             repo = get_task_repository()
@@ -189,7 +189,7 @@ class TaskService:
                 logger.warning(f"⚠️ Job not found: job_id={job_id}")
                 return None
 
-            logger.info(f"✅ Job status retrieved: job_id={job_id}, status={job.status}")
+            logger.info(f"Job status retrieved: job_id={job_id}, status={job.status}")
 
             # Calculate progress
             progress = 0
@@ -230,7 +230,7 @@ class TaskService:
             Exception: If result retrieval fails
         """
         try:
-            logger.info(f"📝 Getting task result: job_id={job_id}")
+            logger.info(f"Getting task result: job_id={job_id}")
 
             # Get job from database
             repo = get_task_repository()
@@ -249,7 +249,7 @@ class TaskService:
                     "transcription": None
                 }
 
-            logger.info(f"✅ Job result retrieved: job_id={job_id}, text_length={len(job.transcription_text or '')}")
+            logger.info(f"Job result retrieved: job_id={job_id}, text_length={len(job.transcription_text or '')}")
 
             # Generate presigned URL if result file exists
             download_url = None
@@ -301,7 +301,7 @@ class TaskService:
             Exception: If listing fails
         """
         try:
-            logger.info(f"📝 Listing tasks: limit={limit}, status={status}")
+            logger.info(f"Listing tasks: limit={limit}, status={status}")
 
             repo = get_task_repository()
 
@@ -312,7 +312,7 @@ class TaskService:
                 # Get all recent jobs (you may want to add this method to repo)
                 jobs = []
 
-            logger.info(f"✅ Retrieved {len(jobs)} tasks")
+            logger.info(f"Retrieved {len(jobs)} tasks")
 
             return [
                 {

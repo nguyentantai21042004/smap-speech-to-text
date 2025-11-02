@@ -30,7 +30,7 @@ class QueueManager:
             self.channel: Optional[AbstractRobustChannel] = None
             self.exchange: Optional[Exchange] = None
             self.queue: Optional[Queue] = None
-            logger.debug("✅ RabbitMQ QueueManager initialized")
+            logger.debug("RabbitMQ QueueManager initialized")
         except Exception as e:
             logger.error(f"❌ Failed to initialize QueueManager: {e}")
             logger.exception("QueueManager initialization error:")
@@ -44,7 +44,7 @@ class QueueManager:
             Exception: If connection fails
         """
         try:
-            logger.info("📝 Connecting to RabbitMQ...")
+            logger.info("Connecting to RabbitMQ...")
 
             # Mask password in logs
             rabbitmq_url = self.settings.rabbitmq_url
@@ -60,13 +60,13 @@ class QueueManager:
                 rabbitmq_url,
                 timeout=10.0
             )
-            logger.info(f"✅ Connected to RabbitMQ at {self.settings.rabbitmq_host}:{self.settings.rabbitmq_port}")
+            logger.info(f"Connected to RabbitMQ at {self.settings.rabbitmq_host}:{self.settings.rabbitmq_port}")
 
             # Create channel
             logger.debug("Creating channel...")
             self.channel = await self.connection.channel()
-            await self.channel.set_qos(prefetch_count=1)  # Fair dispatch
-            logger.debug("✅ Channel created with QoS prefetch_count=1")
+            # Note: QoS will be set in consume_jobs() with proper prefetch_count
+            logger.debug("Channel created")
 
             # Declare exchange
             logger.debug(f"Declaring exchange: {self.settings.rabbitmq_exchange_name}")
@@ -75,7 +75,7 @@ class QueueManager:
                 type=aio_pika.ExchangeType.DIRECT,
                 durable=True  # Survive broker restart
             )
-            logger.info(f"✅ Exchange declared: {self.settings.rabbitmq_exchange_name}")
+            logger.info(f"Exchange declared: {self.settings.rabbitmq_exchange_name}")
 
             # Declare queue
             logger.debug(f"Declaring queue: {self.settings.rabbitmq_queue_name}")
@@ -87,7 +87,7 @@ class QueueManager:
                     "x-max-priority": 10  # Enable priority queue
                 }
             )
-            logger.info(f"✅ Queue declared: {self.settings.rabbitmq_queue_name}")
+            logger.info(f"Queue declared: {self.settings.rabbitmq_queue_name}")
 
             # Bind queue to exchange
             logger.debug(f"Binding queue to exchange with routing key: {self.settings.rabbitmq_routing_key}")
@@ -95,9 +95,9 @@ class QueueManager:
                 exchange=self.exchange,
                 routing_key=self.settings.rabbitmq_routing_key
             )
-            logger.info(f"✅ Queue bound to exchange")
+            logger.info(f"Queue bound to exchange")
 
-            logger.info("✅ RabbitMQ connection established successfully")
+            logger.info("RabbitMQ connection established successfully")
 
         except aio_pika.exceptions.AMQPConnectionError as e:
             logger.error(f"❌ RabbitMQ connection error: {e}")
@@ -115,19 +115,19 @@ class QueueManager:
         Disconnect from RabbitMQ server with proper cleanup.
         """
         try:
-            logger.info("📝 Disconnecting from RabbitMQ...")
+            logger.info("Disconnecting from RabbitMQ...")
 
             if self.channel and not self.channel.is_closed:
                 logger.debug("Closing channel...")
                 await self.channel.close()
-                logger.debug("✅ Channel closed")
+                logger.debug("Channel closed")
 
             if self.connection and not self.connection.is_closed:
                 logger.debug("Closing connection...")
                 await self.connection.close()
-                logger.debug("✅ Connection closed")
+                logger.debug("Connection closed")
 
-            logger.info("✅ RabbitMQ disconnected successfully")
+            logger.info("RabbitMQ disconnected successfully")
 
         except Exception as e:
             logger.error(f"❌ Error disconnecting from RabbitMQ: {e}")
@@ -154,7 +154,7 @@ class QueueManager:
             Exception: If publishing fails
         """
         try:
-            logger.info(f"📝 Publishing job to queue: job_id={job_id}, priority={priority}")
+            logger.info(f"Publishing job to queue: job_id={job_id}, priority={priority}")
 
             if not self.exchange:
                 logger.error("❌ Exchange not initialized. Call connect() first.")
@@ -189,7 +189,7 @@ class QueueManager:
                 routing_key=self.settings.rabbitmq_routing_key
             )
 
-            logger.info(f"✅ Job published successfully: job_id={job_id}")
+            logger.info(f"Job published successfully: job_id={job_id}")
             return True
 
         except Exception as e:
@@ -213,7 +213,7 @@ class QueueManager:
             Exception: If consumption fails
         """
         try:
-            logger.info(f"📝 Starting to consume jobs from queue: {self.settings.rabbitmq_queue_name}")
+            logger.info(f"Starting to consume jobs from queue: {self.settings.rabbitmq_queue_name}")
 
             if not self.queue:
                 logger.error("❌ Queue not initialized. Call connect() first.")
@@ -224,7 +224,7 @@ class QueueManager:
             await self.channel.set_qos(prefetch_count=prefetch_count)
 
             # Start consuming
-            logger.info("✅ Started consuming messages...")
+            logger.info("Started consuming messages...")
             logger.info("Press Ctrl+C to stop")
 
             await self.queue.consume(callback)
@@ -303,7 +303,7 @@ class QueueManager:
                 return False
 
             await self.queue.purge()
-            logger.info(f"✅ Queue purged successfully")
+            logger.info(f"Queue purged successfully")
             return True
 
         except Exception as e:

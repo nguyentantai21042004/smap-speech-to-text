@@ -15,7 +15,7 @@ echo "================================================"
 if [ "${SKIP_MODEL_DOWNLOAD}" = "true" ]; then
     echo "⚠️  Skipping model download (SKIP_MODEL_DOWNLOAD=true)"
 else
-    echo "📝 Checking Whisper models..."
+    echo "Checking Whisper models..."
     
     # Run model setup script
     if [ -f "/app/scripts/setup_models.py" ]; then
@@ -34,7 +34,7 @@ else
             exit 1
         }
         
-        echo "✅ Model ready!"
+        echo "Model ready!"
     else
         echo "⚠️  setup_models.py not found, skipping model download"
     fi
