@@ -11,10 +11,9 @@ from minio import Minio
 from minio.error import S3Error
 
 from core.config import get_settings
-from core.logger import get_logger
+from core.logger import logger
 
 settings = get_settings()
-logger = get_logger(__name__)
 
 
 class MinIOClient:

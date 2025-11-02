@@ -292,3 +292,5 @@ def get_database_sync() -> MongoDB:
         logger.error(f"❌ Failed to get database in sync context: {e}")
         logger.exception("Sync database retrieval error:")
         raise
+
+

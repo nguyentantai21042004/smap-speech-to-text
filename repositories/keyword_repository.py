@@ -108,7 +108,8 @@ class KeywordRepository(BaseRepository, IKeywordRepository):
             }
         ]
 
-        cursor = self.collection.aggregate(pipeline)
+        collection = await self.get_collection()
+        cursor = collection.aggregate(pipeline)
         results = await cursor.to_list(length=None)
 
         return {
@@ -148,7 +149,8 @@ class KeywordRepository(BaseRepository, IKeywordRepository):
             }
         ]
 
-        cursor = self.collection.aggregate(pipeline)
+        collection = await self.get_collection()
+        cursor = collection.aggregate(pipeline)
         results = await cursor.to_list(length=None)
 
         return {item["_id"]: item["count"] for item in results}

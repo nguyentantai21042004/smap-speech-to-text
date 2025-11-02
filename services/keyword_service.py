@@ -6,7 +6,8 @@ Follows Single Responsibility Principle - only handles keyword extraction busine
 
 from typing import Any, Dict, List, Optional
 
-from core import MessageBroker, logger
+from core import logger
+from core.messaging import get_queue_manager
 from repositories import KeywordRepository
 from .interfaces import IKeywordService
 
@@ -19,7 +20,7 @@ class KeywordService(IKeywordService):
 
     def __init__(self):
         self.repository = KeywordRepository()
-        self.message_broker = MessageBroker()
+        self.message_broker = get_queue_manager()
 
     async def extract_keywords_sync(
         self,

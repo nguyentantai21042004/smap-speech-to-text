@@ -11,7 +11,9 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from core import DatabaseManager, MessageBroker, get_settings, logger
+from core import get_settings, logger
+from core.database import get_database
+from core.messaging import get_queue_manager
 from services import TaskService
 
 
@@ -24,7 +26,7 @@ class SchedulerService:
     def __init__(self):
         self.settings = get_settings()
         self.scheduler = AsyncIOScheduler(timezone=self.settings.scheduler_timezone)
-        self.message_broker = MessageBroker()
+        self.message_broker = None
         self.task_service = TaskService()
         self.is_running = False
 
@@ -34,7 +36,7 @@ class SchedulerService:
 
         # Connect to database
         try:
-            await DatabaseManager.connect()
+            await get_database()
             logger.info("Database connected")
         except Exception as e:
             logger.error(f"Failed to connect to database: {e}")
@@ -42,6 +44,7 @@ class SchedulerService:
 
         # Connect to message broker
         try:
+            self.message_broker = get_queue_manager()
             await self.message_broker.connect()
             logger.info("Message broker connected")
         except Exception as e:
@@ -84,7 +87,8 @@ class SchedulerService:
 
         # Disconnect from database
         try:
-            await DatabaseManager.disconnect()
+            from core.database import close_database
+            await close_database()
             logger.info("Database disconnected")
         except Exception as e:
             logger.error(f"Error disconnecting database: {e}")

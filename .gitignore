@@ -77,6 +77,16 @@ tmp/
 temp/
 
 # -----------------------
-# Whisper
+# Whisper Models (Large files not committed to Git)
 # -----------------------
+# Ignore all model files
 whisper/models/*
+whisper/models/*.bin
+whisper/models/*.pt
+whisper/models/*.onnx
+
+# Keep the directory structure
+!whisper/models/.gitkeep
+
+# Model cache file
+whisper/models/.model_cache.json

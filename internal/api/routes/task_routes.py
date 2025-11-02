@@ -322,3 +322,13 @@ async def health_check():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unhealthy"
         )
+
+
+def create_task_routes() -> APIRouter:
+    """
+    Factory function to create task routes.
+
+    Returns:
+        APIRouter: Configured router with task endpoints
+    """
+    return router

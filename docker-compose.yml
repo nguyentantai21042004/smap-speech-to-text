@@ -56,7 +56,7 @@ services:
       - "8000:8000"
     environment:
       # Application
-      APP_NAME: ${APP_NAME:-SMAP Keyword Extraction}
+      APP_NAME: ${APP_NAME:-SMAP Speech-to-Text}
       APP_VERSION: ${APP_VERSION:-1.0.0}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       DEBUG: ${DEBUG:-True}
@@ -68,77 +68,141 @@ services:
       
       # MongoDB
       MONGODB_URL: mongodb://${MONGODB_ROOT_USER:-admin}:${MONGODB_ROOT_PASSWORD:-admin123}@mongodb:27017
-      MONGODB_DATABASE: ${MONGODB_DATABASE:-smap_keyword_extraction}
-      MONGODB_MIN_POOL_SIZE: ${MONGODB_MIN_POOL_SIZE:-10}
-      MONGODB_MAX_POOL_SIZE: ${MONGODB_MAX_POOL_SIZE:-100}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-stt_system}
+      MONGODB_MIN_POOL_SIZE: ${MONGODB_MIN_POOL_SIZE:-1}
+      MONGODB_MAX_POOL_SIZE: ${MONGODB_MAX_POOL_SIZE:-10}
       
-      # RabbitMQ
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
-      RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:-keyword_extraction_queue}
-      RABBITMQ_EXCHANGE_NAME: ${RABBITMQ_EXCHANGE_NAME:-keyword_extraction_exchange}
-      RABBITMQ_ROUTING_KEY: ${RABBITMQ_ROUTING_KEY:-keyword.extraction}
+      # Redis (Job Queue)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
       
-      # Scheduler
-      SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Asia/Ho_Chi_Minh}
+      # MinIO (Object Storage)
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-stt-audio-files}
+      MINIO_USE_SSL: "False"
+      
     volumes:
       - ./logs:/app/logs
     depends_on:
       mongodb:
         condition: service_healthy
-      rabbitmq:
+      redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     networks:
       - smap-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/tasks/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
 
-  # Queue Consumer Service
-  queue:
+  # MinIO Object Storage (for audio files and models)
+  minio:
+    image: minio/minio:latest
+    container_name: smap-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"    # API
+      - "9001:9001"    # Console
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - smap-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Redis (for job queue - replacing RabbitMQ)
+  redis:
+    image: redis:7-alpine
+    container_name: smap-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - smap-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Consumer Service (STT Worker - processes transcription jobs)
+  consumer:
     build:
       context: .
-      dockerfile: cmd/queue/Dockerfile
-    container_name: smap-queue
+      dockerfile: cmd/consumer/Dockerfile
+    container_name: smap-consumer
     restart: unless-stopped
     environment:
       # Application
-      APP_NAME: ${APP_NAME:-SMAP Keyword Extraction}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      DEBUG: ${DEBUG:-True}
+      APP_NAME: ${APP_NAME:-SMAP Speech-to-Text}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-False}
       
       # MongoDB
       MONGODB_URL: mongodb://${MONGODB_ROOT_USER:-admin}:${MONGODB_ROOT_PASSWORD:-admin123}@mongodb:27017
-      MONGODB_DATABASE: ${MONGODB_DATABASE:-smap_keyword_extraction}
-      MONGODB_MIN_POOL_SIZE: ${MONGODB_MIN_POOL_SIZE:-10}
-      MONGODB_MAX_POOL_SIZE: ${MONGODB_MAX_POOL_SIZE:-100}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-stt_system}
+      MONGODB_MIN_POOL_SIZE: ${MONGODB_MIN_POOL_SIZE:-1}
+      MONGODB_MAX_POOL_SIZE: ${MONGODB_MAX_POOL_SIZE:-10}
       
-      # RabbitMQ
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
-      RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:-keyword_extraction_queue}
-      RABBITMQ_EXCHANGE_NAME: ${RABBITMQ_EXCHANGE_NAME:-keyword_extraction_exchange}
-      RABBITMQ_ROUTING_KEY: ${RABBITMQ_ROUTING_KEY:-keyword.extraction}
+      # Redis (Job Queue)
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      
+      # MinIO (Object Storage)
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-stt-audio-files}
+      MINIO_USE_SSL: "False"
+      
+      # Whisper Settings
+      WHISPER_EXECUTABLE: /app/whisper/bin/whisper-cli
+      WHISPER_MODELS_DIR: /app/whisper/models
+      DEFAULT_MODEL: ${DEFAULT_MODEL:-medium}
+      DEFAULT_LANGUAGE: ${DEFAULT_LANGUAGE:-vi}
+      
+      # Model Download Settings
+      SKIP_MODEL_DOWNLOAD: ${SKIP_MODEL_DOWNLOAD:-false}
+      MODEL_TO_DOWNLOAD: ${MODEL_TO_DOWNLOAD:-medium}
+      
+      # Processing Settings
+      MAX_RETRIES: 3
+      CHUNK_TIMEOUT: 300
+      JOB_TIMEOUT: 3600
+      MAX_CONCURRENT_JOBS: ${MAX_CONCURRENT_JOBS:-2}
+      
     volumes:
       - ./logs:/app/logs
+      # Persist Whisper models across container restarts
+      - whisper_models:/app/whisper/models
     depends_on:
       mongodb:
         condition: service_healthy
-      rabbitmq:
+      redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     networks:
       - smap-network
     deploy:
-      replicas: 2  # Run 2 instances for load balancing
+      replicas: ${CONSUMER_REPLICAS:-2}  # Run multiple consumers for parallel processing
 
   # Scheduler Service
   scheduler:
@@ -149,25 +213,27 @@ services:
     restart: unless-stopped
     environment:
       # Application
-      APP_NAME: ${APP_NAME:-SMAP Keyword Extraction}
-      ENVIRONMENT: ${ENVIRONMENT:-development}
-      DEBUG: ${DEBUG:-True}
+      APP_NAME: ${APP_NAME:-SMAP Speech-to-Text}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DEBUG: ${DEBUG:-False}
       
       # MongoDB
       MONGODB_URL: mongodb://${MONGODB_ROOT_USER:-admin}:${MONGODB_ROOT_PASSWORD:-admin123}@mongodb:27017
-      MONGODB_DATABASE: ${MONGODB_DATABASE:-smap_keyword_extraction}
-      MONGODB_MIN_POOL_SIZE: ${MONGODB_MIN_POOL_SIZE:-10}
-      MONGODB_MAX_POOL_SIZE: ${MONGODB_MAX_POOL_SIZE:-100}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-stt_system}
+      MONGODB_MIN_POOL_SIZE: ${MONGODB_MIN_POOL_SIZE:-1}
+      MONGODB_MAX_POOL_SIZE: ${MONGODB_MAX_POOL_SIZE:-10}
       
-      # RabbitMQ
-      RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
-      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
-      RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:-keyword_extraction_queue}
-      RABBITMQ_EXCHANGE_NAME: ${RABBITMQ_EXCHANGE_NAME:-keyword_extraction_exchange}
-      RABBITMQ_ROUTING_KEY: ${RABBITMQ_ROUTING_KEY:-keyword.extraction}
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      
+      # MinIO
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MINIO_BUCKET: ${MINIO_BUCKET:-stt-audio-files}
+      MINIO_USE_SSL: "False"
       
       # Scheduler
       SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Asia/Ho_Chi_Minh}
@@ -176,7 +242,9 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
-      rabbitmq:
+      redis:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     networks:
       - smap-network
@@ -191,5 +259,11 @@ volumes:
   mongodb_config:
     driver: local
   rabbitmq_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  whisper_models:
     driver: local
 

@@ -9,7 +9,8 @@ from typing import Any, Dict, List, Optional
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorCollection
 
-from core import DatabaseManager, logger
+from core import logger
+from core.database import get_database
 
 
 class BaseRepository(ABC):
@@ -27,11 +28,10 @@ class BaseRepository(ABC):
         """
         self.collection_name = collection_name
 
-    @property
-    def collection(self) -> AsyncIOMotorCollection:
+    async def get_collection(self) -> AsyncIOMotorCollection:
         """Get MongoDB collection."""
-        db = DatabaseManager.get_database()
-        return db[self.collection_name]
+        db_instance = await get_database()
+        return db_instance.db[self.collection_name]
 
     async def create(self, document: Dict[str, Any]) -> str:
         """
@@ -44,7 +44,8 @@ class BaseRepository(ABC):
             ID of created document
         """
         try:
-            result = await self.collection.insert_one(document)
+            collection = await self.get_collection()
+            result = await collection.insert_one(document)
             logger.debug(
                 f"Created document in {self.collection_name}: {result.inserted_id}"
             )
@@ -64,7 +65,8 @@ class BaseRepository(ABC):
             Document if found, None otherwise
         """
         try:
-            document = await self.collection.find_one({"_id": ObjectId(document_id)})
+            collection = await self.get_collection()
+            document = await collection.find_one({"_id": ObjectId(document_id)})
             if document:
                 document["_id"] = str(document["_id"])
             return document
@@ -83,7 +85,8 @@ class BaseRepository(ABC):
             Document if found, None otherwise
         """
         try:
-            document = await self.collection.find_one(filter_dict)
+            collection = await self.get_collection()
+            document = await collection.find_one(filter_dict)
             if document:
                 document["_id"] = str(document["_id"])
             return document
@@ -111,7 +114,8 @@ class BaseRepository(ABC):
             List of documents
         """
         try:
-            cursor = self.collection.find(filter_dict).skip(skip).limit(limit)
+            collection = await self.get_collection()
+            cursor = collection.find(filter_dict).skip(skip).limit(limit)
 
             if sort:
                 cursor = cursor.sort(sort)
@@ -142,7 +146,8 @@ class BaseRepository(ABC):
             True if updated, False otherwise
         """
         try:
-            result = await self.collection.update_one(
+            collection = await self.get_collection()
+            result = await collection.update_one(
                 {"_id": ObjectId(document_id)},
                 {"$set": update_data},
             )
@@ -168,7 +173,8 @@ class BaseRepository(ABC):
             Number of documents updated
         """
         try:
-            result = await self.collection.update_many(
+            collection = await self.get_collection()
+            result = await collection.update_many(
                 filter_dict,
                 {"$set": update_data},
             )
@@ -191,7 +197,8 @@ class BaseRepository(ABC):
             True if deleted, False otherwise
         """
         try:
-            result = await self.collection.delete_one({"_id": ObjectId(document_id)})
+            collection = await self.get_collection()
+            result = await collection.delete_one({"_id": ObjectId(document_id)})
             logger.debug(f"Deleted document in {self.collection_name}: {document_id}")
             return result.deleted_count > 0
         except Exception as e:
@@ -209,7 +216,8 @@ class BaseRepository(ABC):
             Number of documents deleted
         """
         try:
-            result = await self.collection.delete_many(filter_dict)
+            collection = await self.get_collection()
+            result = await collection.delete_many(filter_dict)
             logger.debug(
                 f"Deleted {result.deleted_count} documents in {self.collection_name}"
             )
@@ -230,7 +238,8 @@ class BaseRepository(ABC):
         """
         try:
             filter_dict = filter_dict or {}
-            count = await self.collection.count_documents(filter_dict)
+            collection = await self.get_collection()
+            count = await collection.count_documents(filter_dict)
             return count
         except Exception as e:
             logger.error(f"Error counting documents in {self.collection_name}: {e}")
@@ -247,7 +256,8 @@ class BaseRepository(ABC):
             True if exists, False otherwise
         """
         try:
-            count = await self.collection.count_documents(filter_dict, limit=1)
+            collection = await self.get_collection()
+            count = await collection.count_documents(filter_dict, limit=1)
             return count > 0
         except Exception as e:
             logger.error(f"Error checking existence in {self.collection_name}: {e}")

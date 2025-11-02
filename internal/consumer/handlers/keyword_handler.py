@@ -7,7 +7,7 @@ import asyncio
 from typing import Dict, Any, Optional
 
 from core import logger
-from core.messaging import MessageBroker
+from core.messaging import QueueManager, get_queue_manager
 from services.interfaces import IKeywordService, ITaskService
 
 
@@ -19,16 +19,16 @@ class KeywordHandler:
 
     def __init__(
         self,
-        message_broker: MessageBroker,
+        message_broker: QueueManager,
         keyword_service: IKeywordService,
         task_service: ITaskService,
         shutdown_event: Optional[asyncio.Event] = None,
     ):
         """
         Initialize KeywordHandler.
-        
+
         Args:
-            message_broker: MessageBroker instance for handling messages
+            message_broker: QueueManager instance for handling messages
             keyword_service: Service for keyword extraction
             task_service: Service for task management
             shutdown_event: Optional event to signal shutdown
@@ -42,14 +42,13 @@ class KeywordHandler:
         """Start handling messages from the broker."""
         logger.info("Starting keyword extraction handler...")
         await self.message_broker.consume(
-            self.process_message,
-            shutdown_event=self.shutdown_event
+            self.process_message, shutdown_event=self.shutdown_event
         )
 
     async def process_message(self, message: Dict[str, Any]) -> None:
         """
         Process a single message from the broker.
-        
+
         Args:
             message: Message data containing task information
         """
@@ -96,10 +95,10 @@ class KeywordHandler:
     async def _process_keyword_extraction(self, message: Dict[str, Any]) -> Dict:
         """
         Process keyword extraction task.
-        
+
         Args:
             message: Message containing keyword extraction parameters
-            
+
         Returns:
             Dict: Extraction result
         """
@@ -119,4 +118,3 @@ class KeywordHandler:
         )
 
         return result
-

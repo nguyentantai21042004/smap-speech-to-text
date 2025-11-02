@@ -6,7 +6,8 @@ from fastapi import APIRouter
 from typing import Dict
 
 from internal.api.schemas import HealthResponse
-from core import DatabaseManager, get_settings
+from core import get_settings
+from core.database import get_database
 
 
 router = APIRouter(tags=["Health"])
@@ -123,8 +124,8 @@ def create_health_routes(app) -> APIRouter:
 
         db_status = "connected"
         try:
-            db = DatabaseManager.get_database()
-            await db.command("ping")
+            db = await get_database()
+            await db.client.admin.command("ping")
         except Exception:
             db_status = "disconnected"
 

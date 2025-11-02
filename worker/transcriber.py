@@ -1,6 +1,7 @@
 """
 Whisper.cpp transcriber interface.
 Includes detailed logging and comprehensive error handling.
+Auto-downloads models from MinIO if not present locally.
 """
 
 import subprocess
@@ -16,6 +17,7 @@ from worker.errors import (
     TimeoutError as STTTimeoutError,
     FileNotFoundError as STTFileNotFoundError,
 )
+from worker.model_downloader import get_model_downloader
 
 settings = get_settings()
 
@@ -174,6 +176,7 @@ class WhisperTranscriber:
     def _build_command(self, audio_path: str, language: str, model: str) -> list:
         """
         Build Whisper.cpp command.
+        Auto-downloads model from MinIO if not present locally.
 
         Args:
             audio_path: Path to audio file
@@ -188,14 +191,10 @@ class WhisperTranscriber:
                 f"🔍 Building Whisper command for model={model}, language={language}"
             )
 
-            # Model path
-            model_path = os.path.join(settings.whisper_models_dir, f"ggml-{model}.bin")
-
-            # Check model exists
-            if not os.path.exists(model_path):
-                error_msg = f"Whisper model not found: {model_path}"
-                logger.error(f"❌ {error_msg}")
-                raise STTFileNotFoundError(error_msg)
+            # Ensure model exists (download from MinIO if missing)
+            logger.info(f"📝 Ensuring model '{model}' is available...")
+            model_downloader = get_model_downloader()
+            model_path = model_downloader.ensure_model_exists(model)
 
             logger.debug(f"Using model: {model_path}")
 
