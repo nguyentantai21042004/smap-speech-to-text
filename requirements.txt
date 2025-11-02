@@ -1,39 +1,111 @@
-# FastAPI and Web Framework
+# ASYNC WEB FRAMEWORK & SERVER
 fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
-aiofiles==23.2.1
-pydantic==2.5.2
-pydantic-settings==2.1.0
-email-validator==2.1.0
+uvicorn==0.24.0
+starlette==0.27.0
+uvloop==0.22.1
 
-# Database - MongoDB
+# ASYNC UTILITIES & IO
+aiofiles==23.2.1
+aiohttp==3.13.2
+aio-pika==9.3.1
+aiormq==6.7.7
+aiosignal==1.4.0
+aiohappyeyeballs==2.6.1
+async-timeout==5.0.1
+
+# BACKGROUND/JOB SCHEDULING
+APScheduler==3.10.4
+watchfiles==1.1.1
+
+# AUDIO & SIGNAL PROCESSING
+librosa==0.10.1
+audioread==3.1.0
+soundfile==0.12.1
+soxr==1.0.0
+pydub==0.25.1
+
+# MATH, DATA & ML
+numpy==1.26.2
+scipy==1.15.3
+scikit-learn==1.7.2
+joblib==1.5.2
+threadpoolctl==3.6.0
+numba==0.62.1
+llvmlite==0.45.1
+lazy-model==0.2.0
+pooch==1.8.2
+
+# DATABASES & STORAGE
+beanie==1.24.0
 motor==3.3.2
 pymongo==4.6.1
-
-# Message Queue - RabbitMQ
-aio-pika==9.3.1
-
-# Object Storage (MinIO)
 minio==7.2.0
+msgpack==1.1.2
 
-# Audio Processing
-pydub==0.25.1
-librosa==0.10.1
-soundfile==0.12.1
-numpy==1.26.2
+# VALIDATION & SCHEMA
+pydantic==2.5.2
+pydantic-settings==2.1.0
+pydantic_core==2.14.5
+annotated-types==0.7.0
+email-validator==2.1.0
 
-# HTTP Client
+# RABBITMQ/QUEUEING
+pamqp==3.2.1
+propcache==0.4.1
+
+# CRYPTOGRAPHY & SECURITY
+argon2-cffi==25.1.0
+argon2-cffi-bindings==25.1.0
+pycryptodome==3.23.0
+
+# HTTP/NETWORKING
 httpx==0.25.2
+requests==2.32.5
+httptools==0.7.1
+httpcore==1.0.9
+websockets==15.0.1
+yarl==1.22.0
+multidict==6.7.0
+idna==3.11
+charset-normalizer==3.4.4
+urllib3==2.5.0
 
-# Development
-pytest==7.4.3
-pytest-asyncio==0.21.1
+# SETTINGS, ENV, CONFIG
+python-dotenv==1.0.0
+PyYAML==6.0.1
+packaging==25.0
+platformdirs==4.5.0
+tzlocal==5.3.1
+pytz==2025.2
+
+# DEV/TOOLING
 black==23.12.0
 flake8==6.1.0
 mypy==1.7.1
+mypy_extensions==1.1.0
+pyflakes==3.1.0
+pycodestyle==2.11.1
+toml==0.10.2
+tomli==2.3.0
+pathspec==0.12.1
+iniconfig==2.3.0
 
-# Utils
-python-dotenv==1.0.0
+# TESTING
+pytest==7.4.3
+pytest-asyncio==0.21.1
+
+# LOGGING
 loguru==0.7.2
-pyyaml==6.0.1
+
+# MISCELLANEOUS
+attrs==25.4.0
+decorator==5.2.1
+exceptiongroup==1.3.0
+six==1.17.0
+typing_extensions==4.15.0
+
+# REMAINDER (less-used/internal)
+frozenlist==1.8.0
+lazy_loader==0.4
+pycparser==2.23
+python-multipart==0.0.6

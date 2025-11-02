@@ -31,7 +31,7 @@ COPY core/ ./core/
 COPY repositories/ ./repositories/
 COPY services/ ./services/
 COPY internal/ ./internal/
-COPY cmd/api/ ./cmd/api/
+COPY cmd/ ./cmd/
 
 # Create logs directory (empty, logs are written at runtime)
 RUN mkdir -p logs

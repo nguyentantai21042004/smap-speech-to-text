@@ -66,20 +66,22 @@ RUN mkdir -p \
     /tmp/stt_processing \
     && chmod 755 whisper/models logs /tmp/stt_processing
 
+# Create non-root user for security (before copying files)
+RUN groupadd -r app && \
+    useradd -r -g app -d /app -s /sbin/nologin app
+
 # Copy application code in a single layer
 COPY --chown=app:app . /app/
 
+# Copy entrypoint script to root for easy access
+COPY --chown=app:app scripts/docker-entrypoint.sh /docker-entrypoint.sh
+
 # Set executable permissions for scripts
-RUN find /app/scripts -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true && \
+RUN chmod +x /docker-entrypoint.sh && \
+    find /app/scripts -type f -name "*.sh" -exec chmod +x {} \; 2>/dev/null || true && \
     find /app/scripts -type f -name "*.py" -exec chmod +x {} \; 2>/dev/null || true && \
     chmod +x /app/whisper/bin/* 2>/dev/null || true && \
-    chmod +x /app/whisper/run_whisper.sh 2>/dev/null || true && \
-    chmod +x /docker-entrypoint.sh 2>/dev/null || true
-
-# Create non-root user for security
-RUN groupadd -r app && \
-    useradd -r -g app -d /app -s /sbin/nologin app && \
-    chown -R app:app /app
+    chmod +x /app/whisper/run_whisper.sh 2>/dev/null || true
 
 # Switch to non-root user
 USER app
