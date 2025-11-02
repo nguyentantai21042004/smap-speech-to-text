@@ -415,3 +415,31 @@ class WhisperTranscriber:
             raise last_exception
         else:
             raise Exception(error_msg)
+
+
+# Global singleton instance
+_whisper_transcriber: Optional[WhisperTranscriber] = None
+
+
+def get_whisper_transcriber() -> WhisperTranscriber:
+    """
+    Get or create global WhisperTranscriber instance (singleton).
+    This ensures the transcriber is initialized once and reused across all jobs.
+
+    Returns:
+        WhisperTranscriber instance
+    """
+    global _whisper_transcriber
+
+    try:
+        if _whisper_transcriber is None:
+            logger.info("Creating WhisperTranscriber instance...")
+            _whisper_transcriber = WhisperTranscriber()
+            logger.info("WhisperTranscriber singleton initialized")
+
+        return _whisper_transcriber
+
+    except Exception as e:
+        logger.error(f"Failed to get whisper transcriber: {e}")
+        logger.exception("WhisperTranscriber initialization error:")
+        raise

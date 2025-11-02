@@ -17,6 +17,8 @@ from core.database import get_database
 from core.messaging import get_queue_manager
 from core.dependencies import validate_dependencies
 from internal.consumer.handlers.stt_handler import handle_stt_message
+from worker.transcriber import get_whisper_transcriber
+from worker.model_downloader import get_model_downloader
 
 
 class ConsumerService:
@@ -105,6 +107,27 @@ class ConsumerService:
             except Exception as e:
                 logger.error(f"Failed to initialize RabbitMQ: {e}")
                 logger.exception("RabbitMQ initialization error details:")
+                raise
+
+            # Initialize WhisperTranscriber (once for all jobs)
+            try:
+                logger.info("Initializing WhisperTranscriber singleton...")
+                transcriber = get_whisper_transcriber()
+                logger.info("✅ WhisperTranscriber initialized successfully")
+
+                # Pre-warm model downloader
+                logger.info("Pre-warming model downloader...")
+                model_downloader = get_model_downloader()
+                logger.info("✅ Model downloader initialized")
+
+                # Pre-validate default model
+                logger.info(f"Pre-validating default model: {self.settings.whisper_model}")
+                model_downloader.ensure_model_exists(self.settings.whisper_model)
+                logger.info(f"✅ Default model ready: {self.settings.whisper_model}")
+
+            except Exception as e:
+                logger.error(f"Failed to initialize transcriber: {e}")
+                logger.exception("Transcriber initialization error details:")
                 raise
 
             logger.info(f"========== Consumer Service startup complete ==========")

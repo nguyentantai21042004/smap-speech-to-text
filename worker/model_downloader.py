@@ -58,6 +58,7 @@ class ModelDownloader:
         """Initialize model downloader."""
         self.models_dir = Path(settings.whisper_models_dir)
         self.cache_file = self.models_dir / ".model_cache.json"
+        self._validated_models = set()  # In-memory cache for validated models (avoid redundant checks)
         logger.debug("ModelDownloader initialized")
 
     def ensure_model_exists(self, model: str) -> str:
@@ -75,6 +76,13 @@ class ModelDownloader:
             Exception: If download fails
         """
         try:
+            # Check in-memory cache first (fast path for parallel processing)
+            if model in self._validated_models:
+                config = MODEL_CONFIGS[model]
+                model_path = self.models_dir / config["filename"]
+                logger.debug(f"Model already validated in cache: {model}")
+                return str(model_path)
+
             logger.info(f"Ensuring model exists: {model}")
 
             # Validate model name
@@ -89,11 +97,16 @@ class ModelDownloader:
             # Check if model exists and is valid
             if self._is_model_valid(model, model_path):
                 logger.info(f"Model already exists and is valid: {model_path}")
+                # Add to cache for future calls
+                self._validated_models.add(model)
                 return str(model_path)
 
             # Download model from MinIO
             logger.info(f"📥 Model not found or invalid, downloading from MinIO...")
             self._download_model(model, model_path, config)
+
+            # Add to cache after successful download
+            self._validated_models.add(model)
 
             logger.info(f"Model ready: {model_path}")
             return str(model_path)

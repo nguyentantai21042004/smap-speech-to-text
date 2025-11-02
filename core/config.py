@@ -113,6 +113,14 @@ class Settings(BaseSettings):
     chunk_timeout: int = Field(default=300, alias="CHUNK_TIMEOUT")
     max_concurrent_jobs: int = Field(default=1, alias="MAX_CONCURRENT_JOBS")
 
+    # Parallel Processing Settings
+    max_parallel_workers: int = Field(
+        default=4, alias="MAX_PARALLEL_WORKERS"
+    )  # Number of parallel chunk transcriptions
+    use_parallel_transcription: bool = Field(
+        default=True, alias="USE_PARALLEL_TRANSCRIPTION"
+    )  # Enable/disable parallel processing
+
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_file: str = Field(default="logs/stt.log", alias="LOG_FILE")

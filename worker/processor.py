@@ -1,6 +1,6 @@
 """
 Main STT processor orchestrating the complete transcription pipeline.
-Includes extensive logging and comprehensive error handling.
+Includes extensive logging, comprehensive error handling, and parallel processing.
 """
 
 import os
@@ -8,8 +8,10 @@ import time
 import tempfile
 import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import asyncio
 
 from core.config import get_settings
 from core.logger import logger, format_exception_short
@@ -17,7 +19,7 @@ from core.storage import get_minio_client
 from repositories.task_repository import get_task_repository
 from repositories.models import JobStatus, JobUpdate, ChunkModel
 from worker.chunking import AudioChunker, get_audio_duration
-from worker.transcriber import WhisperTranscriber
+from worker.transcriber import get_whisper_transcriber
 from worker.merger import ResultMerger
 from worker.errors import (
     TransientError,
@@ -328,9 +330,70 @@ async def _chunk_audio(audio_path: str, temp_dir: str, job) -> list:
         raise TransientError(f"Chunking failed: {e}")
 
 
-async def _transcribe_chunks(chunks: list, job, repo, job_id: str) -> list:
+def _transcribe_single_chunk(chunk_data: Dict[str, Any], job, chunk_index: int, total_chunks: int, transcriber: WhisperTranscriber) -> Dict[str, Any]:
     """
-    Transcribe all chunks.
+    Transcribe a single chunk (for parallel processing).
+    This function runs in a separate thread/process.
+
+    Args:
+        chunk_data: Chunk metadata dictionary
+        job: Job model
+        chunk_index: Index of this chunk (for logging)
+        total_chunks: Total number of chunks
+        transcriber: Pre-initialized WhisperTranscriber instance (shared across workers)
+
+    Returns:
+        Updated chunk dictionary with transcription
+
+    Note:
+        This is a synchronous function designed to be called from ThreadPoolExecutor.
+        The transcriber instance is shared across all workers to avoid initialization overhead.
+    """
+    try:
+        logger.info(f"📝 [{chunk_index+1}/{total_chunks}] Transcribing: {chunk_data['file_path']}")
+        start_time = time.time()
+
+        # Transcribe with retry (using shared transcriber instance)
+        transcription = transcriber.transcribe_with_retry(
+            audio_path=chunk_data["file_path"],
+            language=job.language,
+            model=job.model_used,
+            max_retries=settings.max_retries,
+        )
+
+        # Update chunk data
+        chunk_data["transcription"] = transcription
+        chunk_data["status"] = JobStatus.COMPLETED
+        chunk_data["processed_at"] = datetime.utcnow()
+
+        elapsed = time.time() - start_time
+        logger.info(f"[{chunk_index+1}/{total_chunks}] Completed in {elapsed:.1f}s: {len(transcription)} chars")
+
+        return chunk_data
+
+    except STTTimeoutError as e:
+        logger.error(f"❌ [{chunk_index+1}/{total_chunks}] Timeout: {e}")
+        chunk_data["status"] = JobStatus.FAILED
+        chunk_data["error_message"] = str(e)
+        return chunk_data
+
+    except WhisperCrashError as e:
+        logger.error(f"❌ [{chunk_index+1}/{total_chunks}] Whisper crash: {e}")
+        chunk_data["status"] = JobStatus.FAILED
+        chunk_data["error_message"] = str(e)
+        return chunk_data
+
+    except Exception as e:
+        logger.error(f"❌ [{chunk_index+1}/{total_chunks}] Failed: {e}")
+        logger.exception("Chunk transcription error:")
+        chunk_data["status"] = JobStatus.FAILED
+        chunk_data["error_message"] = str(e)
+        return chunk_data
+
+
+async def _transcribe_chunks_parallel(chunks: List[Dict], job, repo, job_id: str) -> List[Dict]:
+    """
+    Transcribe chunks in parallel using ThreadPoolExecutor.
 
     Args:
         chunks: List of chunk metadata
@@ -345,9 +408,96 @@ async def _transcribe_chunks(chunks: list, job, repo, job_id: str) -> list:
         Exception: If transcription fails
     """
     try:
+        total_chunks = len(chunks)
+        logger.info(f"📝 Transcribing {total_chunks} chunks in parallel (workers={settings.max_parallel_workers})...")
+        start_time = time.time()
+
+        # Get shared transcriber instance (initialized once at consumer startup)
+        logger.debug("🔧 Getting shared WhisperTranscriber instance...")
+        transcriber = get_whisper_transcriber()
+        logger.debug("✅ Using shared WhisperTranscriber instance")
+
+        transcribed_chunks = []
+
+        # Use ThreadPoolExecutor for parallel transcription
+        with ThreadPoolExecutor(max_workers=settings.max_parallel_workers) as executor:
+            # Submit all chunks for processing (pass shared transcriber instance)
+            future_to_chunk = {
+                executor.submit(_transcribe_single_chunk, chunk, job, i, total_chunks, transcriber): (i, chunk)
+                for i, chunk in enumerate(chunks)
+            }
+
+            # Process completed chunks as they finish
+            for future in as_completed(future_to_chunk):
+                chunk_index, original_chunk = future_to_chunk[future]
+
+                try:
+                    # Get result from future
+                    result_chunk = future.result()
+
+                    if result_chunk.get("status") == JobStatus.COMPLETED:
+                        transcribed_chunks.append(result_chunk)
+                    else:
+                        logger.warning(f"⚠️ Chunk {chunk_index+1} failed transcription")
+
+                    # Update progress in database (async)
+                    await repo.update_job(
+                        job_id, JobUpdate(chunks_completed=len(transcribed_chunks))
+                    )
+
+                    progress_pct = (len(transcribed_chunks) / total_chunks) * 100
+                    logger.info(f"Progress: {len(transcribed_chunks)}/{total_chunks} ({progress_pct:.1f}%)")
+
+                except Exception as e:
+                    logger.error(f"❌ Error processing chunk {chunk_index+1}: {e}")
+                    logger.exception("Future processing error:")
+
+        elapsed = time.time() - start_time
+        success_rate = len(transcribed_chunks) / total_chunks * 100
+
+        logger.info(f"Parallel transcription complete in {elapsed:.1f}s")
+        logger.info(f"Success rate: {success_rate:.1f}% ({len(transcribed_chunks)}/{total_chunks})")
+
+        if not transcribed_chunks:
+            raise PermanentError("All chunks failed to transcribe")
+
+        return transcribed_chunks
+
+    except Exception as e:
+        error_formatted = format_exception_short(e, "Parallel transcription failed")
+        logger.error(f"{error_formatted}")
+        raise
+
+
+async def _transcribe_chunks(chunks: list, job, repo, job_id: str) -> list:
+    """
+    Transcribe all chunks (sequential or parallel based on settings).
+
+    Args:
+        chunks: List of chunk metadata
+        job: Job model
+        repo: Task repository
+        job_id: Job ID
+
+    Returns:
+        List of transcribed chunks
+
+    Raises:
+        Exception: If transcription fails
+    """
+    # Check if parallel processing is enabled
+    if settings.use_parallel_transcription and len(chunks) > 1:
+        logger.info("🚀 Using parallel transcription mode")
+        return await _transcribe_chunks_parallel(chunks, job, repo, job_id)
+
+    # Fall back to sequential processing
+    logger.info("🐌 Using sequential transcription mode")
+
+    try:
         logger.debug(f"🔍 Transcribing {len(chunks)} chunks...")
 
-        transcriber = WhisperTranscriber()
+        # Get shared transcriber instance (initialized once at consumer startup)
+        transcriber = get_whisper_transcriber()
         transcribed_chunks = []
 
         for i, chunk in enumerate(chunks):
