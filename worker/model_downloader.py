@@ -80,7 +80,7 @@ class ModelDownloader:
             # Validate model name
             if model not in MODEL_CONFIGS:
                 error_msg = f"Invalid model name: {model}. Valid models: {list(MODEL_CONFIGS.keys())}"
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise ValueError(error_msg)
 
             config = MODEL_CONFIGS[model]
@@ -99,7 +99,7 @@ class ModelDownloader:
             return str(model_path)
 
         except Exception as e:
-            logger.error(f"❌ Failed to ensure model exists: {e}")
+            logger.error(f"Failed to ensure model exists: {e}")
             logger.exception("Model download error details:")
             raise
 
@@ -126,7 +126,7 @@ class ModelDownloader:
 
             if file_size_mb < expected_size * 0.9:  # Allow 10% tolerance
                 logger.warning(
-                    f"⚠️ Model file size mismatch: {file_size_mb:.2f}MB < {expected_size}MB"
+                    f"Model file size mismatch: {file_size_mb:.2f}MB < {expected_size}MB"
                 )
                 return False
 
@@ -136,7 +136,7 @@ class ModelDownloader:
                 actual_md5 = self._calculate_md5(model_path)
                 if actual_md5 != expected_md5:
                     logger.warning(
-                        f"⚠️ Model MD5 mismatch: {actual_md5} != {expected_md5}"
+                        f"Model MD5 mismatch: {actual_md5} != {expected_md5}"
                     )
                     return False
 
@@ -144,7 +144,7 @@ class ModelDownloader:
             return True
 
         except Exception as e:
-            logger.error(f"❌ Model validation error: {e}")
+            logger.error(f"Model validation error: {e}")
             return False
 
     def _download_model(self, model: str, model_path: Path, config: Dict) -> None:
@@ -174,7 +174,7 @@ class ModelDownloader:
             # Check if model exists in MinIO
             if not minio_client.file_exists(config["minio_path"]):
                 error_msg = f"Model not found in MinIO: {config['minio_path']}"
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise FileNotFoundError(error_msg)
 
             # Download model
@@ -188,7 +188,7 @@ class ModelDownloader:
             # Verify size
             if file_size_mb < config["size_mb"] * 0.9:
                 error_msg = f"Downloaded file size too small: {file_size_mb:.2f}MB < {config['size_mb']}MB"
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 model_path.unlink()  # Delete corrupted file
                 raise ValueError(error_msg)
 
@@ -198,7 +198,7 @@ class ModelDownloader:
             logger.info(f"Model downloaded and validated: {model}")
 
         except Exception as e:
-            logger.error(f"❌ Model download failed: {e}")
+            logger.error(f"Model download failed: {e}")
             logger.exception("Download error details:")
             # Cleanup partial download
             if model_path.exists():
@@ -233,7 +233,7 @@ class ModelDownloader:
             return checksum
 
         except Exception as e:
-            logger.error(f"❌ MD5 calculation failed: {e}")
+            logger.error(f"MD5 calculation failed: {e}")
             raise
 
     def _update_cache(self, model: str, model_path: Path) -> None:
@@ -262,7 +262,7 @@ class ModelDownloader:
             logger.debug(f"Cache updated for model: {model}")
 
         except Exception as e:
-            logger.warning(f"⚠️ Failed to update cache: {e}")
+            logger.warning(f"Failed to update cache: {e}")
             # Non-critical error, don't raise
 
     def download_all_models(self) -> None:
@@ -278,13 +278,13 @@ class ModelDownloader:
                     self.ensure_model_exists(model)
                     logger.info(f"Model '{model}' ready")
                 except Exception as e:
-                    logger.error(f"❌ Failed to download model '{model}': {e}")
+                    logger.error(f"Failed to download model '{model}': {e}")
                     # Continue with other models
 
             logger.info("All models download complete")
 
         except Exception as e:
-            logger.error(f"❌ Failed to download all models: {e}")
+            logger.error(f"Failed to download all models: {e}")
             raise
 
     def list_available_models(self) -> Dict[str, bool]:
@@ -303,7 +303,7 @@ class ModelDownloader:
             return status
 
         except Exception as e:
-            logger.error(f"❌ Failed to list models: {e}")
+            logger.error(f"Failed to list models: {e}")
             return {}
 
 
@@ -328,6 +328,6 @@ def get_model_downloader() -> ModelDownloader:
         return _model_downloader
 
     except Exception as e:
-        logger.error(f"❌ Failed to get model downloader: {e}")
+        logger.error(f"Failed to get model downloader: {e}")
         logger.exception("ModelDownloader initialization error:")
         raise

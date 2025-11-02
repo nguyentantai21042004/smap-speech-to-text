@@ -6,7 +6,7 @@ Dự án sử dụng Whisper models để chuyển đổi giọng nói thành v�
 
 ## 🎯 Vấn đề đã giải quyết
 
-1. ❌ **Trước đây:**
+1. **Trước đây:**
    - Model files (>100MB) không thể push lên GitHub
    - Phải commit binary files vào Git
    - Docker images rất nặng
@@ -107,7 +107,7 @@ docker build -f cmd/worker/Dockerfile -t stt-worker:latest .
 ```
 
 **Image size:**
-- ❌ Trước: ~4-5GB (with models)
+- Trước: ~4-5GB (with models)
 - Sau: ~1-2GB (without models)
 
 ### 3. Run with Docker Compose
@@ -242,7 +242,7 @@ volumes:
 
 **Symptoms:**
 ```
-❌ Failed to download model: Model not found in MinIO
+Failed to download model: Model not found in MinIO
 ```
 
 **Solutions:**
@@ -261,7 +261,7 @@ volumes:
 
 **Symptoms:**
 ```
-⚠️ Model file size mismatch: 500MB < 1500MB
+Model file size mismatch: 500MB < 1500MB
 ```
 
 **Solutions:**
@@ -420,9 +420,9 @@ class WhisperTranscriber:
 - Models shared across deployments
 
 **Tradeoffs:**
-- ⚠️ First startup slower (download time)
-- ⚠️ Requires MinIO setup
-- ⚠️ Network dependency (for download)
+- First startup slower (download time)
+- Requires MinIO setup
+- Network dependency (for download)
 
 **Solution:**
 - Use Docker volumes to persist models

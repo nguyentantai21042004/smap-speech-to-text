@@ -16,8 +16,8 @@ with warnings.catch_warnings():
     from pydub.silence import detect_nonsilent
 
 from core.config import get_settings
-from core.logger import logger
-from worker.errors import InvalidAudioFormatError, CorruptedFileError
+from core.logger import logger, format_exception_short
+from worker.errors import InvalidAudioFormatError, CorruptedFileError, MissingDependencyError
 from worker.constants import (
     SUPPORTED_FORMATS,
     MAX_CHUNK_SIZE_SECONDS,
@@ -106,17 +106,22 @@ class AudioChunker:
 
             return chunks
 
+        except MissingDependencyError as e:
+            # Missing dependencies are permanent - don't retry
+            logger.error(f"Missing dependency: {e}")
+            raise
+        
         except InvalidAudioFormatError as e:
-            logger.error(f"❌ Invalid audio format: {e}")
+            logger.error(f"Invalid audio format: {e}")
             raise
 
         except CorruptedFileError as e:
-            logger.error(f"❌ Corrupted audio file: {e}")
+            logger.error(f"Corrupted audio file: {e}")
             raise
 
         except Exception as e:
-            logger.error(f"❌ Audio chunking failed: {e}")
-            logger.exception("Chunking error details:")
+            error_formatted = format_exception_short(e, "Audio chunking failed")
+            logger.error(f"{error_formatted}")
             raise
 
     def _validate_audio_file(self, audio_path: str) -> None:
@@ -136,20 +141,20 @@ class AudioChunker:
             # Check file exists
             if not os.path.exists(audio_path):
                 error_msg = f"Audio file not found: {audio_path}"
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise FileNotFoundError(error_msg)
 
             # Check file extension
             file_ext = Path(audio_path).suffix.lower()
             if file_ext not in SUPPORTED_FORMATS:
                 error_msg = f"Unsupported audio format: {file_ext}. Supported: {SUPPORTED_FORMATS}"
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise InvalidAudioFormatError(error_msg)
 
             logger.debug(f"Audio file validation passed: format={file_ext}")
 
         except Exception as e:
-            logger.error(f"❌ Audio validation failed: {e}")
+            logger.error(f"Audio validation failed: {e}")
             raise
 
     def _load_audio(self, audio_path: str) -> AudioSegment:
@@ -180,10 +185,38 @@ class AudioChunker:
 
             return audio
 
+        except FileNotFoundError as e:
+            # Check if it's ffmpeg/ffprobe missing
+            error_str = str(e)
+            if (
+                "ffprobe" in error_str
+                or "ffmpeg" in error_str
+                or "avprobe" in error_str
+            ):
+                error_msg = "ffmpeg/ffprobe not installed. Install with: brew install ffmpeg (macOS) or apt-get install ffmpeg (Linux)"
+                logger.error(f"{error_msg}")
+                raise MissingDependencyError(error_msg)
+            else:
+                error_msg = f"Audio file not found: {e}"
+                logger.error(f"{error_msg}")
+                raise
+
         except Exception as e:
+            # Check if underlying error is ffmpeg missing
+            error_str = str(e)
+            if (
+                "ffprobe" in error_str
+                or "ffmpeg" in error_str
+                or "avprobe" in error_str
+                or "No such file or directory: 'ffprobe'" in error_str
+            ):
+                error_msg = "ffmpeg/ffprobe not installed. Install with: brew install ffmpeg (macOS) or apt-get install ffmpeg (Linux)"
+                logger.error(f"{error_msg}")
+                raise MissingDependencyError(error_msg)
+
             error_msg = f"Failed to load audio (possibly corrupted): {e}"
-            logger.error(f"❌ {error_msg}")
-            logger.exception("Audio load error details:")
+            error_formatted = format_exception_short(e, "Audio load failed")
+            logger.error(f"{error_formatted}")
             raise CorruptedFileError(error_msg)
 
     def _chunk_by_silence(
@@ -219,7 +252,7 @@ class AudioChunker:
 
             if not nonsilent_ranges:
                 logger.warning(
-                    "⚠️ No non-silent regions found, using fixed duration fallback"
+                    "No non-silent regions found, using fixed duration fallback"
                 )
                 return self._chunk_fixed_duration(
                     audio, output_dir, settings.chunk_duration
@@ -240,14 +273,14 @@ class AudioChunker:
                     # Skip very short chunks
                     if duration_sec < MIN_CHUNK_SIZE_SECONDS:
                         logger.debug(
-                            f"⚠️ Skipping short chunk {i}: {duration_sec:.2f}s < {MIN_CHUNK_SIZE_SECONDS}s"
+                            f"Skipping short chunk {i}: {duration_sec:.2f}s < {MIN_CHUNK_SIZE_SECONDS}s"
                         )
                         continue
 
                     # Split long chunks
                     if duration_sec > MAX_CHUNK_SIZE_SECONDS:
                         logger.debug(
-                            f"⚠️ Splitting long chunk {i}: {duration_sec:.2f}s > {MAX_CHUNK_SIZE_SECONDS}s"
+                            f"Splitting long chunk {i}: {duration_sec:.2f}s > {MAX_CHUNK_SIZE_SECONDS}s"
                         )
                         sub_chunks = self._split_chunk(
                             audio[start_ms:end_ms],
@@ -274,7 +307,7 @@ class AudioChunker:
                     logger.debug(f"Chunk {i} saved: {chunk_path}")
 
                 except Exception as e:
-                    logger.error(f"❌ Failed to process chunk {i}: {e}")
+                    logger.error(f"Failed to process chunk {i}: {e}")
                     logger.exception("Chunk processing error:")
                     # Continue with other chunks
                     continue
@@ -286,10 +319,10 @@ class AudioChunker:
             return chunks
 
         except Exception as e:
-            logger.error(f"❌ Silence-based chunking failed: {e}")
+            logger.error(f"Silence-based chunking failed: {e}")
             logger.exception("Silence chunking error details:")
             # Fallback to fixed duration
-            logger.warning("⚠️ Falling back to fixed duration chunking")
+            logger.warning("Falling back to fixed duration chunking")
             return self._chunk_fixed_duration(
                 audio, output_dir, settings.chunk_duration
             )
@@ -342,7 +375,7 @@ class AudioChunker:
                     logger.debug(f"Chunk {i} saved: {chunk_path}")
 
                 except Exception as e:
-                    logger.error(f"❌ Failed to process chunk {i}: {e}")
+                    logger.error(f"Failed to process chunk {i}: {e}")
                     logger.exception("Chunk processing error:")
                     continue
 
@@ -353,7 +386,7 @@ class AudioChunker:
             return chunks
 
         except Exception as e:
-            logger.error(f"❌ Fixed duration chunking failed: {e}")
+            logger.error(f"Fixed duration chunking failed: {e}")
             logger.exception("Fixed chunking error details:")
             raise
 
@@ -412,7 +445,7 @@ class AudioChunker:
             return sub_chunks
 
         except Exception as e:
-            logger.error(f"❌ Failed to split chunk: {e}")
+            logger.error(f"Failed to split chunk: {e}")
             logger.exception("Chunk split error details:")
             raise
 
@@ -441,7 +474,24 @@ def get_audio_duration(audio_path: str) -> float:
 
         return duration
 
+    except FileNotFoundError as e:
+        error_str = str(e)
+        if "ffprobe" in error_str or "ffmpeg" in error_str or "avprobe" in error_str:
+            error_msg = "ffmpeg/ffprobe not installed. Install with: brew install ffmpeg (macOS) or apt-get install ffmpeg (Linux)"
+            logger.error(f"{error_msg}")
+            raise MissingDependencyError(error_msg)
+        else:
+            error_formatted = format_exception_short(e, "Duration retrieval failed")
+            logger.error(f"{error_formatted}")
+            raise
+    
     except Exception as e:
-        logger.error(f"❌ Failed to get audio duration: {e}")
-        logger.exception("Duration retrieval error:")
+        error_str = str(e)
+        if "ffprobe" in error_str or "ffmpeg" in error_str or "avprobe" in error_str or "No such file or directory: 'ffprobe'" in error_str:
+            error_msg = "ffmpeg/ffprobe not installed. Install with: brew install ffmpeg (macOS) or apt-get install ffmpeg (Linux)"
+            logger.error(f"{error_msg}")
+            raise MissingDependencyError(error_msg)
+        
+        error_formatted = format_exception_short(e, "Duration retrieval failed")
+        logger.error(f"{error_formatted}")
         raise

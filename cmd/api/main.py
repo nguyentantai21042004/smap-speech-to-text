@@ -24,6 +24,7 @@ from core.config import get_settings
 from core.logger import logger
 from core.database import get_database
 from core.messaging import get_queue_manager
+from core.dependencies import validate_dependencies
 from internal.api.routes.task_routes import router as task_router
 from internal.api.routes.file_routes import router as file_router
 from internal.api.routes.health_routes import create_health_routes
@@ -44,6 +45,16 @@ async def lifespan(app: FastAPI):
         logger.info(f"Environment: {settings.environment}")
         logger.info(f"Debug mode: {settings.debug}")
         logger.info(f"API: {settings.api_host}:{settings.api_port}")
+
+        # Validate system dependencies (ffmpeg/ffprobe)
+        # Note: API service doesn't process audio directly, but validation helps catch issues early
+        try:
+            validate_dependencies()
+            logger.info("System dependencies validated")
+        except Exception as e:
+            # For API service, dependency check is optional (warn, don't fail)
+            logger.warning(f"Dependency validation warning: {e}")
+            logger.warning("API service can start, but audio processing will fail")
 
         # Initialize MongoDB connection
         try:

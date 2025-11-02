@@ -66,7 +66,7 @@ async def upload_file(
 
         # Validate file
         if not file.filename:
-            logger.error("❌ No filename provided")
+            logger.error("No filename provided")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="No filename provided"
             )
@@ -80,7 +80,7 @@ async def upload_file(
 
         # Validate file size
         if file_size_mb > 500:
-            logger.error(f"❌ File too large: {file_size_mb:.2f}MB")
+            logger.error(f"File too large: {file_size_mb:.2f}MB")
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"File too large: {file_size_mb:.2f}MB. Maximum size is 500MB",
@@ -107,11 +107,11 @@ async def upload_file(
     except HTTPException:
         raise
     except ValueError as e:
-        logger.error(f"❌ Validation error: {e}")
+        logger.error(f"Validation error: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         elapsed_time = time.time() - start_time
-        logger.error(f"❌ File upload failed after {elapsed_time:.2f}s: {e}")
+        logger.error(f"File upload failed after {elapsed_time:.2f}s: {e}")
         logger.exception("File upload error details:")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

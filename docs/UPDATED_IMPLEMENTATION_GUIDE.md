@@ -46,7 +46,7 @@ Shared:
 ### **2. Message Queue: RabbitMQ (Not Redis)**
 
 **Using:** RabbitMQ with `aio-pika`
-❌ **Removed:** Redis Queue (RQ)
+**Removed:** Redis Queue (RQ)
 
 **Why RabbitMQ?**
 - You already have RabbitMQ infrastructure
@@ -59,7 +59,7 @@ Shared:
 ### **3. Storage: MinIO (Not Local Filesystem)**
 
 **Using:** MinIO for object storage
-❌ **Removed:** Local file storage
+**Removed:** Local file storage
 
 **MinIO Configuration:**
 ```bash

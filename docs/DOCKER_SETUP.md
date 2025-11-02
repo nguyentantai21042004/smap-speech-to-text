@@ -220,13 +220,13 @@ docker logs smap-consumer
 
 1. **Model download fails**
    ```
-   ❌ Model not found in MinIO
+   Model not found in MinIO
    ```
    Solution: Upload model to MinIO first
 
 2. **MinIO connection fails**
    ```
-   ❌ Failed to connect to MinIO
+   Failed to connect to MinIO
    ```
    Solution: Check MinIO is running
    ```bash
@@ -236,7 +236,7 @@ docker logs smap-consumer
 
 3. **Redis connection fails**
    ```
-   ❌ Failed to connect to Redis
+   Failed to connect to Redis
    ```
    Solution: Check Redis is running
    ```bash

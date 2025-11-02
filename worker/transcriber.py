@@ -45,7 +45,7 @@ class WhisperTranscriber:
                 error_msg = (
                     f"Whisper executable not found: {settings.whisper_executable}"
                 )
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise STTFileNotFoundError(error_msg)
 
             # Check executable is executable
@@ -53,7 +53,7 @@ class WhisperTranscriber:
                 error_msg = (
                     f"Whisper executable not executable: {settings.whisper_executable}"
                 )
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise PermissionError(error_msg)
 
             # Check models directory exists
@@ -61,7 +61,7 @@ class WhisperTranscriber:
                 error_msg = (
                     f"Whisper models directory not found: {settings.whisper_models_dir}"
                 )
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise STTFileNotFoundError(error_msg)
 
             logger.debug(
@@ -69,7 +69,7 @@ class WhisperTranscriber:
             )
 
         except Exception as e:
-            logger.error(f"❌ Whisper setup validation failed: {e}")
+            logger.error(f"Whisper setup validation failed: {e}")
             raise
 
     def transcribe(
@@ -106,7 +106,7 @@ class WhisperTranscriber:
             # Validate audio file exists
             if not os.path.exists(audio_path):
                 error_msg = f"Audio file not found: {audio_path}"
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise STTFileNotFoundError(error_msg)
 
             # Get file size
@@ -131,7 +131,7 @@ class WhisperTranscriber:
             # Check for errors
             if result.returncode != 0:
                 error_msg = f"Whisper process failed with code {result.returncode}"
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 logger.error(f"Stderr: {result.stderr}")
                 raise WhisperCrashError(error_msg)
 
@@ -154,22 +154,22 @@ class WhisperTranscriber:
         except subprocess.TimeoutExpired as e:
             elapsed_time = time.time() - start_time
             error_msg = f"Transcription timeout after {elapsed_time:.2f}s"
-            logger.error(f"❌ {error_msg}")
+            logger.error(f"{error_msg}")
             logger.exception("Timeout error details:")
             raise STTTimeoutError(error_msg)
 
         except WhisperCrashError as e:
             elapsed_time = time.time() - start_time
-            logger.error(f"❌ Whisper crash after {elapsed_time:.2f}s: {e}")
+            logger.error(f"Whisper crash after {elapsed_time:.2f}s: {e}")
             raise
 
         except STTFileNotFoundError as e:
-            logger.error(f"❌ File not found: {e}")
+            logger.error(f"File not found: {e}")
             raise
 
         except Exception as e:
             elapsed_time = time.time() - start_time
-            logger.error(f"❌ Transcription failed after {elapsed_time:.2f}s: {e}")
+            logger.error(f"Transcription failed after {elapsed_time:.2f}s: {e}")
             logger.exception("Transcription error details:")
             raise
 
@@ -216,7 +216,7 @@ class WhisperTranscriber:
             return command
 
         except Exception as e:
-            logger.error(f"❌ Failed to build Whisper command: {e}")
+            logger.error(f"Failed to build Whisper command: {e}")
             logger.exception("Command build error:")
             raise
 
@@ -240,7 +240,7 @@ class WhisperTranscriber:
 
             # Whisper outputs to stdout
             if not stdout:
-                logger.warning("⚠️ No output from Whisper")
+                logger.warning("No output from Whisper")
                 return ""
 
             # Clean up output
@@ -255,7 +255,7 @@ class WhisperTranscriber:
             return transcription
 
         except Exception as e:
-            logger.error(f"❌ Failed to parse Whisper output: {e}")
+            logger.error(f"Failed to parse Whisper output: {e}")
             logger.exception("Output parsing error:")
             # Return empty string rather than failing
             return ""
@@ -296,14 +296,14 @@ class WhisperTranscriber:
                     logger.info(f"Transcription successful on attempt {attempt + 1}")
                     return result
                 else:
-                    logger.warning(f"⚠️ Empty transcription on attempt {attempt + 1}")
+                    logger.warning(f"Empty transcription on attempt {attempt + 1}")
                     if attempt < max_retries - 1:
                         time.sleep(2**attempt)  # Exponential backoff
                         continue
 
             except STTTimeoutError as e:
                 last_exception = e
-                logger.warning(f"⚠️ Timeout on attempt {attempt + 1}: {e}")
+                logger.warning(f"Timeout on attempt {attempt + 1}: {e}")
                 if attempt < max_retries - 1:
                     logger.info(f"Retrying after backoff...")
                     time.sleep(2**attempt)
@@ -313,7 +313,7 @@ class WhisperTranscriber:
 
             except WhisperCrashError as e:
                 last_exception = e
-                logger.warning(f"⚠️ Whisper crash on attempt {attempt + 1}: {e}")
+                logger.warning(f"Whisper crash on attempt {attempt + 1}: {e}")
                 if attempt < max_retries - 1:
                     logger.info(f"Retrying after backoff...")
                     time.sleep(2**attempt)
@@ -322,13 +322,13 @@ class WhisperTranscriber:
                     raise
 
             except Exception as e:
-                logger.error(f"❌ Unexpected error on attempt {attempt + 1}: {e}")
+                logger.error(f"Unexpected error on attempt {attempt + 1}: {e}")
                 last_exception = e
                 raise
 
         # All retries exhausted
         error_msg = f"All {max_retries} transcription attempts failed"
-        logger.error(f"❌ {error_msg}")
+        logger.error(f"{error_msg}")
         if last_exception:
             raise last_exception
         else:

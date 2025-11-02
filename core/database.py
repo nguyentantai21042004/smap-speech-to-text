@@ -32,7 +32,7 @@ class MongoDB:
         try:
             # Get MongoDB connection URL (with auth if credentials provided)
             connection_url = settings.mongodb_connection_url
-            
+
             # Mask password in URL for logging
             masked_url = connection_url
             if "@" in masked_url:
@@ -62,9 +62,7 @@ class MongoDB:
             # Get database
             self.db = self.client[settings.mongodb_database]
 
-            logger.info(
-                f"Connected to MongoDB database: {settings.mongodb_database}"
-            )
+            logger.info(f"Connected to MongoDB database: {settings.mongodb_database}")
             logger.debug(
                 f"Connection pool: min={settings.mongodb_min_pool_size}, "
                 f"max={settings.mongodb_max_pool_size}"
@@ -184,9 +182,15 @@ class MongoDB:
             # Create indexes for stt_jobs collection
             jobs_collection = await self.get_collection("stt_jobs")
 
-            # Index on job_id (unique)
-            await jobs_collection.create_index("job_id", unique=True)
-            logger.debug("Created unique index on job_id")
+            # Drop old unique index on job_id if it exists (no longer needed - using _id as primary key)
+            try:
+                await jobs_collection.drop_index("job_id_1")
+                logger.debug("Dropped old unique index on job_id")
+            except Exception:
+                # Index doesn't exist or can't be dropped (permissions) - that's okay
+                pass
+
+            # Note: No longer indexing job_id as we use MongoDB _id as primary key
 
             # Index on status for querying pending jobs
             await jobs_collection.create_index("status")
@@ -206,14 +210,24 @@ class MongoDB:
             # Indexes are optional - don't fail startup
             # Log as warning for authentication/permission issues, error for other issues
             error_msg = str(e)
-            error_code = getattr(e, 'code', None)
-            
+            error_code = getattr(e, "code", None)
+
             # Authentication/authorization errors are expected if user doesn't have permissions
-            if "authentication" in error_msg.lower() or "unauthorized" in error_msg.lower() or error_code == 13:
-                logger.warning(f"Failed to create indexes (authentication required): {error_msg.split(',')[0] if ',' in error_msg else error_msg}")
-                logger.debug("Indexes will be created manually or when proper credentials are provided")
+            if (
+                "authentication" in error_msg.lower()
+                or "unauthorized" in error_msg.lower()
+                or error_code == 13
+            ):
+                logger.warning(
+                    f"Failed to create indexes (authentication required): {error_msg.split(',')[0] if ',' in error_msg else error_msg}"
+                )
+                logger.debug(
+                    "Indexes will be created manually or when proper credentials are provided"
+                )
             else:
-                logger.warning(f"Failed to create indexes: {error_msg.split(',')[0] if ',' in error_msg else error_msg}")
+                logger.warning(
+                    f"Failed to create indexes: {error_msg.split(',')[0] if ',' in error_msg else error_msg}"
+                )
                 logger.debug(f"Index creation error: {e}")
             # Don't raise - indexes are optional for functionality
 
@@ -304,5 +318,3 @@ def get_database_sync() -> MongoDB:
         logger.error(f"Failed to get database in sync context: {e}")
         logger.exception("Sync database retrieval error:")
         raise
-
-

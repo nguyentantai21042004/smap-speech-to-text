@@ -12,7 +12,7 @@ from typing import Optional
 from datetime import datetime
 
 from core.config import get_settings
-from core.logger import logger
+from core.logger import logger, format_exception_short
 from core.storage import get_minio_client
 from repositories.task_repository import get_task_repository
 from repositories.models import JobStatus, JobUpdate, ChunkModel
@@ -24,6 +24,7 @@ from worker.errors import (
     PermanentError,
     InvalidAudioFormatError,
     CorruptedFileError,
+    MissingDependencyError,
     WhisperCrashError,
     TimeoutError as STTTimeoutError,
 )
@@ -69,7 +70,7 @@ async def process_stt_job(job_id: str) -> dict:
 
         if not job:
             error_msg = f"Job not found: {job_id}"
-            logger.error(f"❌ {error_msg}")
+            logger.error(f"{error_msg}")
             raise PermanentError(error_msg)
 
         logger.info(
@@ -95,7 +96,7 @@ async def process_stt_job(job_id: str) -> dict:
             await repo.update_job(job_id, JobUpdate(audio_duration_seconds=duration))
             logger.info(f"Audio duration: {duration:.2f}s")
         except Exception as e:
-            logger.warning(f"⚠️ Failed to get audio duration: {e}")
+            logger.warning(f"Failed to get audio duration: {e}")
 
         # Step 2: Chunk audio
         logger.info(f"Step 2: Chunking audio...")
@@ -122,6 +123,8 @@ async def process_stt_job(job_id: str) -> dict:
 
         # Step 6: Update job as completed
         logger.info(f"Step 6: Updating job status to COMPLETED...")
+        logger.info(f"📝 Saving transcription_text to database: length={len(final_transcription)} chars")
+        logger.debug(f"📝 Transcription preview: {final_transcription[:200]}...")
         await repo.update_job(
             job_id,
             JobUpdate(
@@ -129,8 +132,10 @@ async def process_stt_job(job_id: str) -> dict:
                 transcription_text=final_transcription,
                 minio_result_path=result_path,
                 chunks_completed=len(transcribed_chunks),
+                completed_at=datetime.utcnow(),
             ),
         )
+        logger.info(f"✅ Job updated with transcription_text: length={len(final_transcription)} chars")
 
         elapsed_time = time.time() - start_time
         logger.info(
@@ -153,48 +158,49 @@ async def process_stt_job(job_id: str) -> dict:
             "processing_time_seconds": elapsed_time,
         }
 
+    except MissingDependencyError as e:
+        elapsed_time = time.time() - start_time
+        error_msg = format_exception_short(e, f"Missing dependency error after {elapsed_time:.2f}s")
+        logger.error(f"{error_msg}")
+    
     except PermanentError as e:
         elapsed_time = time.time() - start_time
-        logger.error(
-            f"❌ Permanent error processing job {job_id} after {elapsed_time:.2f}s: {e}"
-        )
-        logger.exception("Permanent error details:")
+        error_msg = format_exception_short(e, f"Permanent error processing job {job_id} after {elapsed_time:.2f}s")
+        logger.error(f"{error_msg}")
 
         try:
             repo = get_task_repository()
             await repo.update_status(job_id, JobStatus.FAILED, str(e))
         except Exception as update_error:
-            logger.error(f"❌ Failed to update job status: {update_error}")
+            error_formatted = format_exception_short(update_error, "Failed to update job status")
+            logger.error(f"{error_formatted}")
 
         raise
 
     except TransientError as e:
         elapsed_time = time.time() - start_time
-        logger.error(
-            f"❌ Transient error processing job {job_id} after {elapsed_time:.2f}s: {e}"
-        )
-        logger.exception("Transient error details:")
+        error_msg = format_exception_short(e, f"Transient error processing job {job_id} after {elapsed_time:.2f}s")
+        logger.error(f"{error_msg}")
 
         try:
             repo = get_task_repository()
             await repo.increment_retry_count(job_id)
         except Exception as update_error:
-            logger.error(f"❌ Failed to increment retry count: {update_error}")
+            logger.error(f"Failed to increment retry count: {update_error}")
 
         raise
 
     except Exception as e:
         elapsed_time = time.time() - start_time
-        logger.error(
-            f"❌ Unexpected error processing job {job_id} after {elapsed_time:.2f}s: {e}"
-        )
-        logger.exception("Processing error details:")
+        error_msg = format_exception_short(e, f"Unexpected error processing job {job_id} after {elapsed_time:.2f}s")
+        logger.error(f"{error_msg}")
 
         try:
             repo = get_task_repository()
             await repo.update_status(job_id, JobStatus.FAILED, str(e))
         except Exception as update_error:
-            logger.error(f"❌ Failed to update job status: {update_error}")
+            error_formatted = format_exception_short(update_error, "Failed to update job status")
+            logger.error(f"{error_formatted}")
 
         raise
 
@@ -206,7 +212,7 @@ async def process_stt_job(job_id: str) -> dict:
                 shutil.rmtree(temp_dir)
                 logger.debug(f"Temp directory cleaned")
             except Exception as e:
-                logger.warning(f"⚠️ Failed to clean temp directory: {e}")
+                logger.warning(f"Failed to clean temp directory: {e}")
 
 
 async def _download_audio_from_minio(job, temp_dir: str) -> str:
@@ -229,7 +235,7 @@ async def _download_audio_from_minio(job, temp_dir: str) -> str:
         # Validate minio_audio_path
         if not job.minio_audio_path or job.minio_audio_path.strip() == "":
             error_msg = f"MinIO audio path is empty for job {job.id}"
-            logger.error(f"❌ {error_msg}")
+            logger.error(f"{error_msg}")
             raise ValueError(error_msg)
 
         # Get MinIO client
@@ -245,8 +251,8 @@ async def _download_audio_from_minio(job, temp_dir: str) -> str:
         return local_path
 
     except Exception as e:
-        logger.error(f"❌ Failed to download audio from MinIO: {e}")
-        logger.exception("MinIO download error details:")
+        error_formatted = format_exception_short(e, "MinIO download failed")
+        logger.error(f"{error_formatted}")
         raise TransientError(f"MinIO download failed: {e}")
 
 
@@ -287,17 +293,22 @@ async def _chunk_audio(audio_path: str, temp_dir: str, job) -> list:
 
         return chunks
 
+    except MissingDependencyError as e:
+        # Missing dependencies (ffmpeg) are permanent errors - cannot be fixed by retry
+        logger.error(f"Missing dependency: {e}")
+        raise PermanentError(f"Missing dependency: {e}")
+    
     except InvalidAudioFormatError as e:
-        logger.error(f"❌ Invalid audio format: {e}")
+        logger.error(f"Invalid audio format: {e}")
         raise PermanentError(f"Invalid audio format: {e}")
 
     except CorruptedFileError as e:
-        logger.error(f"❌ Corrupted audio file: {e}")
+        logger.error(f"Corrupted audio file: {e}")
         raise PermanentError(f"Corrupted audio file: {e}")
 
     except Exception as e:
-        logger.error(f"❌ Audio chunking failed: {e}")
-        logger.exception("Chunking error details:")
+        error_formatted = format_exception_short(e, "Chunking failed")
+        logger.error(f"{error_formatted}")
         raise TransientError(f"Chunking failed: {e}")
 
 
@@ -352,19 +363,19 @@ async def _transcribe_chunks(chunks: list, job, repo, job_id: str) -> list:
                 )
 
             except STTTimeoutError as e:
-                logger.error(f"❌ Timeout transcribing chunk {i}: {e}")
+                logger.error(f"Timeout transcribing chunk {i}: {e}")
                 chunk["status"] = JobStatus.FAILED
                 chunk["error_message"] = str(e)
                 # Continue with other chunks
 
             except WhisperCrashError as e:
-                logger.error(f"❌ Whisper crash on chunk {i}: {e}")
+                logger.error(f"Whisper crash on chunk {i}: {e}")
                 chunk["status"] = JobStatus.FAILED
                 chunk["error_message"] = str(e)
                 # Continue with other chunks
 
             except Exception as e:
-                logger.error(f"❌ Failed to transcribe chunk {i}: {e}")
+                logger.error(f"Failed to transcribe chunk {i}: {e}")
                 logger.exception("Chunk transcription error:")
                 chunk["status"] = JobStatus.FAILED
                 chunk["error_message"] = str(e)
@@ -381,8 +392,8 @@ async def _transcribe_chunks(chunks: list, job, repo, job_id: str) -> list:
         return transcribed_chunks
 
     except Exception as e:
-        logger.error(f"❌ Chunk transcription failed: {e}")
-        logger.exception("Transcription error details:")
+        error_formatted = format_exception_short(e, "Transcription failed")
+        logger.error(f"{error_formatted}")
         raise
 
 
@@ -410,17 +421,17 @@ async def _merge_results(chunks: list) -> str:
         return merged_text
 
     except Exception as e:
-        logger.error(f"❌ Result merging failed: {e}")
-        logger.exception("Merge error details:")
+        error_formatted = format_exception_short(e, "Merge failed")
+        logger.error(f"{error_formatted}")
         # Fallback: simple concatenation
         try:
-            logger.warning("⚠️ Using fallback: simple concatenation")
+            logger.warning("Using fallback: simple concatenation")
             texts = [
                 c.get("transcription", "") for c in chunks if c.get("transcription")
             ]
             return " ".join(texts)
         except Exception as fallback_error:
-            logger.error(f"❌ Fallback merge also failed: {fallback_error}")
+            logger.error(f"Fallback merge also failed: {fallback_error}")
             raise PermanentError(f"Merge failed: {e}")
 
 
@@ -465,6 +476,6 @@ async def _upload_results_to_minio(job_id: str, transcription: str) -> str:
         return minio_path
 
     except Exception as e:
-        logger.error(f"❌ Failed to upload results to MinIO: {e}")
-        logger.exception("MinIO upload error details:")
+        error_formatted = format_exception_short(e, "MinIO upload failed")
+        logger.error(f"{error_formatted}")
         raise TransientError(f"MinIO upload failed: {e}")

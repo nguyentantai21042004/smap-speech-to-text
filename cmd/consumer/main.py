@@ -15,6 +15,7 @@ from core.config import get_settings
 from core.logger import logger
 from core.database import get_database
 from core.messaging import get_queue_manager
+from core.dependencies import validate_dependencies
 from internal.consumer.handlers.stt_handler import handle_stt_message
 
 
@@ -34,7 +35,7 @@ class ConsumerService:
             self.shutdown_event = asyncio.Event()
             logger.info("Consumer Service initialized")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize Consumer Service: {e}")
+            logger.error(f"Failed to initialize Consumer Service: {e}")
             logger.exception("Consumer Service initialization error:")
             raise
 
@@ -48,6 +49,14 @@ class ConsumerService:
             logger.info(f"🔍 Environment: {self.settings.environment}")
             logger.info(f"🔍 Debug mode: {self.settings.debug}")
             logger.info(f"🔍 Max concurrent jobs: {self.settings.max_concurrent_jobs}")
+
+            # Validate system dependencies (ffmpeg/ffprobe)
+            try:
+                validate_dependencies()
+                logger.info("✅ System dependencies validated")
+            except Exception as e:
+                logger.error(f"Dependency validation failed: {e}")
+                raise
 
             # Connect to MongoDB
             try:
@@ -67,11 +76,11 @@ class ConsumerService:
                 if db_healthy:
                     logger.info("MongoDB health check passed")
                 else:
-                    logger.warning("⚠️ MongoDB health check failed")
+                    logger.warning("MongoDB health check failed")
                     raise Exception("MongoDB health check failed")
 
             except Exception as e:
-                logger.error(f"❌ Failed to connect to MongoDB: {e}")
+                logger.error(f"Failed to connect to MongoDB: {e}")
                 logger.exception("MongoDB connection error details:")
                 raise
 
@@ -90,18 +99,18 @@ class ConsumerService:
                 if rabbitmq_healthy:
                     logger.info("RabbitMQ health check passed")
                 else:
-                    logger.warning("⚠️ RabbitMQ health check failed")
+                    logger.warning("RabbitMQ health check failed")
                     raise Exception("RabbitMQ health check failed")
 
             except Exception as e:
-                logger.error(f"❌ Failed to initialize RabbitMQ: {e}")
+                logger.error(f"Failed to initialize RabbitMQ: {e}")
                 logger.exception("RabbitMQ initialization error details:")
                 raise
 
             logger.info(f"========== Consumer Service startup complete ==========")
 
         except Exception as e:
-            logger.error(f"❌ Consumer Service startup failed: {e}")
+            logger.error(f"Consumer Service startup failed: {e}")
             logger.exception("Startup error details:")
             raise
 
@@ -120,7 +129,7 @@ class ConsumerService:
                     await self.queue_manager.disconnect()
                     logger.info("RabbitMQ disconnected successfully")
             except Exception as e:
-                logger.error(f"❌ Error disconnecting from RabbitMQ: {e}")
+                logger.error(f"Error disconnecting from RabbitMQ: {e}")
                 logger.exception("RabbitMQ disconnect error details:")
 
             # Disconnect from MongoDB
@@ -130,13 +139,13 @@ class ConsumerService:
                     await self.db.disconnect()
                     logger.info("MongoDB disconnected successfully")
             except Exception as e:
-                logger.error(f"❌ Error disconnecting from MongoDB: {e}")
+                logger.error(f"Error disconnecting from MongoDB: {e}")
                 logger.exception("MongoDB disconnect error details:")
 
             logger.info("========== Consumer Service stopped ==========")
 
         except Exception as e:
-            logger.error(f"❌ Error during shutdown: {e}")
+            logger.error(f"Error during shutdown: {e}")
             logger.exception("Shutdown error details:")
 
     async def start_consuming(self):
@@ -164,7 +173,7 @@ class ConsumerService:
             logger.info("Shutdown signal received, stopping consumer...")
 
         except Exception as e:
-            logger.error(f"❌ Error in consumer: {e}")
+            logger.error(f"Error in consumer: {e}")
             logger.exception("Consumer error details:")
             raise
 
@@ -181,7 +190,7 @@ class ConsumerService:
             await self.start_consuming()
 
         except Exception as e:
-            logger.error(f"❌ Error in consumer service: {e}")
+            logger.error(f"Error in consumer service: {e}")
             logger.exception("Consumer service error:")
             raise
         finally:
@@ -219,10 +228,10 @@ async def main():
         await service.run()
 
     except KeyboardInterrupt:
-        logger.info("⚠️ Received keyboard interrupt")
+        logger.info("Received keyboard interrupt")
 
     except Exception as e:
-        logger.error(f"❌ Fatal error in consumer service: {e}")
+        logger.error(f"Fatal error in consumer service: {e}")
         logger.exception("Fatal error details:")
         sys.exit(1)
 
@@ -233,7 +242,7 @@ async def main():
                 logger.info("Running final shutdown sequence...")
                 await service.shutdown()
             except Exception as e:
-                logger.error(f"❌ Error during final shutdown: {e}")
+                logger.error(f"Error during final shutdown: {e}")
                 logger.exception("Final shutdown error details:")
 
         logger.info("Consumer service exited")
@@ -244,6 +253,6 @@ if __name__ == "__main__":
         # Run the async main function
         asyncio.run(main())
     except Exception as e:
-        logger.error(f"❌ Failed to start consumer service: {e}")
+        logger.error(f"Failed to start consumer service: {e}")
         logger.exception("Startup error details:")
         sys.exit(1)

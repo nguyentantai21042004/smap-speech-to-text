@@ -36,7 +36,7 @@ def upload_model(model_name: str, local_dir: Path) -> bool:
     """
     try:
         if model_name not in MODEL_CONFIGS:
-            logger.error(f"❌ Invalid model: {model_name}")
+            logger.error(f"Invalid model: {model_name}")
             return False
 
         config = MODEL_CONFIGS[model_name]
@@ -44,7 +44,7 @@ def upload_model(model_name: str, local_dir: Path) -> bool:
 
         # Check if local file exists
         if not local_path.exists():
-            logger.error(f"❌ Local model file not found: {local_path}")
+            logger.error(f"Local model file not found: {local_path}")
             logger.info(
                 f"💡 Please download the model first or place it in: {local_dir}"
             )
@@ -69,7 +69,7 @@ def upload_model(model_name: str, local_dir: Path) -> bool:
         return True
 
     except Exception as e:
-        logger.error(f"❌ Failed to upload model {model_name}: {e}")
+        logger.error(f"Failed to upload model {model_name}: {e}")
         logger.exception("Upload error details:")
         return False
 
@@ -92,7 +92,7 @@ def main():
 
         local_dir = Path(settings.whisper_models_dir)
         if not local_dir.exists():
-            logger.error(f"❌ Local models directory not found: {local_dir}")
+            logger.error(f"Local models directory not found: {local_dir}")
             logger.info(
                 "💡 Please create the directory and place model files there first."
             )
@@ -111,7 +111,7 @@ def main():
                     models.append(model_name)
 
             if not models:
-                logger.error(f"❌ No model files found in: {local_dir}")
+                logger.error(f"No model files found in: {local_dir}")
                 logger.info(
                     f"💡 Place model files (ggml-*.bin) in {local_dir} first"
                 )
@@ -124,7 +124,7 @@ def main():
         for model in models:
             if model not in MODEL_CONFIGS:
                 logger.error(
-                    f"❌ Invalid model: {model}. Valid models: {list(MODEL_CONFIGS.keys())}"
+                    f"Invalid model: {model}. Valid models: {list(MODEL_CONFIGS.keys())}"
                 )
                 continue
 
@@ -145,14 +145,14 @@ def main():
                 "\n   3. Models are cached and reused across restarts"
             )
         else:
-            logger.warning(f"⚠️ Some models failed to upload")
+            logger.warning(f"Some models failed to upload")
             sys.exit(1)
 
     except KeyboardInterrupt:
-        logger.warning("\n⚠️ Upload interrupted by user")
+        logger.warning("\nUpload interrupted by user")
         sys.exit(1)
     except Exception as e:
-        logger.error(f"\n❌ Upload failed: {e}")
+        logger.error(f"\nUpload failed: {e}")
         logger.exception("Upload error details:")
         sys.exit(1)
 

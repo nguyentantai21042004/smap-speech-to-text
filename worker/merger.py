@@ -32,7 +32,7 @@ class ResultMerger:
             logger.info(f"Starting chunk merge: total_chunks={len(chunks)}")
 
             if not chunks:
-                logger.warning("⚠️ No chunks to merge")
+                logger.warning("No chunks to merge")
                 return ""
 
             # Sort chunks by index
@@ -46,7 +46,7 @@ class ResultMerger:
                     transcription = chunk.get('transcription', '')
 
                     if not transcription:
-                        logger.warning(f"⚠️ Empty transcription for chunk {i}")
+                        logger.warning(f"Empty transcription for chunk {i}")
                         continue
 
                     # Clean transcription
@@ -56,13 +56,13 @@ class ResultMerger:
                     logger.debug(f"Chunk {i} transcription: length={len(transcription)} chars")
 
                 except Exception as e:
-                    logger.error(f"❌ Failed to process chunk {i}: {e}")
+                    logger.error(f"Failed to process chunk {i}: {e}")
                     logger.exception("Chunk processing error:")
                     # Continue with other chunks
                     continue
 
             if not transcriptions:
-                logger.warning("⚠️ No valid transcriptions found")
+                logger.warning("No valid transcriptions found")
                 return ""
 
             # Merge with overlap removal
@@ -82,7 +82,7 @@ class ResultMerger:
             return merged_text
 
         except Exception as e:
-            logger.error(f"❌ Chunk merge failed: {e}")
+            logger.error(f"Chunk merge failed: {e}")
             logger.exception("Merge error details:")
             raise
 
@@ -109,7 +109,7 @@ class ResultMerger:
             return text
 
         except Exception as e:
-            logger.error(f"❌ Text cleaning failed: {e}")
+            logger.error(f"Text cleaning failed: {e}")
             return text  # Return original if cleaning fails
 
     def _merge_with_overlap_removal(self, transcriptions: List[str]) -> str:
@@ -152,7 +152,7 @@ class ResultMerger:
             return merged
 
         except Exception as e:
-            logger.error(f"❌ Overlap removal failed: {e}")
+            logger.error(f"Overlap removal failed: {e}")
             logger.exception("Overlap removal error:")
             # Fallback: simple concatenation
             return ' '.join(transcriptions)
@@ -183,7 +183,7 @@ class ResultMerger:
             return 0
 
         except Exception as e:
-            logger.error(f"❌ Overlap detection failed: {e}")
+            logger.error(f"Overlap detection failed: {e}")
             return 0
 
     def _final_cleanup(self, text: str) -> str:
@@ -227,7 +227,7 @@ class ResultMerger:
             return text
 
         except Exception as e:
-            logger.error(f"❌ Final cleanup failed: {e}")
+            logger.error(f"Final cleanup failed: {e}")
             logger.exception("Cleanup error:")
             return text  # Return original if cleanup fails
 
@@ -264,7 +264,7 @@ class ResultMerger:
                     )
 
                 except Exception as e:
-                    logger.error(f"❌ Failed to add timestamp to chunk: {e}")
+                    logger.error(f"Failed to add timestamp to chunk: {e}")
                     continue
 
             logger.info(f"Timestamps added to {len(timestamped_chunks)} chunks")
@@ -272,6 +272,6 @@ class ResultMerger:
             return timestamped_chunks
 
         except Exception as e:
-            logger.error(f"❌ Failed to add timestamps: {e}")
+            logger.error(f"Failed to add timestamps: {e}")
             logger.exception("Timestamp addition error:")
             return chunks  # Return original if adding timestamps fails

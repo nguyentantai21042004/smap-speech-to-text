@@ -39,7 +39,9 @@ class Settings(BaseSettings):
     mongodb_url: str = Field(default="mongodb://localhost:27017", alias="MONGODB_URL")
     mongodb_database: str = Field(default="stt_system", alias="MONGODB_DATABASE")
     mongodb_root_user: Optional[str] = Field(default=None, alias="MONGODB_ROOT_USER")
-    mongodb_root_password: Optional[str] = Field(default=None, alias="MONGODB_ROOT_PASSWORD")
+    mongodb_root_password: Optional[str] = Field(
+        default=None, alias="MONGODB_ROOT_PASSWORD"
+    )
     mongodb_max_pool_size: int = Field(default=10, alias="MONGODB_MAX_POOL_SIZE")
     mongodb_min_pool_size: int = Field(default=1, alias="MONGODB_MIN_POOL_SIZE")
 
@@ -69,14 +71,12 @@ class Settings(BaseSettings):
 
     # Whisper Settings
     whisper_executable: str = Field(
-        default="./whisper/whisper.cpp/main", alias="WHISPER_EXECUTABLE"
+        default="./whisper/bin/whisper-cli", alias="WHISPER_EXECUTABLE"
     )
     whisper_models_dir: str = Field(
-        default="./whisper/whisper.cpp/models", alias="WHISPER_MODELS_DIR"
+        default="./whisper/models", alias="WHISPER_MODELS_DIR"
     )
-    default_whisper_model: str = Field(
-        default="medium", alias="DEFAULT_WHISPER_MODEL"
-    )
+    default_whisper_model: str = Field(default="medium", alias="DEFAULT_WHISPER_MODEL")
 
     # Chunking Settings
     chunk_duration: int = Field(default=30, alias="CHUNK_DURATION")
@@ -112,32 +112,32 @@ class Settings(BaseSettings):
         # If MONGODB_URL already contains credentials (@), use it as-is
         if "@" in self.mongodb_url:
             return self.mongodb_url
-        
+
         # If MONGODB_ROOT_USER and MONGODB_ROOT_PASSWORD are provided, build auth URL
         if self.mongodb_root_user and self.mongodb_root_password:
             # Extract host and port from existing URL
             # Remove "mongodb://" prefix
             url_without_protocol = self.mongodb_url.replace("mongodb://", "")
-            
+
             # Split by "/" to separate host:port and database path
             url_parts = url_without_protocol.split("/")
             host_port = url_parts[0]
-            
+
             # Build authenticated URL
             auth_url = f"mongodb://{self.mongodb_root_user}:{self.mongodb_root_password}@{host_port}"
-            
+
             # Add database to path (use mongodb_database from config)
             # This is required for authentication to work
             if self.mongodb_database:
                 auth_url += f"/{self.mongodb_database}"
-            
+
             # Add authSource parameter (required for MongoDB authentication)
             # Use the same database name as authSource
             if self.mongodb_database:
                 auth_url += f"?authSource={self.mongodb_database}"
-            
+
             return auth_url
-        
+
         # Otherwise, use original MONGODB_URL
         return self.mongodb_url
 

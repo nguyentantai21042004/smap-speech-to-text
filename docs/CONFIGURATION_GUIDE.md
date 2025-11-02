@@ -38,7 +38,7 @@ cp .env.example .env
 | `API_PORT` | No | `8000` | API server port | cmd/api/main.py |
 | `API_RELOAD` | No | `True` | Enable auto-reload in development | cmd/api/main.py |
 | `API_WORKERS` | No | `4` | Number of Uvicorn workers (production) | cmd/api/main.py |
-| `MAX_UPLOAD_SIZE_MB` | No | `500` | Maximum audio file size in MB | ⚠️ **Defined but NOT currently used** |
+| `MAX_UPLOAD_SIZE_MB` | No | `500` | Maximum audio file size in MB | **Defined but NOT currently used** |
 
 **Usage:**
 - Use `0.0.0.0` for host to accept connections from any network interface
@@ -141,8 +141,8 @@ http://localhost:9001 (minioadmin/minioadmin)
 |-------|----------|---------|-------------|---------|
 | `WHISPER_EXECUTABLE` | Yes | `./whisper/whisper.cpp/main` | Path to Whisper.cpp executable | worker/transcriber.py |
 | `WHISPER_MODELS_DIR` | Yes | `./whisper/whisper.cpp/models` | Directory containing Whisper models | worker/transcriber.py |
-| `DEFAULT_MODEL` | No | `medium` | Default Whisper model | ⚠️ **Defined but NOT enforced** |
-| `DEFAULT_LANGUAGE` | No | `vi` | Default language code | ⚠️ **Defined but NOT enforced** |
+| `DEFAULT_MODEL` | No | `medium` | Default Whisper model | **Defined but NOT enforced** |
+| `DEFAULT_LANGUAGE` | No | `vi` | Default language code | **Defined but NOT enforced** |
 
 **Usage:**
 - Whisper.cpp performs the actual speech-to-text transcription
@@ -164,9 +164,9 @@ cd whisper/whisper.cpp
 
 | Field | Required | Default | Description | Used In |
 |-------|----------|---------|-------------|---------|
-| `CHUNK_STRATEGY` | No | `silence_based` | Chunking strategy (silence_based or fixed_duration) | ⚠️ **Defined but NOT used** |
+| `CHUNK_STRATEGY` | No | `silence_based` | Chunking strategy (silence_based or fixed_duration) | **Defined but NOT used** |
 | `CHUNK_DURATION` | No | `30` | Chunk duration in seconds | worker/chunking.py, worker/processor.py |
-| `CHUNK_OVERLAP` | No | `3` | Overlap between chunks in seconds | ⚠️ **Defined but NOT used** |
+| `CHUNK_OVERLAP` | No | `3` | Overlap between chunks in seconds | **Defined but NOT used** |
 | `SILENCE_THRESHOLD` | No | `-40` | Silence detection threshold in dB | worker/processor.py |
 | `MIN_SILENCE_DURATION` | No | `1.0` | Minimum silence duration in seconds | worker/processor.py |
 
@@ -184,7 +184,7 @@ cd whisper/whisper.cpp
 | Field | Required | Default | Description | Used In |
 |-------|----------|---------|-------------|---------|
 | `MAX_RETRIES` | No | `3` | Maximum retry attempts for failed chunks | worker/processor.py |
-| `RETRY_DELAY` | No | `2` | Delay between retries in seconds | ⚠️ **Defined but NOT used** |
+| `RETRY_DELAY` | No | `2` | Delay between retries in seconds | **Defined but NOT used** |
 | `JOB_TIMEOUT` | No | `3600` | Job timeout in seconds (1 hour) | core/messaging.py |
 | `CHUNK_TIMEOUT` | No | `300` | Single chunk timeout in seconds (5 min) | worker/transcriber.py |
 | `MAX_CONCURRENT_JOBS` | No | `4` | Maximum concurrent jobs per worker | cmd/consumer/main.py |
@@ -215,8 +215,8 @@ cd whisper/whisper.cpp
 
 | Field | Required | Default | Description | Used In |
 |-------|----------|---------|-------------|---------|
-| `LOG_LEVEL` | No | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) | ⚠️ **Defined but NOT used** |
-| `LOG_FILE` | No | `logs/stt.log` | Log file path | ⚠️ **Defined but NOT used** |
+| `LOG_LEVEL` | No | `INFO` | Logging level (DEBUG, INFO, WARNING, ERROR) | **Defined but NOT used** |
+| `LOG_FILE` | No | `logs/stt.log` | Log file path | **Defined but NOT used** |
 
 **Usage:**
 - Logging is currently controlled by `DEBUG` setting
@@ -246,11 +246,11 @@ The following fields are **defined in core/config.py** but are **NOT currently u
 | Field | Status | Recommendation |
 |-------|--------|----------------|
 | `MAX_UPLOAD_SIZE_MB` | Defined but not enforced | **Keep** - Should be used for validation |
-| `DEFAULT_MODEL` | Defined but not enforced | ❌ **Remove** - Model comes from API request |
-| `DEFAULT_LANGUAGE` | Defined but not enforced | ❌ **Remove** - Language comes from API request |
-| `CHUNK_STRATEGY` | Defined but not used | ❌ **Remove** - Strategy is hardcoded |
-| `CHUNK_OVERLAP` | Defined but not used | ❌ **Remove** - Not implemented |
-| `RETRY_DELAY` | Defined but not used | ❌ **Remove** - Retry delay not configurable |
+| `DEFAULT_MODEL` | Defined but not enforced | **Remove** - Model comes from API request |
+| `DEFAULT_LANGUAGE` | Defined but not enforced | **Remove** - Language comes from API request |
+| `CHUNK_STRATEGY` | Defined but not used | **Remove** - Strategy is hardcoded |
+| `CHUNK_OVERLAP` | Defined but not used | **Remove** - Not implemented |
+| `RETRY_DELAY` | Defined but not used | **Remove** - Retry delay not configurable |
 | `LOG_LEVEL` | Defined but not used | **Keep** - Should be used instead of DEBUG |
 | `LOG_FILE` | Defined but not used | **Keep** - Should be used for file logging |
 

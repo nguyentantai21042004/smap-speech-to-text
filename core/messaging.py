@@ -32,7 +32,7 @@ class QueueManager:
             self.queue: Optional[Queue] = None
             logger.debug("RabbitMQ QueueManager initialized")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize QueueManager: {e}")
+            logger.error(f"Failed to initialize QueueManager: {e}")
             logger.exception("QueueManager initialization error:")
             raise
 
@@ -100,13 +100,13 @@ class QueueManager:
             logger.info("RabbitMQ connection established successfully")
 
         except aio_pika.exceptions.AMQPConnectionError as e:
-            logger.error(f"❌ RabbitMQ connection error: {e}")
+            logger.error(f"RabbitMQ connection error: {e}")
             logger.error(f"Check if RabbitMQ is running at {self.settings.rabbitmq_host}:{self.settings.rabbitmq_port}")
             logger.exception("Connection error details:")
             raise
 
         except Exception as e:
-            logger.error(f"❌ Failed to connect to RabbitMQ: {e}")
+            logger.error(f"Failed to connect to RabbitMQ: {e}")
             logger.exception("RabbitMQ connection error details:")
             raise
 
@@ -130,7 +130,7 @@ class QueueManager:
             logger.info("RabbitMQ disconnected successfully")
 
         except Exception as e:
-            logger.error(f"❌ Error disconnecting from RabbitMQ: {e}")
+            logger.error(f"Error disconnecting from RabbitMQ: {e}")
             logger.exception("Disconnect error details:")
 
     async def publish_job(
@@ -157,7 +157,7 @@ class QueueManager:
             logger.info(f"Publishing job to queue: job_id={job_id}, priority={priority}")
 
             if not self.exchange:
-                logger.error("❌ Exchange not initialized. Call connect() first.")
+                logger.error("Exchange not initialized. Call connect() first.")
                 raise RuntimeError("RabbitMQ not connected")
 
             # Prepare message
@@ -193,7 +193,7 @@ class QueueManager:
             return True
 
         except Exception as e:
-            logger.error(f"❌ Failed to publish job {job_id}: {e}")
+            logger.error(f"Failed to publish job {job_id}: {e}")
             logger.exception("Publish error details:")
             raise
 
@@ -216,7 +216,7 @@ class QueueManager:
             logger.info(f"Starting to consume jobs from queue: {self.settings.rabbitmq_queue_name}")
 
             if not self.queue:
-                logger.error("❌ Queue not initialized. Call connect() first.")
+                logger.error("Queue not initialized. Call connect() first.")
                 raise RuntimeError("RabbitMQ not connected")
 
             # Set QoS
@@ -230,7 +230,7 @@ class QueueManager:
             await self.queue.consume(callback)
 
         except Exception as e:
-            logger.error(f"❌ Error consuming jobs: {e}")
+            logger.error(f"Error consuming jobs: {e}")
             logger.exception("Consume error details:")
             raise
 
@@ -258,7 +258,7 @@ class QueueManager:
             return True
 
         except Exception as e:
-            logger.error(f"❌ Health check error: {e}")
+            logger.error(f"Health check error: {e}")
             return False
 
     async def get_queue_size(self) -> Optional[int]:
@@ -284,7 +284,7 @@ class QueueManager:
             return message_count
 
         except Exception as e:
-            logger.error(f"❌ Failed to get queue size: {e}")
+            logger.error(f"Failed to get queue size: {e}")
             logger.exception("Queue size error:")
             return None
 
@@ -296,7 +296,7 @@ class QueueManager:
             True if successful, False otherwise
         """
         try:
-            logger.warning(f"⚠️ Purging queue: {self.settings.rabbitmq_queue_name}")
+            logger.warning(f"Purging queue: {self.settings.rabbitmq_queue_name}")
 
             if not self.queue:
                 logger.error("Queue not initialized")
@@ -307,7 +307,7 @@ class QueueManager:
             return True
 
         except Exception as e:
-            logger.error(f"❌ Failed to purge queue: {e}")
+            logger.error(f"Failed to purge queue: {e}")
             logger.exception("Purge error:")
             return False
 
@@ -333,6 +333,6 @@ def get_queue_manager() -> QueueManager:
         return _queue_manager
 
     except Exception as e:
-        logger.error(f"❌ Failed to get queue manager: {e}")
+        logger.error(f"Failed to get queue manager: {e}")
         logger.exception("Queue manager initialization error:")
         raise

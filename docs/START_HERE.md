@@ -186,12 +186,12 @@ def example_function(param):
         return result
 
     except SpecificError as e:
-        logger.error(f"❌ Specific error: {e}")
+        logger.error(f"Specific error: {e}")
         logger.exception("Error details:")
         raise
 
     except Exception as e:
-        logger.error(f"❌ Unexpected error: {e}")
+        logger.error(f"Unexpected error: {e}")
         logger.exception("Full error details:")
         raise
 ```
@@ -199,9 +199,9 @@ def example_function(param):
 ### Logging Icons
 - Starting operation
 - Success
-- ❌ Error
+- Error
 - 🔍 Debug/Investigation
-- ⚠️ Warning
+- Warning
 - 📊 Statistics/Metrics
 
 ---

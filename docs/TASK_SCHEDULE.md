@@ -85,7 +85,7 @@ class MongoDB:
             logger.debug(f"Connection pool: min={settings.mongodb_min_pool_size}, max={settings.mongodb_max_pool_size}")
 
         except Exception as e:
-            logger.error(f"❌ Failed to connect to MongoDB: {e}")
+            logger.error(f"Failed to connect to MongoDB: {e}")
             logger.exception("MongoDB connection error details:")
             raise
 
@@ -97,7 +97,7 @@ class MongoDB:
                 self.client.close()
                 logger.info("Disconnected from MongoDB")
         except Exception as e:
-            logger.error(f"❌ Error disconnecting from MongoDB: {e}")
+            logger.error(f"Error disconnecting from MongoDB: {e}")
             logger.exception("MongoDB disconnection error details:")
 
     async def get_collection(self, collection_name: str):
@@ -111,7 +111,7 @@ class MongoDB:
             return collection
 
         except Exception as e:
-            logger.error(f"❌ Failed to access collection {collection_name}: {e}")
+            logger.error(f"Failed to access collection {collection_name}: {e}")
             raise
 
     async def health_check(self) -> bool:
@@ -126,7 +126,7 @@ class MongoDB:
             return True
 
         except Exception as e:
-            logger.error(f"❌ MongoDB health check failed: {e}")
+            logger.error(f"MongoDB health check failed: {e}")
             return False
 
 
@@ -147,7 +147,7 @@ async def get_database() -> MongoDB:
         return _mongodb
 
     except Exception as e:
-        logger.error(f"❌ Failed to get MongoDB instance: {e}")
+        logger.error(f"Failed to get MongoDB instance: {e}")
         logger.exception("Database initialization error:")
         raise
 
@@ -161,7 +161,7 @@ async def close_database() -> None:
             await _mongodb.disconnect()
             _mongodb = None
     except Exception as e:
-        logger.error(f"❌ Error closing database: {e}")
+        logger.error(f"Error closing database: {e}")
 ```
 
 **Testing:**
@@ -276,7 +276,7 @@ class JobModel(BaseModel):
             logger.debug(f"Converted JobModel to dict: job_id={self.job_id}")
             return data
         except Exception as e:
-            logger.error(f"❌ Failed to convert JobModel to dict: {e}")
+            logger.error(f"Failed to convert JobModel to dict: {e}")
             raise
 
     @classmethod
@@ -287,7 +287,7 @@ class JobModel(BaseModel):
             logger.debug(f"Created JobModel from dict: job_id={job.job_id}")
             return job
         except Exception as e:
-            logger.error(f"❌ Failed to create JobModel from dict: {e}")
+            logger.error(f"Failed to create JobModel from dict: {e}")
             logger.exception("Model creation error:")
             raise
 
@@ -394,7 +394,7 @@ class TaskRepository:
             return job
 
         except Exception as e:
-            logger.error(f"❌ Failed to create job: {e}")
+            logger.error(f"Failed to create job: {e}")
             logger.exception("Job creation error details:")
             raise
 
@@ -420,11 +420,11 @@ class TaskRepository:
                 logger.info(f"Job found: job_id={job_id}, status={doc.get('status')}")
                 return JobModel.from_dict(doc)
             else:
-                logger.warning(f"⚠️ Job not found: job_id={job_id}")
+                logger.warning(f"Job not found: job_id={job_id}")
                 return None
 
         except Exception as e:
-            logger.error(f"❌ Failed to get job {job_id}: {e}")
+            logger.error(f"Failed to get job {job_id}: {e}")
             logger.exception("Get job error details:")
             raise
 
@@ -462,11 +462,11 @@ class TaskRepository:
                 logger.info(f"Job updated: job_id={job_id}, modified={result.modified_count}")
                 return True
             else:
-                logger.warning(f"⚠️ Job not updated (not found or no changes): job_id={job_id}")
+                logger.warning(f"Job not updated (not found or no changes): job_id={job_id}")
                 return False
 
         except Exception as e:
-            logger.error(f"❌ Failed to update job {job_id}: {e}")
+            logger.error(f"Failed to update job {job_id}: {e}")
             logger.exception("Update job error details:")
             raise
 
@@ -504,7 +504,7 @@ class TaskRepository:
             return await self.update_job(job_id, update_data)
 
         except Exception as e:
-            logger.error(f"❌ Failed to update status for job {job_id}: {e}")
+            logger.error(f"Failed to update status for job {job_id}: {e}")
             raise
 
     async def get_pending_jobs(self, limit: int = 10) -> List[JobModel]:
@@ -527,7 +527,7 @@ class TaskRepository:
             return jobs
 
         except Exception as e:
-            logger.error(f"❌ Failed to get pending jobs: {e}")
+            logger.error(f"Failed to get pending jobs: {e}")
             raise
 
     async def delete_job(self, job_id: str) -> bool:
@@ -544,11 +544,11 @@ class TaskRepository:
                 logger.info(f"Job deleted: job_id={job_id}")
                 return True
             else:
-                logger.warning(f"⚠️ Job not found for deletion: job_id={job_id}")
+                logger.warning(f"Job not found for deletion: job_id={job_id}")
                 return False
 
         except Exception as e:
-            logger.error(f"❌ Failed to delete job {job_id}: {e}")
+            logger.error(f"Failed to delete job {job_id}: {e}")
             raise
 
 

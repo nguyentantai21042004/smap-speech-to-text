@@ -116,8 +116,8 @@ Ví dụ: File 2 phút (120s)
 - Dễ debug
 
 **Nhược điểm:**
-- ❌ Có thể cut giữa một từ
-- ❌ Xử lý chậm vì dư thừa overlap
+- Có thể cut giữa một từ
+- Xử lý chậm vì dư thừa overlap
 
 ---
 
@@ -144,9 +144,9 @@ Kết quả chunks sẽ tự nhiên nằm tại các điểm tạm dừng → k�
 - Độ chính xác cao hơn (khỏe từ lỡ cut giữa từ)
 
 **Nhược điểm:**
-- ❌ Phức tạp hơn
-- ❌ Cần pre-processing để detect silence
-- ❌ Có thể fail với audio nhiều tiếng ồn
+- Phức tạp hơn
+- Cần pre-processing để detect silence
+- Có thể fail với audio nhiều tiếng ồn
 
 ---
 
@@ -316,9 +316,9 @@ def test_chunking():
 
 | Error | Nguyên nhân | Retry? | Action |
 |-------|-----------|--------|--------|
-| Invalid Audio Format | File corrupt | ❌ Không | → FAILED, notify user |
-| Unsupported Language | Lang không support | ❌ Không | → FAILED immediately |
-| File Too Large | >2GB | ❌ Không | → FAILED, check limits |
+| Invalid Audio Format | File corrupt | Không | → FAILED, notify user |
+| Unsupported Language | Lang không support | Không | → FAILED immediately |
+| File Too Large | >2GB | Không | → FAILED, check limits |
 | Disk Full | Storage hết chỗ | Có (1 lần) | Alert admin, then FAILED |
 
 ---

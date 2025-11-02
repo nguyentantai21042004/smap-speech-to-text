@@ -13,7 +13,7 @@ echo "================================================"
 
 # Check if SKIP_MODEL_DOWNLOAD is set
 if [ "${SKIP_MODEL_DOWNLOAD}" = "true" ]; then
-    echo "⚠️  Skipping model download (SKIP_MODEL_DOWNLOAD=true)"
+    echo " Skipping model download (SKIP_MODEL_DOWNLOAD=true)"
 else
     echo "Checking Whisper models..."
     
@@ -25,7 +25,7 @@ else
         
         echo "📥 Downloading model: $MODEL"
         python /app/scripts/setup_models.py $MODEL || {
-            echo "❌ Failed to download model. Please check:"
+            echo "Failed to download model. Please check:"
             echo "   1. MinIO is running and accessible"
             echo "   2. Model exists in MinIO at 'whisper-models/ggml-$MODEL.bin'"
             echo "   3. MinIO credentials are correct"
@@ -36,7 +36,7 @@ else
         
         echo "Model ready!"
     else
-        echo "⚠️  setup_models.py not found, skipping model download"
+        echo " setup_models.py not found, skipping model download"
     fi
 fi
 

@@ -14,12 +14,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     WHISPER_MODELS_DIR=/app/whisper/models
 
 # Install system dependencies for audio processing and Whisper
+# Note: ffmpeg is REQUIRED for audio processing (pydub dependency)
+# - ffmpeg: Handles decoding/encoding of audio formats (mp3, wav, m4a, etc.)
+# - libsndfile1: Required for audio file I/O operations
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     gcc \
     g++ \
     make \
-    # Audio processing libraries
+    # Audio processing libraries (REQUIRED for STT)
     ffmpeg \
     libsndfile1 \
     # Cleanup

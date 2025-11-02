@@ -113,7 +113,8 @@ class JobModel(BaseModel):
     def to_dict(self) -> dict:
         """
         Convert to dictionary for MongoDB.
-        Excludes 'id' field as it will be stored as '_id' in MongoDB.
+        Excludes 'id' field (it will be stored as '_id' in MongoDB).
+        Also excludes 'job_id' field (legacy field, no longer used).
 
         Returns:
             Dictionary representation
@@ -122,12 +123,13 @@ class JobModel(BaseModel):
             Exception: If conversion fails
         """
         try:
-            data = self.dict(exclude={"id"})
+            # Exclude both 'id' (used as _id) and 'job_id' (legacy field)
+            data = self.dict(exclude={"id", "job_id"})
             logger.debug(f"Converted JobModel to dict: id={self.id}")
             return data
 
         except Exception as e:
-            logger.error(f"❌ Failed to convert JobModel to dict: {e}")
+            logger.error(f"Failed to convert JobModel to dict: {e}")
             logger.exception("Model to dict conversion error:")
             raise
 
@@ -165,7 +167,7 @@ class JobModel(BaseModel):
             return job
 
         except Exception as e:
-            logger.error(f"❌ Failed to create JobModel from dict: {e}")
+            logger.error(f"Failed to create JobModel from dict: {e}")
             logger.exception("Model creation error:")
             raise
 

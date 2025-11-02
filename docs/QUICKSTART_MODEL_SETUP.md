@@ -133,7 +133,7 @@ curl http://localhost:8000/api/v1/tasks/{job_id}/result
 ### Problem: Model download fails
 
 ```
-❌ Model not found in MinIO: whisper-models/ggml-medium.bin
+Model not found in MinIO: whisper-models/ggml-medium.bin
 ```
 
 **Solution:**
@@ -147,7 +147,7 @@ curl http://localhost:8000/api/v1/tasks/{job_id}/result
 ### Problem: Worker fails to start
 
 ```
-❌ Failed to download model
+Failed to download model
 ```
 
 **Solution:**

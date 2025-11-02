@@ -358,7 +358,7 @@ curl http://localhost:8000/api/v1/tasks/{job_id}/result
 
 **Symptoms**:
 ```
-❌ Failed to initialize RabbitMQ: connection refused
+Failed to initialize RabbitMQ: connection refused
 ```
 
 **Solutions**:
@@ -399,7 +399,7 @@ python cmd/consumer/main.py
 
 **Symptoms**:
 ```
-⚠️ HANDLER: Message requeued for retry: job_id=...
+HANDLER: Message requeued for retry: job_id=...
 ```
 
 **Solutions**:

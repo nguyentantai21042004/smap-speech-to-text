@@ -67,7 +67,7 @@ redis_password: Optional[str] = Field(default=None, alias="REDIS_PASSWORD")
 ```
 Connection attempt
 Connection success with pool info
-❌ Connection failures with full exception
+Connection failures with full exception
 Collection access
 Health check results
 Disconnection events
@@ -98,8 +98,8 @@ Redis connection attempt
 Queue initialization
 Job enqueue with job_id
 Job status queries
-❌ Connection failures
-❌ Enqueue failures
+Connection failures
+Enqueue failures
 ```
 
 **Error Handling:**
@@ -124,7 +124,7 @@ Job status queries
 **Logging Points:**
 ```
 Model creation from dict
-❌ Validation errors
+Validation errors
 Model to dict conversion
 ```
 
@@ -152,9 +152,9 @@ Model to dict conversion
 ```
 Operation start with parameters
 Success with result details
-❌ Failure with exception
+Failure with exception
 🔍 Query operations
-⚠️ Warning conditions (not found, etc.)
+Warning conditions (not found, etc.)
 ```
 
 **Error Handling:**
@@ -185,8 +185,8 @@ Audio format detection
 Duration calculation
 🔍 Silence detection parameters
 Each chunk creation with timestamps
-❌ Audio loading errors
-❌ Chunking failures
+Audio loading errors
+Chunking failures
 📊 Final chunk statistics (count, avg duration)
 ```
 
@@ -218,8 +218,8 @@ Transcription start with chunk info
 Whisper command construction
 🔍 Subprocess execution details
 Transcription success with text length
-❌ Whisper process failures
-❌ Timeout errors
+Whisper process failures
+Timeout errors
 📊 Processing time for each chunk
 ```
 
@@ -250,7 +250,7 @@ Merge start with chunk count
 🔍 Processing each chunk with index
 Boundary overlap detection
 Merge completion with final text length
-❌ Merge failures
+Merge failures
 ```
 
 **Error Handling:**
@@ -282,14 +282,14 @@ Audio download success
 Chunks created with count
 🔍 Processing each chunk
 Chunk transcription success
-❌ Chunk transcription failure
+Chunk transcription failure
 🔍 Merging results
 Merge success
 🔍 Uploading results to MinIO
 Upload success
 🔍 Updating job status
 Job completion
-❌ Any failures with retry count
+Any failures with retry count
 📊 Total processing time
 📊 Performance metrics
 ```
@@ -327,7 +327,7 @@ Service method called with parameters
 File upload to MinIO
 Job creation in database
 Job enqueue to Redis
-❌ Any failures
+Any failures
 📊 File size and format info
 ```
 
@@ -355,10 +355,10 @@ Job enqueue to Redis
 ```
 Request received with endpoint
 Request validation success
-❌ Validation errors
+Validation errors
 🔍 Service call
 Response sent with status code
-❌ Any errors
+Any errors
 📊 Request processing time
 ```
 
@@ -389,7 +389,7 @@ Priority: HIGH | Est. Time: 1.5 hours
 Job received from queue
 Job processing started
 Processing success
-❌ Processing failure
+Processing failure
 🔍 Retry attempts
 📊 Processing metrics
 ```
@@ -418,7 +418,7 @@ Processing success
 Application startup
 MongoDB connection
 Application ready
-❌ Startup failures
+Startup failures
 Shutdown initiated
 ```
 
@@ -445,7 +445,7 @@ MongoDB connection
 Redis connection
 Worker ready
 🔍 Job processing
-❌ Any failures
+Any failures
 ```
 
 **Error Handling:**
@@ -513,7 +513,7 @@ logger.info(f"Operation successful: details={value}")
 logger.debug(f"🔍 Processing: step={step}, data={data}")
 
 # Error
-logger.error(f"❌ Operation failed: {error}")
+logger.error(f"Operation failed: {error}")
 logger.exception("Full error details:")  # Logs stack trace
 ```
 
@@ -537,11 +537,11 @@ try:
     logger.info(f"Operation successful: {result}")
     return result
 except SpecificError as e:
-    logger.error(f"❌ Specific error: {e}")
+    logger.error(f"Specific error: {e}")
     logger.exception("Error details:")
     raise
 except Exception as e:
-    logger.error(f"❌ Unexpected error: {e}")
+    logger.error(f"Unexpected error: {e}")
     logger.exception("Full error details:")
     raise
 ```
@@ -555,13 +555,13 @@ for attempt in range(max_retries):
         logger.info(f"Success on attempt {attempt + 1}")
         return result
     except TransientError as e:
-        logger.warning(f"⚠️ Transient error on attempt {attempt + 1}: {e}")
+        logger.warning(f"Transient error on attempt {attempt + 1}: {e}")
         if attempt == max_retries - 1:
-            logger.error(f"❌ All retries exhausted")
+            logger.error(f"All retries exhausted")
             raise
         time.sleep(retry_delay)
     except PermanentError as e:
-        logger.error(f"❌ Permanent error: {e}")
+        logger.error(f"Permanent error: {e}")
         raise
 ```
 
@@ -574,7 +574,7 @@ async def operation():
         logger.info(f"Async operation successful")
         return result
     except Exception as e:
-        logger.error(f"❌ Async operation failed: {e}")
+        logger.error(f"Async operation failed: {e}")
         logger.exception("Error details:")
         raise
 ```

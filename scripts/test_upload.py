@@ -59,7 +59,7 @@ def print_success(message: str):
 
 def print_error(message: str):
     """Print an error message."""
-    print(f"{Colors.RED}❌ {message}{Colors.ENDC}")
+    print(f"{Colors.RED}{message}{Colors.ENDC}")
 
 
 def print_info(message: str):
@@ -69,7 +69,7 @@ def print_info(message: str):
 
 def print_warning(message: str):
     """Print a warning message."""
-    print(f"{Colors.YELLOW}⚠️  {message}{Colors.ENDC}")
+    print(f"{Colors.YELLOW} {message}{Colors.ENDC}")
 
 
 async def upload_audio(

@@ -51,10 +51,10 @@ API Architecture:                  Consumer Architecture:
 ### **What Changed:**
 
 #### **Removed:**
-- ❌ Redis Queue (RQ)
-- ❌ `redis` package
-- ❌ `rq` package
-- ❌ `rq-scheduler` package
+- Redis Queue (RQ)
+- `redis` package
+- `rq` package
+- `rq-scheduler` package
 
 #### **Kept:**
 - RabbitMQ with `aio-pika`
@@ -257,11 +257,11 @@ docker run -d \
 
 | Aspect | API Side Chunking | Consumer Side Chunking |
 |--------|------------------|------------------------|
-| **API Response Time** | ❌ Slow (must chunk before responding) | Fast (respond immediately) |
-| **Resource Usage** | ❌ API server CPU overload | Consumer server handles it |
-| **Scalability** | ❌ Limited by API capacity | Can scale consumers independently |
-| **Retry Logic** | ❌ Must re-upload on failure | Just retry processing |
-| **File Size** | ❌ Risk of request timeout | No timeout issues |
+| **API Response Time** | Slow (must chunk before responding) | Fast (respond immediately) |
+| **Resource Usage** | API server CPU overload | Consumer server handles it |
+| **Scalability** | Limited by API capacity | Can scale consumers independently |
+| **Retry Logic** | Must re-upload on failure | Just retry processing |
+| **File Size** | Risk of request timeout | No timeout issues |
 
 ### **Code Flow:**
 

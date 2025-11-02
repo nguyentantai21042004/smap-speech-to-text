@@ -93,13 +93,13 @@ class AudioChunker:
             return audio
 
         except FileNotFoundError as e:
-            logger.error(f"❌ File not found: {e}")
+            logger.error(f"File not found: {e}")
             raise
         except FileTooLargeError as e:
-            logger.error(f"❌ File too large: {e}")
+            logger.error(f"File too large: {e}")
             raise
         except Exception as e:
-            logger.error(f"❌ Failed to load audio: {e}")
+            logger.error(f"Failed to load audio: {e}")
             logger.exception("Audio loading error details:")
             raise InvalidAudioFormatError(f"Cannot load audio file: {e}")
 
@@ -139,7 +139,7 @@ class AudioChunker:
             return chunk_files
 
         except Exception as e:
-            logger.error(f"❌ Chunking failed: {e}")
+            logger.error(f"Chunking failed: {e}")
             logger.exception("Chunking error details:")
             raise
 
@@ -167,7 +167,7 @@ class AudioChunker:
             logger.debug(f"Detected {len(nonsilent_chunks)} non-silent segments")
 
             if not nonsilent_chunks:
-                logger.warning("⚠️ No non-silent chunks detected, falling back to fixed-size chunking")
+                logger.warning("No non-silent chunks detected, falling back to fixed-size chunking")
                 return self._chunk_fixed_size(audio)
 
             # Merge and split chunks to optimal size
@@ -199,7 +199,7 @@ class AudioChunker:
             return chunks
 
         except Exception as e:
-            logger.error(f"❌ Silence-based chunking failed: {e}")
+            logger.error(f"Silence-based chunking failed: {e}")
             logger.exception("Silence detection error details:")
             logger.warning("Falling back to fixed-size chunking...")
             return self._chunk_fixed_size(audio)
@@ -236,7 +236,7 @@ class AudioChunker:
             return chunks
 
         except Exception as e:
-            logger.error(f"❌ Fixed-size chunking failed: {e}")
+            logger.error(f"Fixed-size chunking failed: {e}")
             logger.exception("Fixed-size chunking error details:")
             raise
 
@@ -294,7 +294,7 @@ class AudioChunker:
                     logger.debug(f"Chunk {i} saved: {(end_ms - start_ms) / 1000:.2f}s")
 
                 except Exception as e:
-                    logger.error(f"❌ Failed to save chunk {i}: {e}")
+                    logger.error(f"Failed to save chunk {i}: {e}")
                     logger.exception(f"Chunk {i} save error:")
                     # Continue with other chunks
                     continue
@@ -303,7 +303,7 @@ class AudioChunker:
             return chunk_files
 
         except Exception as e:
-            logger.error(f"❌ Failed to save chunks: {e}")
+            logger.error(f"Failed to save chunks: {e}")
             logger.exception("Chunk saving error details:")
             raise
 
@@ -455,16 +455,16 @@ class WhisperTranscriber:
             }
 
         except subprocess.TimeoutExpired:
-            logger.error(f"❌ Whisper timeout after {timeout}s")
+            logger.error(f"Whisper timeout after {timeout}s")
             raise TimeoutError(f"Transcription timeout after {timeout} seconds")
 
         except subprocess.CalledProcessError as e:
-            logger.error(f"❌ Whisper.cpp failed with exit code {e.returncode}")
+            logger.error(f"Whisper.cpp failed with exit code {e.returncode}")
             logger.error(f"Error output: {e.stderr}")
             raise WhisperCrashError(f"Whisper.cpp crashed: {e.stderr}")
 
         except Exception as e:
-            logger.error(f"❌ Transcription failed: {e}")
+            logger.error(f"Transcription failed: {e}")
             logger.exception("Transcription error details:")
             raise
 
@@ -518,7 +518,7 @@ class WhisperTranscriber:
             return model_path
 
         except Exception as e:
-            logger.error(f"❌ Failed to get model path: {e}")
+            logger.error(f"Failed to get model path: {e}")
             raise
 
     def _extract_text(self, transcription_data: Dict) -> str:
@@ -551,7 +551,7 @@ class WhisperTranscriber:
             return result
 
         except Exception as e:
-            logger.error(f"❌ Failed to extract text: {e}")
+            logger.error(f"Failed to extract text: {e}")
             logger.exception("Text extraction error:")
             return ""
 

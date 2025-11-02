@@ -58,3 +58,8 @@ class FileNotFoundError(PermanentError):
 
 class CorruptedFileError(PermanentError):
     pass
+
+
+class MissingDependencyError(PermanentError):
+    """Missing system dependency (e.g., ffmpeg/ffprobe)."""
+    pass

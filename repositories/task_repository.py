@@ -70,8 +70,9 @@ class TaskRepository:
             return job
 
         except Exception as e:
-            logger.error(f"❌ Failed to create job: {e}")
-            logger.exception("Job creation error details:")
+            from core.logger import format_exception_short
+            error_formatted = format_exception_short(e, "Failed to create job")
+            logger.error(f"{error_formatted}")
             raise
 
     async def get_job(self, job_id: str) -> Optional[JobModel]:
@@ -108,11 +109,11 @@ class TaskRepository:
                 )
                 return job
             else:
-                logger.warning(f"⚠️ Job not found: id={job_id}")
+                logger.warning(f"Job not found: id={job_id}")
                 return None
 
         except Exception as e:
-            logger.error(f"❌ Failed to get job {job_id}: {e}")
+            logger.error(f"Failed to get job {job_id}: {e}")
             logger.exception("Get job error details:")
             raise
 
@@ -146,7 +147,17 @@ class TaskRepository:
             update_dict = {k: v for k, v in update_dict.items() if v is not None}
             update_dict["updated_at"] = datetime.utcnow()
 
-            logger.debug(f"Final update document: {update_dict}")
+            # Log transcription_text if being saved (for debugging)
+            if "transcription_text" in update_dict:
+                transcription_length = len(update_dict["transcription_text"]) if update_dict["transcription_text"] else 0
+                logger.info(f"💾 Saving transcription_text to MongoDB: length={transcription_length} chars")
+                if transcription_length > 0:
+                    preview = update_dict['transcription_text'][:200] if len(update_dict['transcription_text']) > 200 else update_dict['transcription_text']
+                    logger.debug(f"💾 Transcription preview: {preview}...")
+                else:
+                    logger.warning("⚠️ Transcription text is empty!")
+
+            logger.debug(f"Final update document keys: {list(update_dict.keys())}")
 
             # Update in MongoDB by _id
             result = await collection.update_one(
@@ -160,15 +171,15 @@ class TaskRepository:
                 return True
             elif result.matched_count > 0:
                 logger.info(
-                    f"⚠️ Job matched but not modified (no changes): id={job_id}"
+                    f"Job matched but not modified (no changes): id={job_id}"
                 )
                 return True
             else:
-                logger.warning(f"⚠️ Job not found for update: id={job_id}")
+                logger.warning(f"Job not found for update: id={job_id}")
                 return False
 
         except Exception as e:
-            logger.error(f"❌ Failed to update job {job_id}: {e}")
+            logger.error(f"Failed to update job {job_id}: {e}")
             logger.exception("Update job error details:")
             raise
 
@@ -207,12 +218,12 @@ class TaskRepository:
             if result:
                 logger.info(f"Status updated: job_id={job_id}, new_status={status}")
             else:
-                logger.warning(f"⚠️ Status update failed: job_id={job_id}")
+                logger.warning(f"Status update failed: job_id={job_id}")
 
             return result
 
         except Exception as e:
-            logger.error(f"❌ Failed to update status for job {job_id}: {e}")
+            logger.error(f"Failed to update status for job {job_id}: {e}")
             logger.exception("Status update error details:")
             raise
 
@@ -249,7 +260,7 @@ class TaskRepository:
                     job = JobModel.from_dict(doc)
                     jobs.append(job)
                 except Exception as e:
-                    logger.error(f"❌ Failed to parse job document: {e}")
+                    logger.error(f"Failed to parse job document: {e}")
                     logger.exception("Job parsing error:")
                     # Continue with other jobs
                     continue
@@ -261,7 +272,7 @@ class TaskRepository:
             return jobs
 
         except Exception as e:
-            logger.error(f"❌ Failed to get pending jobs: {e}")
+            logger.error(f"Failed to get pending jobs: {e}")
             logger.exception("Pending jobs query error details:")
             raise
 
@@ -299,7 +310,7 @@ class TaskRepository:
                     job = JobModel.from_dict(doc)
                     jobs.append(job)
                 except Exception as e:
-                    logger.error(f"❌ Failed to parse job document: {e}")
+                    logger.error(f"Failed to parse job document: {e}")
                     continue
 
             logger.info(f"Found {len(jobs)} jobs with status {status}")
@@ -307,7 +318,7 @@ class TaskRepository:
             return jobs
 
         except Exception as e:
-            logger.error(f"❌ Failed to get jobs by status: {e}")
+            logger.error(f"Failed to get jobs by status: {e}")
             logger.exception("Jobs query error details:")
             raise
 
@@ -341,11 +352,11 @@ class TaskRepository:
                 logger.info(f"Job deleted: job_id={job_id}")
                 return True
             else:
-                logger.warning(f"⚠️ Job not found for deletion: job_id={job_id}")
+                logger.warning(f"Job not found for deletion: job_id={job_id}")
                 return False
 
         except Exception as e:
-            logger.error(f"❌ Failed to delete job {job_id}: {e}")
+            logger.error(f"Failed to delete job {job_id}: {e}")
             logger.exception("Job deletion error details:")
             raise
 
@@ -378,7 +389,7 @@ class TaskRepository:
             return result
 
         except Exception as e:
-            logger.error(f"❌ Failed to update chunks for job {job_id}: {e}")
+            logger.error(f"Failed to update chunks for job {job_id}: {e}")
             logger.exception("Chunks update error details:")
             raise
 
@@ -415,11 +426,11 @@ class TaskRepository:
                 logger.info(f"Retry count incremented: job_id={job_id}")
                 return True
             else:
-                logger.warning(f"⚠️ Failed to increment retry count: job_id={job_id}")
+                logger.warning(f"Failed to increment retry count: job_id={job_id}")
                 return False
 
         except Exception as e:
-            logger.error(f"❌ Failed to increment retry count for job {job_id}: {e}")
+            logger.error(f"Failed to increment retry count for job {job_id}: {e}")
             logger.exception("Retry count increment error details:")
             raise
 
@@ -445,6 +456,6 @@ def get_task_repository() -> TaskRepository:
         return _task_repository
 
     except Exception as e:
-        logger.error(f"❌ Failed to get task repository: {e}")
+        logger.error(f"Failed to get task repository: {e}")
         logger.exception("Task repository initialization error:")
         raise

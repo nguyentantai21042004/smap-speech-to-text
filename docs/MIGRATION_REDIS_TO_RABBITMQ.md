@@ -72,12 +72,12 @@ The following files still reference Redis Queue and need to be updated:
 - Calls `queue_manager.disconnect()` (async)
 
 #### cmd/consumer/main.py
-- ⚠️ **NEEDS UPDATE** - Currently uses RQ Worker
+- **NEEDS UPDATE** - Currently uses RQ Worker
 - Should use `queue_manager.consume_jobs()` with async callback
 - Needs complete rewrite for RabbitMQ async consumer pattern
 
 #### services/task_service.py
-- ⚠️ **NEEDS UPDATE** - Currently calls `queue_manager.enqueue_job()` with RQ syntax
+- **NEEDS UPDATE** - Currently calls `queue_manager.enqueue_job()` with RQ syntax
 - Should call `await queue_manager.publish_job()` with RabbitMQ syntax
 - Change from:
   ```python
@@ -98,13 +98,13 @@ The following files still reference Redis Queue and need to be updated:
   ```
 
 #### internal/consumer/handlers/stt_handler.py
-- ⚠️ **NEEDS UPDATE** - Currently async handler wrapped in sync for RQ
+- **NEEDS UPDATE** - Currently async handler wrapped in sync for RQ
 - Should be pure async handler for RabbitMQ message processing
 - Needs to parse RabbitMQ message format (aio_pika.IncomingMessage)
 - Should acknowledge/reject messages
 
 #### internal/api/routes/task_routes.py
-- ⚠️ **MAY NEED UPDATE** - Check health_check endpoint
+- **MAY NEED UPDATE** - Check health_check endpoint
 - Currently checks `queue_manager.health_check()` - this is compatible
 
 ### 5. Documentation Created

@@ -251,7 +251,7 @@ self.bucket_name = settings.minio_bucket_name  # Dùng MINIO_BUCKET
 
 ---
 
-### 7️⃣ **RabbitMQ Settings** ⚠️ Legacy (Đang được thay thế)
+### 7️⃣ **RabbitMQ Settings** Legacy (Đang được thay thế)
 
 ```env
 RABBITMQ_HOST=localhost
@@ -268,7 +268,7 @@ RABBITMQ_ROUTING_KEY=stt.job
 - Cấu hình cho RabbitMQ (đang được thay thế bởi Redis Queue)
 
 **Tác động vào source:**
-- ⚠️ **HIỆN TẠI KHÔNG DÙNG** - Đang migration sang Redis Queue
+- **HIỆN TẠI KHÔNG DÙNG** - Đang migration sang Redis Queue
 - Code vẫn có trong `core/config.py` nhưng không được sử dụng trong STT processing
 - Có thể vẫn dùng cho keyword extraction service (legacy)
 
@@ -289,16 +289,16 @@ RABBITMQ_ROUTING_KEY=stt.job
 | `MAX_RETRIES` | **CÓ** | `worker/transcriber.py` | ⭐⭐ High |
 | `CHUNK_TIMEOUT` | **CÓ** | `worker/transcriber.py` | ⭐⭐ High |
 | `JOB_TIMEOUT` | **CÓ** | `core/messaging.py` | ⭐⭐ High |
-| `MAX_CONCURRENT_JOBS` | ⚠️ **Chưa rõ** | `cmd/consumer/main.py` (chỉ log) | ⭐ Low |
-| `TEMP_DIR` | ⚠️ **Có thể** | Hệ thống temp, có thể override | ⭐ Low |
+| `MAX_CONCURRENT_JOBS` | **Chưa rõ** | `cmd/consumer/main.py` (chỉ log) | ⭐ Low |
+| `TEMP_DIR` | **Có thể** | Hệ thống temp, có thể override | ⭐ Low |
 | `MINIO_BUCKET` | **CÓ** | `core/storage.py` | ⭐⭐⭐ Critical |
 | `MINIO_USE_SSL` | **CÓ** | `core/storage.py` | ⭐⭐ High |
-| `API_WORKERS` | ❌ **KHÔNG** | `cmd/api/main.py` (chỉ log, không dùng) | ⭐ None |
-| `RABBITMQ_*` | ❌ **KHÔNG** | Legacy, đang migration | ⭐ None |
+| `API_WORKERS` | **KHÔNG** | `cmd/api/main.py` (chỉ log, không dùng) | ⭐ None |
+| `RABBITMQ_*` | **KHÔNG** | Legacy, đang migration | ⭐ None |
 
 ---
 
-## ⚠️ Field KHÔNG có tác dụng (Không dùng thực sự)
+## Field KHÔNG có tác dụng (Không dùng thực sự)
 
 ### `API_WORKERS` - KHÔNG CÓ TÁC DỤNG
 
@@ -307,7 +307,7 @@ API_WORKERS=4
 ```
 
 **Tình trạng:**
-- ❌ **KHÔNG CÓ TÁC ĐỘNG** trong source code hiện tại
+- **KHÔNG CÓ TÁC ĐỘNG** trong source code hiện tại
 - Chỉ được **log ra** (dòng 234 trong `cmd/api/main.py`)
 - **KHÔNG được truyền** vào `uvicorn.run()`
 
@@ -320,7 +320,7 @@ uvicorn.run(
     port=settings.api_port,
     reload=settings.api_reload,
     log_level="info" if settings.debug else "warning",
-    # ❌ THIẾU: workers=settings.api_workers
+    # THIẾU: workers=settings.api_workers
 )
 ```
 
@@ -328,7 +328,7 @@ uvicorn.run(
 ```dockerfile
 # cmd/api/Dockerfile:42
 CMD ["python", "-m", "uvicorn", "cmd.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
-# ❌ THIẾU: --workers
+# THIẾU: --workers
 ```
 
 **Lý do:**

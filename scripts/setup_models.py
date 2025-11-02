@@ -41,7 +41,7 @@ def main():
             for model in models_to_download:
                 if model not in MODEL_CONFIGS:
                     logger.error(
-                        f"❌ Invalid model: {model}. Valid models: {list(MODEL_CONFIGS.keys())}"
+                        f"Invalid model: {model}. Valid models: {list(MODEL_CONFIGS.keys())}"
                     )
                     continue
 
@@ -50,7 +50,7 @@ def main():
                     model_path = downloader.ensure_model_exists(model)
                     logger.info(f"Model ready: {model_path}")
                 except Exception as e:
-                    logger.error(f"❌ Failed to download model '{model}': {e}")
+                    logger.error(f"Failed to download model '{model}': {e}")
         else:
             # Download all models
             logger.info("Downloading ALL models (this may take a while)...")
@@ -74,10 +74,10 @@ def main():
         logger.info("=" * 70)
 
     except KeyboardInterrupt:
-        logger.warning("\n⚠️ Setup interrupted by user")
+        logger.warning("\nSetup interrupted by user")
         sys.exit(1)
     except Exception as e:
-        logger.error(f"\n❌ Setup failed: {e}")
+        logger.error(f"\nSetup failed: {e}")
         logger.exception("Setup error details:")
         sys.exit(1)
 

@@ -46,7 +46,7 @@ class FileService:
             # Validate file size
             if file_size_mb > 500:
                 error_msg = f"File too large: {file_size_mb:.2f}MB (max 500MB)"
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise ValueError(error_msg)
 
             # Upload to MinIO first (using temp UUID)
@@ -91,10 +91,10 @@ class FileService:
             }
 
         except ValueError as e:
-            logger.error(f"❌ Validation error: {e}")
+            logger.error(f"Validation error: {e}")
             raise
         except Exception as e:
-            logger.error(f"❌ Failed to upload file: {e}")
+            logger.error(f"Failed to upload file: {e}")
             logger.exception("File upload error details:")
             raise
 
@@ -133,7 +133,7 @@ class FileService:
             return minio_path
 
         except Exception as e:
-            logger.error(f"❌ MinIO upload failed: {e}")
+            logger.error(f"MinIO upload failed: {e}")
             logger.exception("MinIO upload error details:")
             raise
 
@@ -176,7 +176,7 @@ class FileService:
             return None
 
         except Exception as e:
-            logger.error(f"❌ Failed to get file {file_id}: {e}")
+            logger.error(f"Failed to get file {file_id}: {e}")
             logger.exception("Get file error details:")
             raise
 
@@ -197,7 +197,7 @@ def get_file_service() -> FileService:
         return _file_service
 
     except Exception as e:
-        logger.error(f"❌ Failed to get file service: {e}")
+        logger.error(f"Failed to get file service: {e}")
         logger.exception("File service initialization error:")
         raise
 

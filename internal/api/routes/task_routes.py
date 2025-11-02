@@ -78,7 +78,7 @@ async def create_stt_task(
 
         # Validate file_id
         if not file_id or file_id.strip() == "":
-            logger.error("❌ No file_id provided")
+            logger.error("No file_id provided")
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, detail="file_id is required"
             )
@@ -100,18 +100,18 @@ async def create_stt_task(
 
     except HTTPException as e:
         elapsed_time = time.time() - start_time
-        logger.error(f"❌ API: HTTP error after {elapsed_time:.2f}s: {e.detail}")
+        logger.error(f"API: HTTP error after {elapsed_time:.2f}s: {e.detail}")
         raise
 
     except ValueError as e:
         elapsed_time = time.time() - start_time
-        logger.error(f"❌ API: Validation error after {elapsed_time:.2f}s: {e}")
+        logger.error(f"API: Validation error after {elapsed_time:.2f}s: {e}")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     except Exception as e:
         elapsed_time = time.time() - start_time
         error_msg = format_exception_short(e, f"API: Task creation failed after {elapsed_time:.2f}s")
-        logger.error(f"❌ {error_msg}")
+        logger.error(f"{error_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create transcription job: {str(e)}",
@@ -214,13 +214,13 @@ async def get_job_status(job_id: str):
         return result
 
     except HTTPException as e:
-        logger.error(f"❌ API: HTTP error: {e.detail}")
+        logger.error(f"API: HTTP error: {e.detail}")
         raise
 
     except Exception as e:
         elapsed_time = time.time() - start_time
         error_msg = format_exception_short(e, f"API: Status check failed after {elapsed_time:.2f}s")
-        logger.error(f"❌ {error_msg}")
+        logger.error(f"{error_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get job status: {str(e)}",
@@ -300,13 +300,13 @@ async def get_job_result(job_id: str):
         return result
 
     except HTTPException as e:
-        logger.error(f"❌ API: HTTP error: {e.detail}")
+        logger.error(f"API: HTTP error: {e.detail}")
         raise
 
     except Exception as e:
-        logger.error(f"❌ API: Failed to get result for {job_id}: {e}")
+        logger.error(f"API: Failed to get result for {job_id}: {e}")
         error_msg = format_exception_short(e, f"API: Result retrieval failed after {elapsed_time:.2f}s")
-        logger.error(f"❌ {error_msg}")
+        logger.error(f"{error_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get job result: {str(e)}",
@@ -374,9 +374,9 @@ async def list_jobs(status: Optional[str] = None, limit: int = 10):
         return {"status": "success", "count": len(results), "jobs": results}
 
     except Exception as e:
-        logger.error(f"❌ API: Failed to list jobs: {e}")
+        logger.error(f"API: Failed to list jobs: {e}")
         error_msg = format_exception_short(e, f"API: Task listing failed after {elapsed_time:.2f}s")
-        logger.error(f"❌ {error_msg}")
+        logger.error(f"{error_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to list jobs: {str(e)}",

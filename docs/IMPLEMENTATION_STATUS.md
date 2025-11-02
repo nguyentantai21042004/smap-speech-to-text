@@ -189,13 +189,13 @@ worker/processor.py - New file
 🔄 cmd/api/main.py - Minor updates
 ```
 
-### ❌ Can Remove/Ignore (LLM-related)
+### Can Remove/Ignore (LLM-related)
 ```
-❌ services/keyword_service.py
-❌ services/sentiment_service.py
-❌ internal/api/routes/keyword_routes.py
-❌ internal/api/routes/sentiment_routes.py
-❌ internal/consumer/handlers/keyword_handler.py
+services/keyword_service.py
+services/sentiment_service.py
+internal/api/routes/keyword_routes.py
+internal/api/routes/sentiment_routes.py
+internal/consumer/handlers/keyword_handler.py
 ```
 
 ---

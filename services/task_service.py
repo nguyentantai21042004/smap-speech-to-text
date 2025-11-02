@@ -53,7 +53,7 @@ class TaskService:
 
             if not file_record:
                 error_msg = f"File not found: file_id={file_id}"
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise ValueError(error_msg)
 
             filename = file_record["original_filename"]
@@ -116,12 +116,12 @@ class TaskService:
             }
 
         except ValueError as e:
-            logger.error(f"❌ Validation error: {e}")
+            logger.error(f"Validation error: {e}")
             raise
 
         except Exception as e:
             error_msg = format_exception_short(e, "Failed to create STT task from file_id")
-            logger.error(f"❌ {error_msg}")
+            logger.error(f"{error_msg}")
             raise
 
     async def create_stt_task(
@@ -156,7 +156,7 @@ class TaskService:
             # Validate file size
             if file_size_mb > 500:
                 error_msg = f"File too large: {file_size_mb:.2f}MB (max 500MB)"
-                logger.error(f"❌ {error_msg}")
+                logger.error(f"{error_msg}")
                 raise ValueError(error_msg)
 
             # Generate temporary ID for MinIO upload (will use actual _id after DB creation)
@@ -213,12 +213,12 @@ class TaskService:
             }
 
         except ValueError as e:
-            logger.error(f"❌ Validation error: {e}")
+            logger.error(f"Validation error: {e}")
             raise
 
         except Exception as e:
             error_msg = format_exception_short(e, "Failed to create STT task")
-            logger.error(f"❌ {error_msg}")
+            logger.error(f"{error_msg}")
             raise
 
     async def _upload_to_minio(
@@ -260,7 +260,7 @@ class TaskService:
 
         except Exception as e:
             error_msg = format_exception_short(e, "MinIO upload failed")
-            logger.error(f"❌ {error_msg}")
+            logger.error(f"{error_msg}")
             raise
 
     async def get_task_status(self, job_id: str) -> Optional[dict]:
@@ -284,7 +284,7 @@ class TaskService:
             job = await repo.get_job(job_id)
 
             if not job:
-                logger.warning(f"⚠️ Job not found: job_id={job_id}")
+                logger.warning(f"Job not found: job_id={job_id}")
                 return None
 
             logger.info(f"Job status retrieved: job_id={job_id}, status={job.status}")
@@ -314,7 +314,7 @@ class TaskService:
 
         except Exception as e:
             error_msg = format_exception_short(e, f"Failed to get task status for {job_id}")
-            logger.error(f"❌ {error_msg}")
+            logger.error(f"{error_msg}")
             raise
 
     async def get_task_result(self, job_id: str) -> Optional[dict]:
@@ -338,12 +338,12 @@ class TaskService:
             job = await repo.get_job(job_id)
 
             if not job:
-                logger.warning(f"⚠️ Job not found: job_id={job_id}")
+                logger.warning(f"Job not found: job_id={job_id}")
                 return None
 
             if job.status.value != "COMPLETED":
                 logger.warning(
-                    f"⚠️ Job not completed: job_id={job_id}, status={job.status}"
+                    f"Job not completed: job_id={job_id}, status={job.status}"
                 )
                 return {
                     "job_id": job_id,
@@ -366,7 +366,7 @@ class TaskService:
                     )
                     logger.debug(f"Generated download URL for result file")
                 except Exception as e:
-                    logger.warning(f"⚠️ Failed to generate download URL: {e}")
+                    logger.warning(f"Failed to generate download URL: {e}")
 
             return {
                 "job_id": job.id,  # Keep job_id for backward compatibility
@@ -390,7 +390,7 @@ class TaskService:
 
         except Exception as e:
             error_msg = format_exception_short(e, f"Failed to get task result for {job_id}")
-            logger.error(f"❌ {error_msg}")
+            logger.error(f"{error_msg}")
             raise
 
     async def list_tasks(self, limit: int = 10, status: Optional[str] = None) -> list:
@@ -439,7 +439,7 @@ class TaskService:
 
         except Exception as e:
             error_msg = format_exception_short(e, "Task listing failed")
-            logger.error(f"❌ {error_msg}")
+            logger.error(f"{error_msg}")
             raise
 
 
@@ -465,5 +465,5 @@ def get_task_service() -> TaskService:
 
     except Exception as e:
         error_msg = format_exception_short(e, "Task service initialization failed")
-        logger.error(f"❌ {error_msg}")
+        logger.error(f"{error_msg}")
         raise
