@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     minio_access_key: str = Field(default="minioadmin", alias="MINIO_ACCESS_KEY")
     minio_secret_key: str = Field(default="minioadmin", alias="MINIO_SECRET_KEY")
     minio_bucket_name: str = Field(default="stt-audio-files", alias="MINIO_BUCKET")
+    minio_bucket_model_name: str = Field(default="stt-whisper-models", alias="MINIO_BUCKET_MODEL")
     minio_use_ssl: bool = Field(default=False, alias="MINIO_USE_SSL")
 
     # Storage (temporary processing)

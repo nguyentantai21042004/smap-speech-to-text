@@ -1,8 +1,5 @@
 # SMAP Speech-to-Text System
 
-[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
-
 A high-performance Speech-to-Text (STT) system built with **FastAPI**, **RabbitMQ**, and **Whisper.cpp**. Designed for scalability, parallel processing, and asynchronous job handling.
 
 ---
@@ -234,7 +231,7 @@ mkdir -p whisper/bin
 cp main whisper/bin/whisper-cli
 
 # Download models
-bash scripts/setup_whisper_bundle.sh
+bash scripts/setup_whisper.sh
 ```
 
 #### 3. MongoDB Setup
@@ -701,7 +698,7 @@ smap-speech-to-text/
 │   └── DOCKER_SETUP.md               # Docker deployment
 │
 ├── scripts/                          # Utility scripts
-│   ├── setup_whisper_bundle.sh       # Whisper setup
+│   ├── setup_whisper.sh       # Whisper setup
 │   ├── setup_models.py               # Model downloader
 │   └── test_upload.py                # API testing
 │
@@ -876,7 +873,7 @@ DEFAULT_WHISPER_MODEL=small
 #### 4. Model Not Found
 ```bash
 # Download models manually
-bash scripts/setup_whisper_bundle.sh
+bash scripts/setup_whisper.sh
 
 # Or configure custom model path
 WHISPER_MODELS_DIR=/path/to/models

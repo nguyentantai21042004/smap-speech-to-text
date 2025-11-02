@@ -11,40 +11,58 @@ import json
 
 from core.config import get_settings
 from core.logger import logger
-from core.storage import get_minio_client
+from minio import Minio
+from minio.error import S3Error
 
 settings = get_settings()
 
 
+def get_minio_client_for_models() -> Minio:
+    """
+    Get MinIO client specifically for models bucket.
+    Uses separate bucket from audio files.
+
+    Returns:
+        MinIO client instance for models bucket
+    """
+    return Minio(
+        settings.minio_endpoint,
+        access_key=settings.minio_access_key,
+        secret_key=settings.minio_secret_key,
+        secure=settings.minio_use_ssl,
+    )
+
+
 # Model configurations with checksums (MD5)
+# Note: minio_path is relative to models bucket root (no prefix since bucket only contains models)
 MODEL_CONFIGS = {
     "tiny": {
         "filename": "ggml-tiny.bin",
-        "minio_path": "whisper-models/ggml-tiny.bin",
+        "minio_path": "models/ggml-tiny.bin",  # Direct path in models bucket
         "size_mb": 75,
         "md5": None,  # Optional: Add MD5 checksum for validation
     },
     "base": {
         "filename": "ggml-base.bin",
-        "minio_path": "whisper-models/ggml-base.bin",
+        "minio_path": "models/ggml-base.bin",
         "size_mb": 142,
         "md5": None,
     },
     "small": {
         "filename": "ggml-small.bin",
-        "minio_path": "whisper-models/ggml-small.bin",
+        "minio_path": "models/ggml-small.bin",
         "size_mb": 466,
         "md5": None,
     },
     "medium": {
         "filename": "ggml-medium.bin",
-        "minio_path": "whisper-models/ggml-medium.bin",
+        "minio_path": "models/ggml-medium.bin",
         "size_mb": 1500,
         "md5": None,
     },
     "large": {
         "filename": "ggml-large.bin",
-        "minio_path": "whisper-models/ggml-large.bin",
+        "minio_path": "models/ggml-large.bin",
         "size_mb": 2900,
         "md5": None,
     },
@@ -105,7 +123,7 @@ class ModelDownloader:
                 return str(model_path)
 
             # Download model from MinIO
-            logger.info(f"📥 Model not found or invalid, downloading from MinIO...")
+            logger.info(f"Model not found or invalid, downloading from MinIO...")
             self._download_model(model, model_path, config)
 
             # Add to cache after successful download
@@ -184,18 +202,27 @@ class ModelDownloader:
             # Create models directory if not exists
             self.models_dir.mkdir(parents=True, exist_ok=True)
 
-            # Get MinIO client
-            minio_client = get_minio_client()
+            # Get MinIO client for models bucket (separate from audio files bucket)
+            minio_client = get_minio_client_for_models()
+            models_bucket = settings.minio_bucket_model_name
 
-            # Check if model exists in MinIO
-            if not minio_client.file_exists(config["minio_path"]):
-                error_msg = f"Model not found in MinIO: {config['minio_path']}"
-                logger.error(f"{error_msg}")
-                raise FileNotFoundError(error_msg)
+            # Check if model exists in MinIO models bucket
+            try:
+                minio_client.stat_object(models_bucket, config["minio_path"])
+            except S3Error as e:
+                if e.code == "NoSuchKey":
+                    error_msg = f"Model not found in MinIO bucket '{models_bucket}': {config['minio_path']}"
+                    logger.error(f"{error_msg}")
+                    raise FileNotFoundError(error_msg)
+                raise
 
-            # Download model
-            logger.info(f"📥 Downloading to: {model_path}")
-            minio_client.download_file(config["minio_path"], str(model_path))
+            # Download model from models bucket
+            logger.info(
+                f"Downloading from bucket '{models_bucket}' to: {model_path}"
+            )
+            minio_client.fget_object(
+                models_bucket, config["minio_path"], str(model_path)
+            )
 
             # Validate downloaded file
             file_size_mb = model_path.stat().st_size / (1024 * 1024)
