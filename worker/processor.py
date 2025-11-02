@@ -135,7 +135,7 @@ async def process_stt_job(job_id: str) -> dict:
                 completed_at=datetime.utcnow(),
             ),
         )
-        logger.info(f"✅ Job updated with transcription_text: length={len(final_transcription)} chars")
+        logger.info(f"Job updated with transcription_text: length={len(final_transcription)} chars")
 
         elapsed_time = time.time() - start_time
         logger.info(
@@ -147,7 +147,7 @@ async def process_stt_job(job_id: str) -> dict:
             len(final_transcription) / elapsed_time if elapsed_time > 0 else 0
         )
         logger.info(
-            f"📊 Performance metrics: chars/sec={chars_per_second:.2f}, chunks={len(chunks)}, time={elapsed_time:.2f}s"
+            f"Performance metrics: chars/sec={chars_per_second:.2f}, chunks={len(chunks)}, time={elapsed_time:.2f}s"
         )
 
         return {
@@ -386,7 +386,7 @@ async def _transcribe_chunks(chunks: list, job, repo, job_id: str) -> list:
 
         success_rate = len(transcribed_chunks) / len(chunks) * 100
         logger.info(
-            f"📊 Transcription success rate: {success_rate:.1f}% ({len(transcribed_chunks)}/{len(chunks)})"
+            f"Transcription success rate: {success_rate:.1f}% ({len(transcribed_chunks)}/{len(chunks)})"
         )
 
         return transcribed_chunks

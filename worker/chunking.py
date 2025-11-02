@@ -4,6 +4,8 @@ Includes detailed logging and comprehensive error handling.
 """
 
 import os
+import re
+import subprocess
 import warnings
 from typing import List, Optional, Tuple
 from pathlib import Path
@@ -17,11 +19,13 @@ with warnings.catch_warnings():
 
 from core.config import get_settings
 from core.logger import logger, format_exception_short
-from worker.errors import InvalidAudioFormatError, CorruptedFileError, MissingDependencyError
+from worker.errors import (
+    InvalidAudioFormatError,
+    CorruptedFileError,
+    MissingDependencyError,
+)
 from worker.constants import (
     SUPPORTED_FORMATS,
-    MAX_CHUNK_SIZE_SECONDS,
-    MIN_CHUNK_SIZE_SECONDS,
 )
 
 settings = get_settings()
@@ -101,7 +105,7 @@ class AudioChunker:
             total_duration = sum(c["end_time"] - c["start_time"] for c in chunks)
             avg_duration = total_duration / len(chunks) if chunks else 0
             logger.info(
-                f"📊 Chunk statistics: avg_duration={avg_duration:.2f}s, total_duration={total_duration:.2f}s"
+                f"Chunk statistics: avg_duration={avg_duration:.2f}s, total_duration={total_duration:.2f}s"
             )
 
             return chunks
@@ -110,7 +114,7 @@ class AudioChunker:
             # Missing dependencies are permanent - don't retry
             logger.error(f"Missing dependency: {e}")
             raise
-        
+
         except InvalidAudioFormatError as e:
             logger.error(f"Invalid audio format: {e}")
             raise
@@ -258,8 +262,53 @@ class AudioChunker:
                     audio, output_dir, settings.chunk_duration
                 )
 
+            # Get audio duration for filtering intro/outro
+            audio_duration_sec = len(audio) / 1000.0
+            intro_threshold = 5.0  # First 5 seconds
+            outro_threshold = 5.0  # Last 5 seconds
+
+            # Filter intro/outro if enabled
+            filtered_ranges = []
+            if settings.filter_intro_outro:
+                logger.debug(
+                    f"🔍 Filtering intro/outro: intro_threshold={intro_threshold}s, outro_threshold={outro_threshold}s"
+                )
+                for start_ms, end_ms in nonsilent_ranges:
+                    start_sec = start_ms / 1000.0
+                    end_sec = end_ms / 1000.0
+
+                    # Skip if entirely within intro/outro zones
+                    if (start_sec < intro_threshold and end_sec < intro_threshold) or (
+                        start_sec > audio_duration_sec - outro_threshold
+                        and end_sec > audio_duration_sec - outro_threshold
+                    ):
+                        logger.debug(
+                            f"Skipping chunk in intro/outro zone: {start_sec:.2f}s - {end_sec:.2f}s"
+                        )
+                        continue
+
+                    # Clip start/end if partially in intro/outro
+                    if start_sec < intro_threshold:
+                        start_ms = int(intro_threshold * 1000)
+                        logger.debug(
+                            f"Clip chunk start from intro: {start_sec:.2f}s -> {intro_threshold:.2f}s"
+                        )
+                    if end_sec > audio_duration_sec - outro_threshold:
+                        end_ms = int((audio_duration_sec - outro_threshold) * 1000)
+                        logger.debug(
+                            f"Clip chunk end from outro: {end_sec:.2f}s -> {audio_duration_sec - outro_threshold:.2f}s"
+                        )
+
+                    if end_ms > start_ms:  # Only add if still valid after clipping
+                        filtered_ranges.append((start_ms, end_ms))
+                logger.info(
+                    f"After intro/outro filter: {len(filtered_ranges)}/{len(nonsilent_ranges)} chunks remain"
+                )
+            else:
+                filtered_ranges = nonsilent_ranges
+
             chunks = []
-            for i, (start_ms, end_ms) in enumerate(nonsilent_ranges):
+            for i, (start_ms, end_ms) in enumerate(filtered_ranges):
                 try:
                     # Convert to seconds
                     start_sec = start_ms / 1000.0
@@ -270,17 +319,21 @@ class AudioChunker:
                         f"🔍 Processing chunk {i}: start={start_sec:.2f}s, end={end_sec:.2f}s, duration={duration_sec:.2f}s"
                     )
 
+                    # Validate chunk duration using config settings
+                    min_duration = settings.min_chunk_duration
+                    max_duration = settings.max_chunk_duration
+
                     # Skip very short chunks
-                    if duration_sec < MIN_CHUNK_SIZE_SECONDS:
+                    if duration_sec < min_duration:
                         logger.debug(
-                            f"Skipping short chunk {i}: {duration_sec:.2f}s < {MIN_CHUNK_SIZE_SECONDS}s"
+                            f"Skipping short chunk {i}: {duration_sec:.2f}s < {min_duration}s"
                         )
                         continue
 
                     # Split long chunks
-                    if duration_sec > MAX_CHUNK_SIZE_SECONDS:
+                    if duration_sec > max_duration:
                         logger.debug(
-                            f"Splitting long chunk {i}: {duration_sec:.2f}s > {MAX_CHUNK_SIZE_SECONDS}s"
+                            f"Splitting long chunk {i}: {duration_sec:.2f}s > {max_duration}s"
                         )
                         sub_chunks = self._split_chunk(
                             audio[start_ms:end_ms],
@@ -415,7 +468,7 @@ class AudioChunker:
             )
 
             sub_chunks = []
-            chunk_duration_ms = MAX_CHUNK_SIZE_SECONDS * 1000
+            chunk_duration_ms = int(settings.max_chunk_duration * 1000)
             chunk_length_ms = len(chunk_audio)
 
             for i, start_ms in enumerate(range(0, chunk_length_ms, chunk_duration_ms)):
@@ -484,14 +537,19 @@ def get_audio_duration(audio_path: str) -> float:
             error_formatted = format_exception_short(e, "Duration retrieval failed")
             logger.error(f"{error_formatted}")
             raise
-    
+
     except Exception as e:
         error_str = str(e)
-        if "ffprobe" in error_str or "ffmpeg" in error_str or "avprobe" in error_str or "No such file or directory: 'ffprobe'" in error_str:
+        if (
+            "ffprobe" in error_str
+            or "ffmpeg" in error_str
+            or "avprobe" in error_str
+            or "No such file or directory: 'ffprobe'" in error_str
+        ):
             error_msg = "ffmpeg/ffprobe not installed. Install with: brew install ffmpeg (macOS) or apt-get install ffmpeg (Linux)"
             logger.error(f"{error_msg}")
             raise MissingDependencyError(error_msg)
-        
+
         error_formatted = format_exception_short(e, "Duration retrieval failed")
         logger.error(f"{error_formatted}")
         raise

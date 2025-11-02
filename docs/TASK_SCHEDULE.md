@@ -8,7 +8,7 @@
 
 ---
 
-## 📊 Task Overview
+## Task Overview
 
 | # | Task | Files | Est. Time | Priority |
 |---|------|-------|-----------|----------|

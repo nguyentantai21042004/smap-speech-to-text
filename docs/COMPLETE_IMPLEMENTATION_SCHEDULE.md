@@ -187,7 +187,7 @@ Duration calculation
 Each chunk creation with timestamps
 Audio loading errors
 Chunking failures
-📊 Final chunk statistics (count, avg duration)
+Final chunk statistics (count, avg duration)
 ```
 
 **Error Handling:**
@@ -220,7 +220,7 @@ Whisper command construction
 Transcription success with text length
 Whisper process failures
 Timeout errors
-📊 Processing time for each chunk
+Processing time for each chunk
 ```
 
 **Error Handling:**
@@ -290,8 +290,8 @@ Upload success
 🔍 Updating job status
 Job completion
 Any failures with retry count
-📊 Total processing time
-📊 Performance metrics
+Total processing time
+Performance metrics
 ```
 
 **Error Handling (EXTENSIVE):**
@@ -328,7 +328,7 @@ File upload to MinIO
 Job creation in database
 Job enqueue to Redis
 Any failures
-📊 File size and format info
+File size and format info
 ```
 
 **Error Handling:**
@@ -359,7 +359,7 @@ Validation errors
 🔍 Service call
 Response sent with status code
 Any errors
-📊 Request processing time
+Request processing time
 ```
 
 **Error Handling:**
@@ -391,7 +391,7 @@ Job processing started
 Processing success
 Processing failure
 🔍 Retry attempts
-📊 Processing metrics
+Processing metrics
 ```
 
 **Error Handling:**

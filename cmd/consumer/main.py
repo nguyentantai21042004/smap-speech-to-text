@@ -53,7 +53,7 @@ class ConsumerService:
             # Validate system dependencies (ffmpeg/ffprobe)
             try:
                 validate_dependencies()
-                logger.info("✅ System dependencies validated")
+                logger.info("System dependencies validated")
             except Exception as e:
                 logger.error(f"Dependency validation failed: {e}")
                 raise

@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     chunk_duration: int = Field(default=30, alias="CHUNK_DURATION")
     silence_threshold: int = Field(default=-40, alias="SILENCE_THRESHOLD")
     min_silence_duration: float = Field(default=1.0, alias="MIN_SILENCE_DURATION")
+    # Advanced chunking: filter intro/outro and music
+    filter_intro_outro: bool = Field(default=True, alias="FILTER_INTRO_OUTRO")
+    min_chunk_duration: float = Field(default=2.0, alias="MIN_CHUNK_DURATION")
+    max_chunk_duration: float = Field(default=60.0, alias="MAX_CHUNK_DURATION")
 
     # Processing Settings
     max_retries: int = Field(default=3, alias="MAX_RETRIES")

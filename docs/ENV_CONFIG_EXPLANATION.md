@@ -274,7 +274,7 @@ RABBITMQ_ROUTING_KEY=stt.job
 
 ---
 
-## 📊 Bảng Tóm tắt: Field nào có tác động thực sự?
+## Bảng Tóm tắt: Field nào có tác động thực sự?
 
 | Field | Có tác động? | File sử dụng | Mức độ quan trọng |
 |-------|--------------|--------------|-------------------|

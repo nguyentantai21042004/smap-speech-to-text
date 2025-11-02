@@ -137,7 +137,7 @@ File loading
 Format detection
 Each chunk created
 Loading errors
-📊 Final statistics
+Final statistics
 
 Error Handling:
 try-catch for file operations
@@ -161,7 +161,7 @@ Command construction
 🔍 Subprocess execution
 Success with text length
 Process failures
-📊 Processing time
+Processing time
 
 Error Handling:
 try-catch for subprocess
@@ -208,7 +208,7 @@ Job start
 🔍 Every step
 Step success
 Step failures
-📊 Metrics
+Metrics
 
 Error Handling:
 try-catch for EVERY step
@@ -250,7 +250,7 @@ Logging:
 Request received
 Response sent
 Errors
-📊 Processing time
+Processing time
 
 Error Handling:
 try-catch for endpoints

@@ -147,7 +147,7 @@ class WhisperTranscriber:
             chars_per_second = (
                 len(transcription) / elapsed_time if elapsed_time > 0 else 0
             )
-            logger.info(f"📊 Performance: {chars_per_second:.2f} chars/sec")
+            logger.info(f"Performance: {chars_per_second:.2f} chars/sec")
 
             return transcription
 
@@ -198,7 +198,7 @@ class WhisperTranscriber:
 
             logger.debug(f"Using model: {model_path}")
 
-            # Build command
+            # Build command with anti-hallucination flags
             command = [
                 settings.whisper_executable,
                 "-m",
@@ -209,6 +209,8 @@ class WhisperTranscriber:
                 language,
                 "--output-txt",  # Output as text
                 "--no-timestamps",  # No timestamps in output
+                "--no-context",  # Disable context reuse between chunks (reduces repetition)
+                "--suppress-hallucination",  # Suppress hallucinated text (reduces false predictions)
             ]
 
             logger.debug(f"Command built: {len(command)} arguments")

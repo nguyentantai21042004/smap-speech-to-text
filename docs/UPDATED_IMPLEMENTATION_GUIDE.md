@@ -579,7 +579,7 @@ curl -X POST \
 
 ---
 
-## 📊 Summary
+## Summary
 
 ### **What's Updated:**
 1. **RabbitMQ** instead of Redis (using existing `core/messaging.py`)

@@ -77,7 +77,7 @@ class ResultMerger:
             # Log statistics
             total_chars = sum(len(t) for t in transcriptions)
             reduction = ((total_chars - len(merged_text)) / total_chars * 100) if total_chars > 0 else 0
-            logger.info(f"📊 Merge statistics: original={total_chars} chars, merged={len(merged_text)} chars, reduction={reduction:.1f}%")
+            logger.info(f"Merge statistics: original={total_chars} chars, merged={len(merged_text)} chars, reduction={reduction:.1f}%")
 
             return merged_text
 

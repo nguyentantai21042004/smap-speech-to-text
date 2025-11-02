@@ -91,7 +91,7 @@ CONSUMER_REPLICAS=2
 
 ---
 
-## 📊 Services Details
+## Services Details
 
 ### Consumer Service (STT Worker)
 

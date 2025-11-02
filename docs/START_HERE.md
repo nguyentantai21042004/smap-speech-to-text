@@ -138,7 +138,7 @@ Choose your approach:
 
 ---
 
-## 📊 Task Overview
+## Task Overview
 
 ### Files to Create (9 new files)
 ```
@@ -202,7 +202,7 @@ def example_function(param):
 - Error
 - 🔍 Debug/Investigation
 - Warning
-- 📊 Statistics/Metrics
+- Statistics/Metrics
 
 ---
 

@@ -70,7 +70,7 @@ docker run -e SKIP_MODEL_DOWNLOAD=true ...
 
 ---
 
-## 📊 Available Models
+## Available Models
 
 | Model | Size | Quality | Speed | Use Case |
 |-------|------|---------|-------|----------|
