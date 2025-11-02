@@ -19,10 +19,10 @@ router = APIRouter(prefix="/api/v1/tasks", tags=["Tasks"])
 def create_task_routes(task_service: ITaskService) -> APIRouter:
     """
     Factory function to create task routes with dependency injection.
-    
+
     Args:
         task_service: Implementation of ITaskService
-        
+
     Returns:
         APIRouter: Configured router with all task endpoints
     """
@@ -43,13 +43,13 @@ def create_task_routes(task_service: ITaskService) -> APIRouter:
                             "task_type": "keyword_extraction",
                             "status": "pending",
                             "priority": 5,
-                            "created_at": "2025-10-30T10:30:00Z"
+                            "created_at": "2025-10-30T10:30:00Z",
                         }
                     }
-                }
+                },
             },
-            500: {"description": "Internal server error"}
-        }
+            500: {"description": "Internal server error"},
+        },
     )
     async def create_task(request: TaskCreateRequest):
         """
@@ -97,14 +97,14 @@ def create_task_routes(task_service: ITaskService) -> APIRouter:
                             "status": "completed",
                             "result": {"keywords": ["python", "fastapi"]},
                             "created_at": "2025-10-30T10:30:00Z",
-                            "completed_at": "2025-10-30T10:30:15Z"
+                            "completed_at": "2025-10-30T10:30:15Z",
                         }
                     }
-                }
+                },
             },
             404: {"description": "Task not found"},
-            500: {"description": "Internal server error"}
-        }
+            500: {"description": "Internal server error"},
+        },
     )
     async def get_task(task_id: str):
         """
@@ -149,13 +149,20 @@ def create_task_routes(task_service: ITaskService) -> APIRouter:
         description="Retrieve tasks filtered by status with pagination",
         responses={
             200: {"description": "List of tasks"},
-            500: {"description": "Internal server error"}
-        }
+            500: {"description": "Internal server error"},
+        },
     )
     async def get_tasks(
-        status: str = Query(default="pending", description="Filter by task status (pending/processing/completed/failed)"),
-        skip: int = Query(default=0, ge=0, description="Number of tasks to skip (pagination)"),
-        limit: int = Query(default=100, ge=1, le=1000, description="Maximum number of tasks to return"),
+        status: str = Query(
+            default="pending",
+            description="Filter by task status (pending/processing/completed/failed)",
+        ),
+        skip: int = Query(
+            default=0, ge=0, description="Number of tasks to skip (pagination)"
+        ),
+        limit: int = Query(
+            default=100, ge=1, le=1000, description="Maximum number of tasks to return"
+        ),
     ):
         """
         Get tasks filtered by status.
@@ -197,16 +204,16 @@ def create_task_routes(task_service: ITaskService) -> APIRouter:
                                 "pending": 45,
                                 "processing": 12,
                                 "completed": 5310,
-                                "failed": 53
+                                "failed": 53,
                             },
                             "success_rate": 0.99,
-                            "average_processing_time": 3.45
+                            "average_processing_time": 3.45,
                         }
                     }
-                }
+                },
             },
-            500: {"description": "Internal server error"}
-        }
+            500: {"description": "Internal server error"},
+        },
     )
     async def get_task_statistics():
         """
@@ -231,4 +238,3 @@ def create_task_routes(task_service: ITaskService) -> APIRouter:
             )
 
     return router
-

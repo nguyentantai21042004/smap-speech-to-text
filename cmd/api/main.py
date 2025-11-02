@@ -13,7 +13,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core import DatabaseManager, MessageBroker, get_settings, logger
 from services import KeywordService, TaskService, SentimentService
-from internal.api.routes import create_keyword_routes, create_task_routes, create_health_routes, create_sentiment_routes
+from internal.api.routes import (
+    create_keyword_routes,
+    create_task_routes,
+    create_health_routes,
+    create_sentiment_routes,
+)
 
 
 # Lifespan context manager
@@ -184,4 +189,3 @@ if __name__ == "__main__":
         port=settings.api_port,
         reload=settings.api_reload,
     )
-

@@ -1,6 +1,7 @@
 """
 MinIO Object Storage client for audio file management.
 """
+
 from functools import lru_cache
 from typing import Optional, BinaryIO
 from pathlib import Path
@@ -25,14 +26,16 @@ class MinIOClient:
             settings.minio_endpoint,
             access_key=settings.minio_access_key,
             secret_key=settings.minio_secret_key,
-            secure=settings.minio_use_ssl
+            secure=settings.minio_use_ssl,
         )
         self.bucket_name = settings.minio_bucket_name
 
         # Ensure bucket exists
         self._ensure_bucket_exists()
 
-        logger.info(f"MinIO client initialized: {settings.minio_endpoint}/{self.bucket_name}")
+        logger.info(
+            f"MinIO client initialized: {settings.minio_endpoint}/{self.bucket_name}"
+        )
 
     def _ensure_bucket_exists(self):
         """Create bucket if it doesn't exist."""
@@ -51,7 +54,7 @@ class MinIOClient:
         file_data: BinaryIO,
         object_name: str,
         content_type: str = "audio/mpeg",
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
     ) -> str:
         """
         Upload a file to MinIO.
@@ -81,7 +84,7 @@ class MinIOClient:
                 data=file_data,
                 length=file_size,
                 content_type=content_type,
-                metadata=metadata or {}
+                metadata=metadata or {},
             )
 
             logger.info(f"Uploaded file to MinIO: {object_name} ({file_size} bytes)")
@@ -113,7 +116,7 @@ class MinIOClient:
             self.client.fget_object(
                 bucket_name=self.bucket_name,
                 object_name=object_name,
-                file_path=local_path
+                file_path=local_path,
             )
 
             logger.info(f"Downloaded file from MinIO: {object_name} → {local_path}")
@@ -135,8 +138,7 @@ class MinIOClient:
         """
         try:
             response = self.client.get_object(
-                bucket_name=self.bucket_name,
-                object_name=object_name
+                bucket_name=self.bucket_name, object_name=object_name
             )
             logger.debug(f"Got file stream from MinIO: {object_name}")
             return response
@@ -157,8 +159,7 @@ class MinIOClient:
         """
         try:
             self.client.remove_object(
-                bucket_name=self.bucket_name,
-                object_name=object_name
+                bucket_name=self.bucket_name, object_name=object_name
             )
             logger.info(f"Deleted file from MinIO: {object_name}")
             return True
@@ -179,8 +180,7 @@ class MinIOClient:
         """
         try:
             self.client.stat_object(
-                bucket_name=self.bucket_name,
-                object_name=object_name
+                bucket_name=self.bucket_name, object_name=object_name
             )
             return True
         except S3Error:
@@ -198,24 +198,21 @@ class MinIOClient:
         """
         try:
             stat = self.client.stat_object(
-                bucket_name=self.bucket_name,
-                object_name=object_name
+                bucket_name=self.bucket_name, object_name=object_name
             )
             return {
                 "size": stat.size,
                 "content_type": stat.content_type,
                 "last_modified": stat.last_modified,
                 "metadata": stat.metadata,
-                "etag": stat.etag
+                "etag": stat.etag,
             }
         except S3Error as e:
             logger.error(f"Failed to get file info from MinIO: {e}")
             return None
 
     def generate_presigned_url(
-        self,
-        object_name: str,
-        expiry_seconds: int = 3600
+        self, object_name: str, expiry_seconds: int = 3600
     ) -> str:
         """
         Generate a presigned URL for temporary access to a file.
@@ -233,7 +230,7 @@ class MinIOClient:
             url = self.client.presigned_get_object(
                 bucket_name=self.bucket_name,
                 object_name=object_name,
-                expires=timedelta(seconds=expiry_seconds)
+                expires=timedelta(seconds=expiry_seconds),
             )
             logger.debug(f"Generated presigned URL for: {object_name}")
             return url

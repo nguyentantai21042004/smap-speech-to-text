@@ -15,10 +15,10 @@ router = APIRouter(tags=["Health"])
 def create_health_routes(app) -> APIRouter:
     """
     Factory function to create health routes.
-    
+
     Args:
         app: FastAPI application instance
-        
+
     Returns:
         APIRouter: Configured router with health endpoints
     """
@@ -36,12 +36,12 @@ def create_health_routes(app) -> APIRouter:
                         "example": {
                             "service": "SMAP Service",
                             "version": "1.0.0",
-                            "status": "running"
+                            "status": "running",
                         }
                     }
-                }
+                },
             }
-        }
+        },
     )
     async def root():
         """
@@ -78,8 +78,8 @@ def create_health_routes(app) -> APIRouter:
                                     "service": "SMAP Service",
                                     "version": "1.0.0",
                                     "database": "connected",
-                                    "message_broker": "connected"
-                                }
+                                    "message_broker": "connected",
+                                },
                             },
                             "unhealthy": {
                                 "summary": "Service degraded",
@@ -88,14 +88,14 @@ def create_health_routes(app) -> APIRouter:
                                     "service": "SMAP Service",
                                     "version": "1.0.0",
                                     "database": "disconnected",
-                                    "message_broker": "connected"
-                                }
-                            }
+                                    "message_broker": "connected",
+                                },
+                            },
                         }
                     }
-                }
+                },
             }
-        }
+        },
     )
     async def health_check():
         """
@@ -120,7 +120,7 @@ def create_health_routes(app) -> APIRouter:
         - `not_initialized`: Component not yet initialized
         """
         settings = get_settings()
-        
+
         db_status = "connected"
         try:
             db = DatabaseManager.get_database()
@@ -147,4 +147,3 @@ def create_health_routes(app) -> APIRouter:
         )
 
     return router
-

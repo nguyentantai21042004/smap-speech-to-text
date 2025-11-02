@@ -34,11 +34,7 @@ class SentimentService(ISentimentService):
         """
         try:
             if not text or not text.strip():
-                return {
-                    "success": False,
-                    "error": "Empty text provided",
-                    "data": None
-                }
+                return {"success": False, "error": "Empty text provided", "data": None}
 
             return {
                 "success": False,
@@ -48,11 +44,7 @@ class SentimentService(ISentimentService):
 
         except Exception as e:
             logger.error(f"Error analyzing sentiment: {e}", exc_info=True)
-            return {
-                "success": False,
-                "error": str(e),
-                "data": None
-            }
+            return {"success": False, "error": str(e), "data": None}
 
     async def analyze_batch(self, texts: List[str]) -> List[Dict[str, Any]]:
         """
@@ -79,14 +71,7 @@ class SentimentService(ISentimentService):
 
         except Exception as e:
             logger.error(f"Error analyzing batch sentiment: {e}", exc_info=True)
-            return [
-                {
-                    "success": False,
-                    "error": str(e),
-                    "data": None
-                }
-                for _ in texts
-            ]
+            return [{"success": False, "error": str(e), "data": None} for _ in texts]
 
     def get_model_info(self) -> Dict[str, Any]:
         """Return placeholder model metadata to keep API contract stable."""
@@ -99,4 +84,3 @@ class SentimentService(ISentimentService):
             "base_model": "-",
             "segmentation_enabled": False,
         }
-

@@ -19,10 +19,10 @@ router = APIRouter(prefix="/api/v1/keywords", tags=["Keywords"])
 def create_keyword_routes(keyword_service: IKeywordService) -> APIRouter:
     """
     Factory function to create keyword routes with dependency injection.
-    
+
     Args:
         keyword_service: Implementation of IKeywordService
-        
+
     Returns:
         APIRouter: Configured router with all keyword endpoints
     """
@@ -47,27 +47,27 @@ def create_keyword_routes(keyword_service: IKeywordService) -> APIRouter:
                                         "id": "keyword_123abc",
                                         "keywords": [
                                             {"word": "python", "score": 0.95},
-                                            {"word": "fastapi", "score": 0.87}
+                                            {"word": "fastapi", "score": 0.87},
                                         ],
-                                        "processing_time": 0.234
+                                        "processing_time": 0.234,
                                     },
-                                    "cached": False
-                                }
+                                    "cached": False,
+                                },
                             },
                             "async_queued": {
                                 "summary": "Async processing queued",
                                 "value": {
                                     "status": "queued",
                                     "data": {"task_id": "task_456def"},
-                                    "message": "Task queued for processing"
-                                }
-                            }
+                                    "message": "Task queued for processing",
+                                },
+                            },
                         }
                     }
-                }
+                },
             },
-            500: {"description": "Internal server error"}
-        }
+            500: {"description": "Internal server error"},
+        },
     )
     async def extract_keywords(request: KeywordExtractionRequest):
         """
@@ -118,8 +118,8 @@ def create_keyword_routes(keyword_service: IKeywordService) -> APIRouter:
         responses={
             200: {"description": "Result found and returned"},
             404: {"description": "Result not found"},
-            500: {"description": "Internal server error"}
-        }
+            500: {"description": "Internal server error"},
+        },
     )
     async def get_keyword_result(result_id: str):
         """
@@ -158,12 +158,16 @@ def create_keyword_routes(keyword_service: IKeywordService) -> APIRouter:
         description="Retrieve a list of recent keyword extraction results with optional filtering",
         responses={
             200: {"description": "List of recent extraction results"},
-            500: {"description": "Internal server error"}
-        }
+            500: {"description": "Internal server error"},
+        },
     )
     async def get_recent_keywords(
-        limit: int = Query(default=10, ge=1, le=100, description="Maximum number of results to return"),
-        method: Optional[str] = Query(default=None, description="Filter by extraction method"),
+        limit: int = Query(
+            default=10, ge=1, le=100, description="Maximum number of results to return"
+        ),
+        method: Optional[str] = Query(
+            default=None, description="Filter by extraction method"
+        ),
     ):
         """
         Get recent keyword extraction results.
@@ -201,13 +205,13 @@ def create_keyword_routes(keyword_service: IKeywordService) -> APIRouter:
                             "total_extractions": 1250,
                             "methods_used": {"default": 800, "tfidf": 450},
                             "average_processing_time": 0.234,
-                            "cache_hit_rate": 0.67
+                            "cache_hit_rate": 0.67,
                         }
                     }
-                }
+                },
             },
-            500: {"description": "Internal server error"}
-        }
+            500: {"description": "Internal server error"},
+        },
     )
     async def get_keyword_statistics():
         """
@@ -232,4 +236,3 @@ def create_keyword_routes(keyword_service: IKeywordService) -> APIRouter:
             )
 
     return router
-

@@ -21,18 +21,18 @@ class TaskCreateRequest(BaseModel):
                     "payload": {
                         "text": "Artificial intelligence and machine learning are transforming industries",
                         "method": "default",
-                        "num_keywords": 10
+                        "num_keywords": 10,
                     },
-                    "priority": 5
+                    "priority": 5,
                 },
                 {
                     "task_type": "sentiment_analysis",
                     "payload": {
                         "texts": ["Tôi rất thích sản phẩm này", "Dịch vụ rất tốt"],
-                        "batch": True
+                        "batch": True,
                     },
-                    "priority": 8
-                }
+                    "priority": 8,
+                },
             ]
         }
 
@@ -53,8 +53,8 @@ class TaskResponse(BaseModel):
                         "task_type": "keyword_extraction",
                         "status": "pending",
                         "priority": 5,
-                        "created_at": "2025-10-30T10:30:00Z"
-                    }
+                        "created_at": "2025-10-30T10:30:00Z",
+                    },
                 }
             ]
         }
@@ -85,4 +85,3 @@ class TaskStatistics(BaseModel):
     completed: int
     failed: int
     by_type: Dict[str, int]
-

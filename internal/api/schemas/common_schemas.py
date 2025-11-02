@@ -23,7 +23,7 @@ class HealthResponse(BaseModel):
                     "service": "SMAP Service",
                     "version": "1.0.0",
                     "database": "connected",
-                    "message_broker": "connected"
+                    "message_broker": "connected",
                 }
             ]
         }
@@ -42,13 +42,12 @@ class ErrorResponse(BaseModel):
                 {
                     "error": "Not Found",
                     "detail": "The requested resource was not found",
-                    "status_code": 404
+                    "status_code": 404,
                 },
                 {
                     "error": "Internal Server Error",
                     "detail": "An unexpected error occurred while processing your request",
-                    "status_code": 500
-                }
+                    "status_code": 500,
+                },
             ]
         }
-

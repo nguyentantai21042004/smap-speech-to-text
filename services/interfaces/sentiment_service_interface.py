@@ -45,4 +45,3 @@ class ISentimentService(ABC):
             Dict with model metadata
         """
         pass
-

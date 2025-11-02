@@ -1,4 +1,5 @@
 """Constants for STT worker."""
+
 from enum import Enum
 
 
@@ -16,9 +17,18 @@ class Language(str, Enum):
 
 # Supported audio formats
 SUPPORTED_FORMATS = [
-    '.mp3', '.wav', '.m4a', '.mp4',
-    '.aac', '.ogg', '.flac', '.wma',
-    '.webm', '.mkv', '.avi', '.mov'
+    ".mp3",
+    ".wav",
+    ".m4a",
+    ".mp4",
+    ".aac",
+    ".ogg",
+    ".flac",
+    ".wma",
+    ".webm",
+    ".mkv",
+    ".avi",
+    ".mov",
 ]
 
 # Queue names

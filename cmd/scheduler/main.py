@@ -23,9 +23,7 @@ class SchedulerService:
 
     def __init__(self):
         self.settings = get_settings()
-        self.scheduler = AsyncIOScheduler(
-            timezone=self.settings.scheduler_timezone
-        )
+        self.scheduler = AsyncIOScheduler(timezone=self.settings.scheduler_timezone)
         self.message_broker = MessageBroker()
         self.task_service = TaskService()
         self.is_running = False
@@ -56,7 +54,7 @@ class SchedulerService:
         # Start scheduler
         self.scheduler.start()
         self.is_running = True
-        
+
         logger.info("Scheduler Service started successfully")
         logger.info(f"Scheduled jobs: {len(self.scheduler.get_jobs())}")
 
@@ -169,10 +167,10 @@ class SchedulerService:
         """
         try:
             logger.info("Running process_pending_tasks job...")
-            
+
             # Get pending tasks
             pending_tasks = await self.task_service.get_pending_tasks(limit=10)
-            
+
             if not pending_tasks:
                 logger.info("No pending tasks to process")
                 return
@@ -202,13 +200,13 @@ class SchedulerService:
         """
         try:
             logger.debug("Running health_check job...")
-            
+
             # Get task statistics
             task_stats = await self.task_service.get_statistics()
-            
+
             # Get queue size
             queue_size = await self.message_broker.get_queue_size()
-            
+
             logger.info(
                 f"Health metrics - "
                 f"Total tasks: {task_stats.get('total_tasks', 0)}, "
@@ -224,13 +222,13 @@ class SchedulerService:
         """
         try:
             logger.info("Running monitor_queue job...")
-            
+
             queue_size = await self.message_broker.get_queue_size()
-            
+
             # Alert thresholds
             WARNING_THRESHOLD = 100
             CRITICAL_THRESHOLD = 500
-            
+
             if queue_size >= CRITICAL_THRESHOLD:
                 logger.error(
                     f"CRITICAL: Queue size is {queue_size} (threshold: {CRITICAL_THRESHOLD})"
@@ -252,15 +250,16 @@ class SchedulerService:
         """
         try:
             logger.info("Running weekly_report job...")
-            
+
             # Get statistics
             task_stats = await self.task_service.get_statistics()
-            
+
             # Import KeywordService
             from services import KeywordService
+
             keyword_service = KeywordService()
             keyword_stats = await keyword_service.get_statistics()
-            
+
             # Generate report
             report = {
                 "timestamp": datetime.utcnow().isoformat(),
@@ -268,9 +267,9 @@ class SchedulerService:
                 "task_statistics": task_stats,
                 "keyword_statistics": keyword_stats,
             }
-            
+
             logger.info(f"Weekly report generated: {report}")
-            
+
             # TODO: Send report via email or save to file
             # TODO: Publish report to a dedicated queue for processing
         except Exception as e:
@@ -304,4 +303,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

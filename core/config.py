@@ -35,14 +35,8 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = Field(default=500, alias="MAX_UPLOAD_SIZE_MB")
 
     # MongoDB Settings (Primary Database)
-    mongodb_url: str = Field(
-        default="mongodb://localhost:27017",
-        alias="MONGODB_URL"
-    )
-    mongodb_database: str = Field(
-        default="stt_system",
-        alias="MONGODB_DATABASE"
-    )
+    mongodb_url: str = Field(default="mongodb://localhost:27017", alias="MONGODB_URL")
+    mongodb_database: str = Field(default="stt_system", alias="MONGODB_DATABASE")
     mongodb_max_pool_size: int = Field(default=10, alias="MONGODB_MAX_POOL_SIZE")
     mongodb_min_pool_size: int = Field(default=1, alias="MONGODB_MIN_POOL_SIZE")
 
@@ -64,9 +58,7 @@ class Settings(BaseSettings):
     rabbitmq_exchange_name: str = Field(
         default="stt_exchange", alias="RABBITMQ_EXCHANGE_NAME"
     )
-    rabbitmq_routing_key: str = Field(
-        default="stt.job", alias="RABBITMQ_ROUTING_KEY"
-    )
+    rabbitmq_routing_key: str = Field(default="stt.job", alias="RABBITMQ_ROUTING_KEY")
 
     # MinIO (Object Storage)
     minio_endpoint: str = Field(default="localhost:9000", alias="MINIO_ENDPOINT")
@@ -80,12 +72,10 @@ class Settings(BaseSettings):
 
     # Whisper Settings
     whisper_executable: str = Field(
-        default="./whisper/whisper.cpp/main",
-        alias="WHISPER_EXECUTABLE"
+        default="./whisper/whisper.cpp/main", alias="WHISPER_EXECUTABLE"
     )
     whisper_models_dir: str = Field(
-        default="./whisper/whisper.cpp/models",
-        alias="WHISPER_MODELS_DIR"
+        default="./whisper/whisper.cpp/models", alias="WHISPER_MODELS_DIR"
     )
     default_model: str = Field(default="medium", alias="DEFAULT_MODEL")
     default_language: str = Field(default="vi", alias="DEFAULT_LANGUAGE")
@@ -109,7 +99,9 @@ class Settings(BaseSettings):
     log_file: str = Field(default="logs/stt.log", alias="LOG_FILE")
 
     # Scheduler
-    scheduler_timezone: str = Field(default="Asia/Ho_Chi_Minh", alias="SCHEDULER_TIMEZONE")
+    scheduler_timezone: str = Field(
+        default="Asia/Ho_Chi_Minh", alias="SCHEDULER_TIMEZONE"
+    )
 
     @property
     def rabbitmq_url(self) -> str:
@@ -127,4 +119,3 @@ def get_settings() -> Settings:
     Using lru_cache to ensure single instance (Singleton pattern).
     """
     return Settings()
-

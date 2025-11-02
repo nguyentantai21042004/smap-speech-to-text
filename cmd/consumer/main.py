@@ -29,7 +29,7 @@ class ConsumerService:
         """Initialize and connect to required services."""
         logger.info(f"Starting {self.settings.app_name} Consumer service...")
 
-    # Connect to database
+        # Connect to database
         try:
             await DatabaseManager.connect()
             logger.info("Database connected")
@@ -85,32 +85,33 @@ class ConsumerService:
         """Main service loop."""
         try:
             await self.startup()
-            
+
             # Start handling messages
             logger.info("Starting to handle messages...")
             await self.handler.start_handling()
-            
+
         except Exception as e:
             logger.error(f"Error in consumer service: {e}")
             raise
         finally:
             await self.shutdown()
 
+
 async def main():
     """Main entry point for the consumer service."""
     service = ConsumerService()
-    
+
     # Get the event loop
     loop = asyncio.get_running_loop()
-    
+
     # Register signal handlers for graceful shutdown (asyncio-compatible)
     def handle_shutdown():
         logger.info("Received shutdown signal")
         service.shutdown_event.set()
-    
+
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, handle_shutdown)
-    
+
     try:
         await service.run()
     except KeyboardInterrupt:
@@ -124,4 +125,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

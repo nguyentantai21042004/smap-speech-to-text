@@ -3,11 +3,13 @@
 
 class STTError(Exception):
     """Base STT Error."""
+
     pass
 
 
 class TransientError(STTError):
     """Errors that can be retried."""
+
     def __init__(self, message, retry_count=0):
         self.message = message
         self.retry_count = retry_count
@@ -16,6 +18,7 @@ class TransientError(STTError):
 
 class PermanentError(STTError):
     """Errors that should not be retried."""
+
     pass
 
 

@@ -23,14 +23,14 @@ class KeywordExtractionRequest(BaseModel):
                     "text": "Python là ngôn ngữ lập trình phổ biến cho phát triển web và machine learning",
                     "method": "default",
                     "num_keywords": 5,
-                    "async_processing": False
+                    "async_processing": False,
                 },
                 {
                     "text": "FastAPI là framework hiện đại cho việc xây dựng API với hiệu suất cao",
                     "method": "tfidf",
                     "num_keywords": 10,
-                    "async_processing": True
-                }
+                    "async_processing": True,
+                },
             ]
         }
 
@@ -53,19 +53,19 @@ class KeywordExtractionResponse(BaseModel):
                         "keywords": [
                             {"word": "python", "score": 0.95},
                             {"word": "machine learning", "score": 0.87},
-                            {"word": "phát triển", "score": 0.82}
+                            {"word": "phát triển", "score": 0.82},
                         ],
-                        "processing_time": 0.156
+                        "processing_time": 0.156,
                     },
                     "cached": False,
-                    "message": None
+                    "message": None,
                 },
                 {
                     "status": "queued",
                     "data": {"task_id": "task_789xyz"},
                     "message": "Task queued for asynchronous processing",
-                    "cached": None
-                }
+                    "cached": None,
+                },
             ]
         }
 
@@ -90,4 +90,3 @@ class KeywordStatistics(BaseModel):
     methods_used: Dict[str, int]
     average_processing_time: Optional[float] = None
     cache_hit_rate: Optional[float] = None
-

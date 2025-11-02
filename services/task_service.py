@@ -1,268 +1,355 @@
 """
-Service for task management business logic.
-Implements Service Layer Pattern - orchestrates task processing.
-Follows Single Responsibility Principle - only handles task business logic.
+Task service for STT job management.
+Includes comprehensive logging and error handling.
 """
+from typing import Optional, BinaryIO
+import uuid
+from pathlib import Path
 
-from typing import Any, Dict, List, Optional
+from core.logger import logger
+from core.storage import get_minio_client
+from core.messaging import get_queue_manager
+from repositories.task_repository import get_task_repository
+from repositories.models import JobCreate, JobModel
+from worker.processor import process_stt_job
 
-from core import MessageBroker, logger
-from repositories import TaskRepository
-from .interfaces import ITaskService
 
-
-class TaskService(ITaskService):
-    """
-    Service handling task management business logic.
-    Coordinates between task repository and message broker.
-    """
+class TaskService:
+    """Service for managing STT tasks with detailed logging."""
 
     def __init__(self):
-        self.repository = TaskRepository()
-        self.message_broker = MessageBroker()
+        """Initialize task service."""
+        logger.debug("TaskService initialized")
 
-    async def create_task(
+    async def create_stt_task(
         self,
-        task_type: str,
-        payload: Dict[str, Any],
-        priority: int = 0,
-        publish_to_queue: bool = True,
-    ) -> Dict[str, Any]:
+        audio_file: BinaryIO,
+        filename: str,
+        file_size_mb: float,
+        language: str = "vi",
+        model: str = "medium"
+    ) -> dict:
         """
-        Create a new task.
-        
+        Create a new STT task.
+
         Args:
-            task_type: Type of task
-            payload: Task payload
-            priority: Task priority
-            publish_to_queue: Whether to publish to message queue
-            
+            audio_file: Audio file data
+            filename: Original filename
+            file_size_mb: File size in MB
+            language: Language code
+            model: Whisper model to use
+
         Returns:
-            Created task information
+            Task information dictionary
+
+        Raises:
+            Exception: If task creation fails
         """
         try:
-            # Create task in database
-            task_id = await self.repository.create_task(
-                task_type=task_type,
-                payload=payload,
-                priority=priority,
+            logger.info(f"📝 Creating STT task: filename={filename}, size={file_size_mb:.2f}MB, language={language}")
+
+            # Validate file size
+            if file_size_mb > 500:
+                error_msg = f"File too large: {file_size_mb:.2f}MB (max 500MB)"
+                logger.error(f"❌ {error_msg}")
+                raise ValueError(error_msg)
+
+            # Generate job ID
+            job_id = str(uuid.uuid4())
+            logger.debug(f"Generated job_id: {job_id}")
+
+            # Upload to MinIO
+            logger.info(f"📝 Uploading audio to MinIO...")
+            minio_path = await self._upload_to_minio(audio_file, filename, job_id)
+            logger.info(f"✅ Audio uploaded: {minio_path}")
+
+            # Create job in database
+            logger.info(f"📝 Creating job in database...")
+            repo = get_task_repository()
+            job_data = JobCreate(
+                language=language,
+                original_filename=filename,
+                minio_audio_path=minio_path,
+                file_size_mb=file_size_mb,
+                model_used=model,
+                chunk_strategy="silence_based"
             )
-            
-            # Publish to queue if requested
-            if publish_to_queue:
-                message = {
-                    "type": "task",
-                    "task_id": task_id,
-                    "task_type": task_type,
-                    "payload": payload,
-                }
-                await self.message_broker.publish(message)
-                logger.info(f"Published task {task_id} to queue")
-            
-            task = await self.repository.find_by_id(task_id)
-            
-            return {
-                "status": "created",
-                "data": task,
-            }
-        except Exception as e:
-            logger.error(f"Error in create_task: {e}")
-            raise
 
-    async def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
-        """
-        Get task by ID.
-        
-        Args:
-            task_id: Task ID
-            
-        Returns:
-            Task if found
-        """
-        try:
-            task = await self.repository.find_by_id(task_id)
-            return task
-        except Exception as e:
-            logger.error(f"Error in get_task: {e}")
-            raise
+            job = await repo.create_job(job_data)
+            logger.info(f"✅ Job created in database: job_id={job.job_id}")
 
-    async def update_task_status(
-        self,
-        task_id: str,
-        status: str,
-        result: Optional[Any] = None,
-        error: Optional[str] = None,
-    ) -> bool:
-        """
-        Update task status.
-        
-        Args:
-            task_id: Task ID
-            status: New status
-            result: Task result
-            error: Error message if failed
-            
-        Returns:
-            True if updated
-        """
-        try:
-            updated = await self.repository.update_task_status(
-                task_id, status, result, error
+            # Enqueue job for processing
+            logger.info(f"📝 Enqueueing job for processing...")
+            queue_manager = get_queue_manager()
+
+            # Enqueue the job - use string path to function
+            rq_job = queue_manager.enqueue_job(
+                func="worker.processor.process_stt_job",
+                args=(job.job_id,),
+                job_id=job.job_id,
+                priority="normal"
             )
-            
-            if updated:
-                logger.info(f"Updated task {task_id} status to {status}")
-            
-            return updated
-        except Exception as e:
-            logger.error(f"Error in update_task_status: {e}")
-            raise
+            logger.info(f"✅ Job enqueued: rq_job_id={rq_job.id}")
 
-    async def get_pending_tasks(
-        self,
-        limit: int = 10,
-        task_type: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
-        """
-        Get pending tasks.
-        
-        Args:
-            limit: Maximum number of tasks
-            task_type: Optional task type filter
-            
-        Returns:
-            List of pending tasks
-        """
-        try:
-            tasks = await self.repository.find_pending_tasks(limit, task_type)
-            return tasks
-        except Exception as e:
-            logger.error(f"Error in get_pending_tasks: {e}")
-            raise
+            logger.info(f"✅ STT task created successfully: job_id={job.job_id}")
 
-    async def get_tasks_by_status(
-        self,
-        status: str,
-        skip: int = 0,
-        limit: int = 100,
-    ) -> List[Dict[str, Any]]:
-        """
-        Get tasks by status.
-        
-        Args:
-            status: Task status
-            skip: Number of tasks to skip
-            limit: Maximum number of tasks
-            
-        Returns:
-            List of tasks
-        """
-        try:
-            tasks = await self.repository.find_tasks_by_status(status, skip, limit)
-            return tasks
-        except Exception as e:
-            logger.error(f"Error in get_tasks_by_status: {e}")
-            raise
-
-    async def get_statistics(self) -> Dict[str, Any]:
-        """
-        Get task statistics.
-        
-        Returns:
-            Statistics dictionary
-        """
-        try:
-            stats = await self.repository.get_task_statistics()
-            return stats
-        except Exception as e:
-            logger.error(f"Error in get_statistics: {e}")
-            raise
-
-    async def cleanup_old_tasks(self, days: int = 30) -> Dict[str, Any]:
-        """
-        Cleanup old completed/failed tasks.
-        
-        Args:
-            days: Number of days to keep
-            
-        Returns:
-            Cleanup result
-        """
-        try:
-            deleted_count = await self.repository.cleanup_old_tasks(days)
-            
-            logger.info(f"Cleaned up {deleted_count} old tasks")
-            
             return {
                 "status": "success",
-                "deleted_count": deleted_count,
+                "job_id": job.job_id,
+                "message": "Task created and queued for processing",
+                "details": {
+                    "filename": filename,
+                    "size_mb": file_size_mb,
+                    "language": language,
+                    "model": model,
+                    "minio_path": minio_path
+                }
             }
-        except Exception as e:
-            logger.error(f"Error in cleanup_old_tasks: {e}")
+
+        except ValueError as e:
+            logger.error(f"❌ Validation error: {e}")
             raise
 
-    async def process_task(self, task_data: Dict[str, Any]) -> None:
-        """
-        Process a task received from the queue.
-        This method is called by the queue consumer.
-        
-        Args:
-            task_data: Task data from queue
-        """
-        task_id = task_data.get("task_id")
-        task_type = task_data.get("task_type")
-        payload = task_data.get("payload", {})
-        
-        try:
-            logger.info(f"Processing task {task_id} of type {task_type}")
-            
-            # Update status to processing
-            await self.update_task_status(task_id, "processing")
-            
-            # Process based on task type
-            result = await self._execute_task(task_type, payload)
-            
-            # Update status to completed
-            await self.update_task_status(task_id, "completed", result=result)
-            
-            logger.info(f"Completed task {task_id}")
         except Exception as e:
-            logger.error(f"Failed to process task {task_id}: {e}")
-            await self.update_task_status(task_id, "failed", error=str(e))
+            logger.error(f"❌ Failed to create STT task: {e}")
+            logger.exception("Task creation error details:")
+            raise
 
-    async def _execute_task(
+    async def _upload_to_minio(
         self,
-        task_type: str,
-        payload: Dict[str, Any],
-    ) -> Any:
+        file_data: BinaryIO,
+        filename: str,
+        job_id: str
+    ) -> str:
         """
-        Execute task based on type.
-        
-        Args:
-            task_type: Type of task
-            payload: Task payload
-            
-        Returns:
-            Task result
-        """
-        # Implement task execution logic based on task_type
-        # This is a placeholder
-        
-        if task_type == "keyword_extraction":
-            # Handle keyword extraction task
-            text = payload.get("text", "")
-            method = payload.get("method", "default")
-            num_keywords = payload.get("num_keywords", 10)
-            
-            # Import here to avoid circular dependency
-            from services.keyword_service import KeywordService
-            
-            keyword_service = KeywordService()
-            result = await keyword_service.extract_keywords_sync(
-                text, method, num_keywords
-            )
-            return result
-        
-        # Default: return payload
-        return {"processed": True, "payload": payload}
+        Upload audio file to MinIO.
 
+        Args:
+            file_data: File data
+            filename: Original filename
+            job_id: Job ID
+
+        Returns:
+            MinIO object path
+
+        Raises:
+            Exception: If upload fails
+        """
+        try:
+            logger.debug(f"🔍 Uploading to MinIO: filename={filename}, job_id={job_id}")
+
+            # Create MinIO path
+            file_extension = Path(filename).suffix
+            minio_filename = f"{job_id}{file_extension}"
+            minio_path = f"uploads/{minio_filename}"
+
+            # Get MinIO client
+            minio_client = get_minio_client()
+
+            # Upload file
+            minio_client.upload_file(
+                file_data=file_data,
+                object_name=minio_path,
+                content_type="audio/mpeg"
+            )
+
+            logger.debug(f"✅ File uploaded to MinIO: {minio_path}")
+
+            return minio_path
+
+        except Exception as e:
+            logger.error(f"❌ MinIO upload failed: {e}")
+            logger.exception("MinIO upload error details:")
+            raise
+
+    async def get_task_status(self, job_id: str) -> Optional[dict]:
+        """
+        Get task status.
+
+        Args:
+            job_id: Job ID
+
+        Returns:
+            Task status dictionary or None if not found
+
+        Raises:
+            Exception: If status retrieval fails
+        """
+        try:
+            logger.info(f"📝 Getting task status: job_id={job_id}")
+
+            # Get job from database
+            repo = get_task_repository()
+            job = await repo.get_job(job_id)
+
+            if not job:
+                logger.warning(f"⚠️ Job not found: job_id={job_id}")
+                return None
+
+            logger.info(f"✅ Job status retrieved: job_id={job_id}, status={job.status}")
+
+            # Calculate progress
+            progress = 0
+            if job.chunks_total and job.chunks_total > 0:
+                progress = (job.chunks_completed / job.chunks_total) * 100
+
+            return {
+                "job_id": job.job_id,
+                "status": job.status.value,
+                "filename": job.original_filename,
+                "language": job.language,
+                "model": job.model_used,
+                "progress": round(progress, 2),
+                "chunks_total": job.chunks_total,
+                "chunks_completed": job.chunks_completed,
+                "error_message": job.error_message,
+                "created_at": job.created_at.isoformat(),
+                "started_at": job.started_at.isoformat() if job.started_at else None,
+                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Failed to get task status for {job_id}: {e}")
+            logger.exception("Status retrieval error details:")
+            raise
+
+    async def get_task_result(self, job_id: str) -> Optional[dict]:
+        """
+        Get task result.
+
+        Args:
+            job_id: Job ID
+
+        Returns:
+            Task result dictionary or None if not found
+
+        Raises:
+            Exception: If result retrieval fails
+        """
+        try:
+            logger.info(f"📝 Getting task result: job_id={job_id}")
+
+            # Get job from database
+            repo = get_task_repository()
+            job = await repo.get_job(job_id)
+
+            if not job:
+                logger.warning(f"⚠️ Job not found: job_id={job_id}")
+                return None
+
+            if job.status.value != "COMPLETED":
+                logger.warning(f"⚠️ Job not completed: job_id={job_id}, status={job.status}")
+                return {
+                    "job_id": job_id,
+                    "status": job.status.value,
+                    "message": "Job not yet completed",
+                    "transcription": None
+                }
+
+            logger.info(f"✅ Job result retrieved: job_id={job_id}, text_length={len(job.transcription_text or '')}")
+
+            # Generate presigned URL if result file exists
+            download_url = None
+            if job.minio_result_path:
+                try:
+                    minio_client = get_minio_client()
+                    download_url = minio_client.generate_presigned_url(
+                        job.minio_result_path,
+                        expiry_seconds=3600  # 1 hour
+                    )
+                    logger.debug(f"Generated download URL for result file")
+                except Exception as e:
+                    logger.warning(f"⚠️ Failed to generate download URL: {e}")
+
+            return {
+                "job_id": job.job_id,
+                "status": job.status.value,
+                "filename": job.original_filename,
+                "language": job.language,
+                "transcription": job.transcription_text,
+                "download_url": download_url,
+                "duration_seconds": job.audio_duration_seconds,
+                "processing_time_seconds": (
+                    (job.completed_at - job.started_at).total_seconds()
+                    if job.started_at and job.completed_at
+                    else None
+                ),
+                "created_at": job.created_at.isoformat(),
+                "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+            }
+
+        except Exception as e:
+            logger.error(f"❌ Failed to get task result for {job_id}: {e}")
+            logger.exception("Result retrieval error details:")
+            raise
+
+    async def list_tasks(self, limit: int = 10, status: Optional[str] = None) -> list:
+        """
+        List tasks.
+
+        Args:
+            limit: Maximum number of tasks to return
+            status: Filter by status (optional)
+
+        Returns:
+            List of task dictionaries
+
+        Raises:
+            Exception: If listing fails
+        """
+        try:
+            logger.info(f"📝 Listing tasks: limit={limit}, status={status}")
+
+            repo = get_task_repository()
+
+            if status:
+                from repositories.models import JobStatus
+                jobs = await repo.get_jobs_by_status(JobStatus(status), limit)
+            else:
+                # Get all recent jobs (you may want to add this method to repo)
+                jobs = []
+
+            logger.info(f"✅ Retrieved {len(jobs)} tasks")
+
+            return [
+                {
+                    "job_id": job.job_id,
+                    "filename": job.original_filename,
+                    "status": job.status.value,
+                    "language": job.language,
+                    "created_at": job.created_at.isoformat(),
+                    "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+                }
+                for job in jobs
+            ]
+
+        except Exception as e:
+            logger.error(f"❌ Failed to list tasks: {e}")
+            logger.exception("Task listing error details:")
+            raise
+
+
+# Singleton instance
+_task_service: Optional[TaskService] = None
+
+
+def get_task_service() -> TaskService:
+    """
+    Get task service instance (singleton).
+
+    Returns:
+        TaskService instance
+    """
+    global _task_service
+
+    try:
+        if _task_service is None:
+            logger.debug("Creating new TaskService instance")
+            _task_service = TaskService()
+
+        return _task_service
+
+    except Exception as e:
+        logger.error(f"❌ Failed to get task service: {e}")
+        logger.exception("Task service initialization error:")
+        raise
