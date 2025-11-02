@@ -6,9 +6,10 @@ Includes comprehensive logging and error handling.
 from typing import Optional, BinaryIO
 from pathlib import Path
 
-from core.logger import logger
+from core.logger import logger, format_exception_short
 from core.storage import get_minio_client
 from core.messaging import get_queue_manager
+from core.config import get_settings
 from repositories.task_repository import get_task_repository
 from repositories.models import JobCreate, JobModel
 from worker.processor import process_stt_job
@@ -20,6 +21,108 @@ class TaskService:
     def __init__(self):
         """Initialize task service."""
         logger.debug("TaskService initialized")
+
+    async def create_stt_task_from_file_id(
+        self,
+        file_id: str,
+        language: Optional[str] = None,
+    ) -> dict:
+        """
+        Create a new STT task from an existing file_id.
+        Model is determined by system (default from config).
+        Language is auto-detected if not provided (defaults to 'vi').
+
+        Args:
+            file_id: File identifier from file upload
+            language: Optional language code (defaults to 'vi' if not provided)
+
+        Returns:
+            Task information dictionary
+
+        Raises:
+            Exception: If task creation fails
+        """
+        try:
+            from services.file_service import get_file_service
+            
+            settings = get_settings()
+
+            # Get file record
+            file_service = get_file_service()
+            file_record = await file_service.get_file(file_id)
+
+            if not file_record:
+                error_msg = f"File not found: file_id={file_id}"
+                logger.error(f"❌ {error_msg}")
+                raise ValueError(error_msg)
+
+            filename = file_record["original_filename"]
+            minio_path = file_record["minio_path"]
+            file_size_mb = file_record["file_size_mb"]
+
+            # Use default model from config (system decides, user doesn't choose)
+            model = settings.default_whisper_model
+
+            # Use provided language or default to 'vi' (auto-detect not implemented yet)
+            if not language:
+                language = "vi"  # Default language
+
+            logger.info(
+                f"Creating STT task from file_id: file_id={file_id}, filename={filename}, size={file_size_mb:.2f}MB, language={language}, model={model}"
+            )
+
+            # Create job in database (MongoDB will generate _id)
+            logger.info(f"Creating job in database...")
+            repo = get_task_repository()
+            job_data = JobCreate(
+                language=language,
+                original_filename=filename,
+                minio_audio_path=minio_path,
+                file_size_mb=file_size_mb,
+                model_used=model,  # System default
+                chunk_strategy="silence_based",
+            )
+
+            job = await repo.create_job(job_data)
+            logger.info(f"Job created in database: id={job.id}")
+
+            # Publish job to RabbitMQ queue
+            logger.info(f"Publishing job to RabbitMQ queue...")
+            queue_manager = get_queue_manager()
+
+            # Publish the job to RabbitMQ
+            await queue_manager.publish_job(
+                job_id=job.id,
+                job_data={"language": language, "model": model, "filename": filename},
+                priority=5,  # Normal priority (0-10 scale)
+            )
+            logger.info(f"Job published to RabbitMQ: id={job.id}")
+
+            logger.info(f"STT task created successfully: id={job.id}")
+
+            return {
+                "status": "success",
+                "job_id": job.id,  # Keep job_id in response for backward compatibility
+                "id": job.id,  # Add id field
+                "message": "Task created and queued for processing",
+                "details": {
+                    "file_id": file_id,
+                    "filename": filename,
+                    "size_mb": file_size_mb,
+                    "language": language,
+                    "model": model,  # Show what model was used (system default)
+                    "minio_path": minio_path,
+                },
+            }
+
+        except ValueError as e:
+            logger.error(f"❌ Validation error: {e}")
+            raise
+
+        except Exception as e:
+            error_msg = format_exception_short(e, "Failed to create STT task from file_id")
+            logger.error(f"❌ {error_msg}")
+            raise
 
     async def create_stt_task(
         self,
@@ -114,8 +217,8 @@ class TaskService:
             raise
 
         except Exception as e:
-            logger.error(f"❌ Failed to create STT task: {e}")
-            logger.exception("Task creation error details:")
+            error_msg = format_exception_short(e, "Failed to create STT task")
+            logger.error(f"❌ {error_msg}")
             raise
 
     async def _upload_to_minio(
@@ -156,8 +259,8 @@ class TaskService:
             return minio_path
 
         except Exception as e:
-            logger.error(f"❌ MinIO upload failed: {e}")
-            logger.exception("MinIO upload error details:")
+            error_msg = format_exception_short(e, "MinIO upload failed")
+            logger.error(f"❌ {error_msg}")
             raise
 
     async def get_task_status(self, job_id: str) -> Optional[dict]:
@@ -210,8 +313,8 @@ class TaskService:
             }
 
         except Exception as e:
-            logger.error(f"❌ Failed to get task status for {job_id}: {e}")
-            logger.exception("Status retrieval error details:")
+            error_msg = format_exception_short(e, f"Failed to get task status for {job_id}")
+            logger.error(f"❌ {error_msg}")
             raise
 
     async def get_task_result(self, job_id: str) -> Optional[dict]:
@@ -286,8 +389,8 @@ class TaskService:
             }
 
         except Exception as e:
-            logger.error(f"❌ Failed to get task result for {job_id}: {e}")
-            logger.exception("Result retrieval error details:")
+            error_msg = format_exception_short(e, f"Failed to get task result for {job_id}")
+            logger.error(f"❌ {error_msg}")
             raise
 
     async def list_tasks(self, limit: int = 10, status: Optional[str] = None) -> list:
@@ -335,8 +438,8 @@ class TaskService:
             ]
 
         except Exception as e:
-            logger.error(f"❌ Failed to list tasks: {e}")
-            logger.exception("Task listing error details:")
+            error_msg = format_exception_short(e, "Task listing failed")
+            logger.error(f"❌ {error_msg}")
             raise
 
 
@@ -361,6 +464,6 @@ def get_task_service() -> TaskService:
         return _task_service
 
     except Exception as e:
-        logger.error(f"❌ Failed to get task service: {e}")
-        logger.exception("Task service initialization error:")
+        error_msg = format_exception_short(e, "Task service initialization failed")
+        logger.error(f"❌ {error_msg}")
         raise

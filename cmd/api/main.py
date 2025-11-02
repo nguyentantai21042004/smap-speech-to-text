@@ -25,6 +25,7 @@ from core.logger import logger
 from core.database import get_database
 from core.messaging import get_queue_manager
 from internal.api.routes.task_routes import router as task_router
+from internal.api.routes.file_routes import router as file_router
 from internal.api.routes.health_routes import create_health_routes
 
 
@@ -173,8 +174,12 @@ MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
 
         tags_metadata = [
             {
+                "name": "Files",
+                "description": "File upload operations. Upload audio files to MinIO and get file_id for STT processing.",
+            },
+            {
                 "name": "STT Tasks",
-                "description": "Speech-to-text task operations. Upload audio files, track transcription progress, and retrieve results. Supports asynchronous processing with real-time status updates.",
+                "description": "Speech-to-text task operations. Create STT jobs from file_id, track transcription progress, and retrieve results. Supports asynchronous processing with real-time status updates.",
             },
             {
                 "name": "Health",
@@ -214,6 +219,10 @@ MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
 
         # Include all API routes
         logger.debug("Including API routes...")
+
+        # File routes (upload)
+        app.include_router(file_router)
+        logger.info("File routes registered")
 
         # Task routes (STT)
         app.include_router(task_router)

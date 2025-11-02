@@ -74,6 +74,9 @@ class Settings(BaseSettings):
     whisper_models_dir: str = Field(
         default="./whisper/whisper.cpp/models", alias="WHISPER_MODELS_DIR"
     )
+    default_whisper_model: str = Field(
+        default="medium", alias="DEFAULT_WHISPER_MODEL"
+    )
 
     # Chunking Settings
     chunk_duration: int = Field(default=30, alias="CHUNK_DURATION")

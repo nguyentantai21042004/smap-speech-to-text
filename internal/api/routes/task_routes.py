@@ -7,108 +7,93 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, status
 from typing import Optional
 import time
 
-from core.logger import logger
+from core.logger import logger, format_exception_short
 from services.task_service import get_task_service
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["STT Tasks"])
 
 
 @router.post(
-    "/upload",
+    "/create",
     status_code=status.HTTP_201_CREATED,
-    summary="Upload Audio for Transcription",
-    description="Upload an audio file and create an STT job",
+    summary="Create STT Task from File ID",
+    description="Create a speech-to-text job from an uploaded file_id. Model is determined by system, language defaults to 'vi' if not provided.",
     responses={
         201: {
             "description": "Job created successfully",
             "content": {
                 "application/json": {
                     "example": {
-                        "job_id": "stt_6541234abcdef",
-                        "status": "PENDING",
-                        "message": "Job created successfully",
-                        "filename": "audio.mp3",
-                        "file_size_mb": 5.2,
-                        "language": "vi",
-                        "model": "medium",
-                        "created_at": "2024-11-02T16:00:00Z",
+                        "status": "success",
+                        "job_id": "69073cc61dc7aa422463d537",
+                        "id": "69073cc61dc7aa422463d537",
+                        "message": "Task created and queued for processing",
+                        "details": {
+                            "file_id": "69073cc61dc7aa422463d537",
+                            "filename": "audio.mp3",
+                            "size_mb": 5.2,
+                            "language": "vi",
+                            "model": "medium",
+                            "minio_path": "uploads/xxx-xxx-xxx.mp3",
+                        },
                     }
                 }
             },
         },
-        400: {"description": "Bad request - invalid file or parameters"},
-        413: {"description": "File too large (max 500MB)"},
+        400: {"description": "Bad request - invalid file_id or parameters"},
+        404: {"description": "File not found"},
         500: {"description": "Internal server error"},
     },
 )
-async def upload_audio(
-    file: UploadFile = File(..., description="Audio file to transcribe"),
-    language: str = Form(default="vi", description="Language code (en, vi, etc.)"),
-    model: str = Form(
-        default="medium", description="Whisper model (tiny, base, small, medium, large)"
+async def create_stt_task(
+    file_id: str = Form(..., description="File ID from file upload endpoint"),
+    language: str = Form(
+        default=None,
+        description="Optional language code (defaults to 'vi' if not provided)",
     ),
 ):
     """
-    Upload an audio file for speech-to-text transcription.
+    Create a speech-to-text job from an uploaded file_id.
 
     **Parameters:**
-    - **file**: Audio file (MP3, WAV, M4A, etc.)
-    - **language**: Language code (default: vi for Vietnamese)
-    - **model**: Whisper model to use (default: medium)
+    - **file_id**: File ID from `/api/v1/files/upload` endpoint
+    - **language**: Optional language code (defaults to 'vi' if not provided)
 
     **Returns:**
-    - job_id: Unique identifier for the transcription job
-    - status: Current job status
-    - message: Success message
+    - **job_id**: Unique identifier for the transcription job
+    - **id**: Job ID (same as job_id)
+    - **details**: Job metadata including file_id, filename, size, language, model
 
-    **Supported formats:**
-    MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
+    **Notes:**
+    - **Model**: Automatically determined by system (not user-configurable)
+    - **Language**: Defaults to 'vi' if not provided (auto-detection may be added in future)
+    - The file must be uploaded first using `/api/v1/files/upload`
     """
     start_time = time.time()
 
     try:
         logger.info(
-            f"API: Upload request received: filename={file.filename}, language={language}, model={model}"
+            f"API: Create STT task request: file_id={file_id}, language={language or 'default (vi)'}"
         )
 
-        # Validate file
-        if not file.filename:
-            logger.error("❌ No filename provided")
+        # Validate file_id
+        if not file_id or file_id.strip() == "":
+            logger.error("❌ No file_id provided")
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, detail="No filename provided"
+                status_code=status.HTTP_400_BAD_REQUEST, detail="file_id is required"
             )
 
-        # Get file size
-        file_content = await file.read()
-        file_size_bytes = len(file_content)
-        file_size_mb = file_size_bytes / (1024 * 1024)
-
-        logger.debug(f"File size: {file_size_mb:.2f}MB")
-
-        # Validate file size
-        if file_size_mb > 500:
-            logger.error(f"❌ File too large: {file_size_mb:.2f}MB")
-            raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"File too large: {file_size_mb:.2f}MB. Maximum size is 500MB",
-            )
-
-        # Create task
-        import io
-
+        # Create task from file_id
         task_service = get_task_service()
 
-        result = await task_service.create_stt_task(
-            audio_file=io.BytesIO(file_content),
-            filename=file.filename,
-            file_size_mb=file_size_mb,
-            language=language,
-            model=model,
+        result = await task_service.create_stt_task_from_file_id(
+            file_id=file_id,
+            language=language if language else None,
         )
 
         elapsed_time = time.time() - start_time
         logger.info(
-            f"API: Upload successful: job_id={result['job_id']}, time={elapsed_time:.2f}s"
+            f"API: STT task created successfully: job_id={result['job_id']}, time={elapsed_time:.2f}s"
         )
 
         return result
@@ -125,8 +110,8 @@ async def upload_audio(
 
     except Exception as e:
         elapsed_time = time.time() - start_time
-        logger.error(f"❌ API: Upload failed after {elapsed_time:.2f}s: {e}")
-        logger.exception("API upload error details:")
+        error_msg = format_exception_short(e, f"API: Task creation failed after {elapsed_time:.2f}s")
+        logger.error(f"❌ {error_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create transcription job: {str(e)}",
@@ -233,8 +218,9 @@ async def get_job_status(job_id: str):
         raise
 
     except Exception as e:
-        logger.error(f"❌ API: Failed to get status for {job_id}: {e}")
-        logger.exception("API status error details:")
+        elapsed_time = time.time() - start_time
+        error_msg = format_exception_short(e, f"API: Status check failed after {elapsed_time:.2f}s")
+        logger.error(f"❌ {error_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get job status: {str(e)}",
@@ -319,7 +305,8 @@ async def get_job_result(job_id: str):
 
     except Exception as e:
         logger.error(f"❌ API: Failed to get result for {job_id}: {e}")
-        logger.exception("API result error details:")
+        error_msg = format_exception_short(e, f"API: Result retrieval failed after {elapsed_time:.2f}s")
+        logger.error(f"❌ {error_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get job result: {str(e)}",
@@ -388,7 +375,8 @@ async def list_jobs(status: Optional[str] = None, limit: int = 10):
 
     except Exception as e:
         logger.error(f"❌ API: Failed to list jobs: {e}")
-        logger.exception("API list error details:")
+        error_msg = format_exception_short(e, f"API: Task listing failed after {elapsed_time:.2f}s")
+        logger.error(f"❌ {error_msg}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to list jobs: {str(e)}",

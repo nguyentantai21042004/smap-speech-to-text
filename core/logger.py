@@ -4,16 +4,67 @@ Follows Single Responsibility Principle - only handles logging setup.
 """
 
 import sys
+import traceback
 from pathlib import Path
+from typing import Optional
 
 from loguru import logger
+
+
+def format_exception_short(exception: Exception, context: Optional[str] = None) -> str:
+    """
+    Format exception to be short and readable.
+
+    Args:
+        exception: Exception object
+        context: Optional context message
+
+    Returns:
+        Short formatted error message
+
+    Example:
+        >>> try:
+        ...     raise ValueError("Invalid input")
+        ... except ValueError as e:
+        ...     print(format_exception_short(e, "Processing file"))
+        Processing file: ValueError: Invalid input (file: core/utils.py, line: 123)
+    """
+    try:
+        exc_type = type(exception).__name__
+        exc_message = str(exception)
+
+        # Get the last frame from traceback (where error actually occurred)
+        tb = exception.__traceback__
+        if tb:
+            while tb.tb_next:
+                tb = tb.tb_next
+            frame = tb.tb_frame
+            filename = Path(frame.f_code.co_filename).name
+            lineno = tb.tb_lineno
+            location = f"{filename}:{lineno}"
+        else:
+            location = "unknown"
+
+        # Build short message
+        parts = []
+        if context:
+            parts.append(context)
+        parts.append(f"{exc_type}: {exc_message}")
+        parts.append(f"({location})")
+
+        return " | ".join(parts)
+
+    except Exception:
+        # Fallback to simple format if something goes wrong
+        return f"{type(exception).__name__}: {str(exception)}"
 
 
 def setup_logger():
     """Configure logger handlers. Only configures once even if called multiple times."""
     from .config import get_settings
+
     settings = get_settings()
-    
+
     # Get log level: LOG_LEVEL takes precedence over DEBUG flag
     # If LOG_LEVEL is set, use it; otherwise use DEBUG flag
     if settings.log_level:
@@ -25,11 +76,11 @@ def setup_logger():
     else:
         # Fallback to DEBUG flag if LOG_LEVEL not set
         log_level = "DEBUG" if settings.debug else "INFO"
-    
+
     # Check if logger already has our handlers configured
     # Loguru is a singleton, so handlers persist across module reloads
     handlers_count_before = len(logger._core.handlers.values())
-    
+
     # If already configured (has 3 handlers: console + app.log + error.log)
     # We still need to update the console handler level if it changed
     if handlers_count_before >= 3:
@@ -109,4 +160,4 @@ def setup_logger():
 # Configure logger on module import
 setup_logger()
 
-__all__ = ["logger"]
+__all__ = ["logger", "format_exception_short"]
