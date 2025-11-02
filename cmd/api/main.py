@@ -1,9 +1,10 @@
 """
-FastAPI Service - Main entry point (Refactored).
-Implements clean separation of concerns:
+FastAPI Service - Main entry point for SMAP Speech-to-Text API.
+Implements clean separation of concerns with comprehensive logging and error handling:
 - Routes are separated into modules
-- Schemas are separated into dedicated files
-- Only initialization logic remains in this file
+- MongoDB for data persistence
+- RabbitMQ for job processing
+- Comprehensive logging for all operations
 """
 
 from contextlib import asynccontextmanager
@@ -11,14 +12,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from core import DatabaseManager, MessageBroker, get_settings, logger
-from services import KeywordService, TaskService, SentimentService
-from internal.api.routes import (
-    create_keyword_routes,
-    create_task_routes,
-    create_health_routes,
-    create_sentiment_routes,
-)
+from core.config import get_settings
+from core.logger import logger
+from core.database import get_database
+from core.messaging import get_queue_manager
+from internal.api.routes.task_routes import router as task_router
 
 
 # Lifespan context manager
@@ -26,166 +24,236 @@ from internal.api.routes import (
 async def lifespan(app: FastAPI):
     """
     Manage application lifespan - startup and shutdown.
-    Connects to database and message broker on startup.
+    Connects to MongoDB and RabbitMQ on startup with comprehensive logging.
     """
-    settings = get_settings()
-    logger.info(f"Starting {settings.app_name} API service...")
-
-    # Connect to database
     try:
-        await DatabaseManager.connect()
-        logger.info("Database connected")
+        settings = get_settings()
+        logger.info(
+            f"📝 ========== Starting {settings.app_name} v{settings.app_version} API service =========="
+        )
+        logger.info(f"🔍 Environment: {settings.environment}")
+        logger.info(f"🔍 Debug mode: {settings.debug}")
+        logger.info(f"🔍 API: {settings.api_host}:{settings.api_port}")
+
+        # Initialize MongoDB connection
+        try:
+            logger.info("📝 Initializing MongoDB connection...")
+            db = await get_database()
+            await db.connect()
+            logger.info("✅ MongoDB connected successfully")
+
+            # Create indexes
+            logger.info("📝 Creating database indexes...")
+            await db.create_indexes()
+            logger.info("✅ Database indexes created")
+
+            # Health check
+            logger.info("📝 Performing MongoDB health check...")
+            db_healthy = await db.health_check()
+            if db_healthy:
+                logger.info("✅ MongoDB health check passed")
+            else:
+                logger.warning("⚠️ MongoDB health check failed")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize MongoDB: {e}")
+            logger.exception("MongoDB initialization error details:")
+            raise
+
+        # Initialize RabbitMQ connection
+        try:
+            logger.info("📝 Initializing RabbitMQ connection...")
+            queue_manager = get_queue_manager()
+
+            # Connect to RabbitMQ
+            await queue_manager.connect()
+            logger.info("✅ RabbitMQ connected successfully")
+
+            # Health check
+            logger.info("📝 Performing RabbitMQ health check...")
+            rabbitmq_healthy = queue_manager.health_check()
+            if rabbitmq_healthy:
+                logger.info("✅ RabbitMQ health check passed")
+            else:
+                logger.warning("⚠️ RabbitMQ health check failed")
+
+            # Store queue manager in app state
+            app.state.queue_manager = queue_manager
+            logger.info("✅ RabbitMQ initialized successfully")
+
+        except Exception as e:
+            logger.error(f"❌ Failed to initialize RabbitMQ: {e}")
+            logger.exception("RabbitMQ initialization error details:")
+            raise
+
+        logger.info(
+            f"✅ ========== {settings.app_name} API service started successfully =========="
+        )
+
+        yield
+
+        # Shutdown sequence
+        logger.info("📝 ========== Shutting down API service ==========")
+
+        # Disconnect from RabbitMQ
+        try:
+            if hasattr(app.state, "queue_manager"):
+                logger.info("📝 Disconnecting from RabbitMQ...")
+                await app.state.queue_manager.disconnect()
+                logger.info("✅ RabbitMQ disconnected successfully")
+        except Exception as e:
+            logger.error(f"❌ Error disconnecting from RabbitMQ: {e}")
+            logger.exception("RabbitMQ disconnect error details:")
+
+        # Disconnect from MongoDB
+        try:
+            logger.info("📝 Disconnecting from MongoDB...")
+            db = await get_database()
+            await db.disconnect()
+            logger.info("✅ MongoDB disconnected successfully")
+        except Exception as e:
+            logger.error(f"❌ Error disconnecting from MongoDB: {e}")
+            logger.exception("MongoDB disconnect error details:")
+
+        logger.info("✅ ========== API service stopped successfully ==========")
+
     except Exception as e:
-        logger.error(f"Failed to connect to database: {e}")
+        logger.error(f"❌ Fatal error in application lifespan: {e}")
+        logger.exception("Lifespan error details:")
         raise
-
-    # Connect to message broker
-    try:
-        message_broker = MessageBroker()
-        await message_broker.connect()
-        app.state.message_broker = message_broker
-        logger.info("Message broker connected")
-    except Exception as e:
-        logger.error(f"Failed to connect to message broker: {e}")
-        raise
-
-    logger.info("API service started successfully")
-
-    yield
-
-    # Shutdown
-    logger.info("Shutting down API service...")
-
-    # Disconnect from message broker
-    try:
-        if hasattr(app.state, "message_broker"):
-            await app.state.message_broker.disconnect()
-        logger.info("Message broker disconnected")
-    except Exception as e:
-        logger.error(f"Error disconnecting message broker: {e}")
-
-    # Disconnect from database
-    try:
-        await DatabaseManager.disconnect()
-        logger.info("Database disconnected")
-    except Exception as e:
-        logger.error(f"Error disconnecting database: {e}")
-
-    logger.info("API service stopped")
 
 
 def create_app() -> FastAPI:
     """
     Factory function to create and configure the FastAPI application.
+    Includes comprehensive logging and error handling.
 
     Returns:
         FastAPI: Configured application instance
     """
-    settings = get_settings()
+    try:
+        logger.info("📝 Creating FastAPI application...")
+        settings = get_settings()
 
-    # OpenAPI metadata
-    description = """
-## SMAP AI - NLP Service API
+        # OpenAPI metadata
+        description = """
+## SMAP Speech-to-Text API
 
-A production-ready microservices API for Vietnamese NLP tasks including keyword extraction and sentiment analysis.
+A production-ready Speech-to-Text service powered by Whisper.cpp with MongoDB and RabbitMQ.
 
 ### Key Features
 
-* **Keyword Extraction** - Extract keywords from Vietnamese text using multiple methods
-* **Sentiment Analysis** - Endpoint available; model not bundled in this source
-* **Async Processing** - Queue-based processing for heavy workloads via RabbitMQ
-* **Task Management** - Track and monitor asynchronous job execution
-* **Health Monitoring** - System health checks for database and message broker
+* **Audio Upload** - Upload audio files for transcription (MP3, WAV, M4A, etc.)
+* **Async Processing** - Queue-based processing with RabbitMQ for heavy workloads
+* **Real-time Progress** - Track transcription progress with chunk-level status
+* **Multi-language Support** - Support for Vietnamese, English, and other languages
+* **Multiple Models** - Choose from Whisper models: tiny, base, small, medium, large
+* **Result Storage** - Results stored in MongoDB with MinIO object storage
+* **Health Monitoring** - System health checks for MongoDB and RabbitMQ
 
-### Processing Modes
+### Processing Flow
 
-- **Synchronous** - Immediate response with results (recommended for small requests)
-- **Asynchronous** - Queue-based processing with task tracking (recommended for batch operations)
+1. **Upload** - Upload audio file via `/api/v1/tasks/upload`
+2. **Queue** - Job is queued in RabbitMQ for processing
+3. **Process** - Worker chunks audio, transcribes each chunk, and merges results
+4. **Retrieve** - Get results via `/api/v1/tasks/{job_id}/result`
+
+### Supported Audio Formats
+
+MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
 
 ### Authentication
 
 Currently no authentication required. Add authentication headers as needed for production deployment.
-    """
+        """
 
-    tags_metadata = [
-        {
-            "name": "Health",
-            "description": "Service health and status monitoring endpoints. Check API availability and dependencies status.",
-        },
-        {
-            "name": "Keywords",
-            "description": "Keyword extraction operations. Extract meaningful keywords from Vietnamese text using various algorithms. Supports both synchronous and asynchronous processing modes with caching.",
-        },
-        {
-            "name": "Tasks",
-            "description": "Task management for asynchronous operations. Create, retrieve, and monitor long-running background jobs. Track task status from pending → processing → completed/failed.",
-        },
-        {
-            "name": "Sentiment Analysis",
-            "description": "Sentiment endpoints are present for compatibility, but no model is bundled in this repository.",
-        },
-    ]
+        tags_metadata = [
+            {
+                "name": "STT Tasks",
+                "description": "Speech-to-text task operations. Upload audio files, track transcription progress, and retrieve results. Supports asynchronous processing with real-time status updates.",
+            },
+        ]
 
-    # Create FastAPI application
-    app = FastAPI(
-        title=settings.app_name,
-        version=settings.app_version,
-        description=description,
-        lifespan=lifespan,
-        openapi_tags=tags_metadata,
-        contact={
-            "name": "SMAP AI Team",
-            "email": "support@smap.ai",
-        },
-        license_info={
-            "name": "MIT License",
-            "url": "https://opensource.org/licenses/MIT",
-        },
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
-    )
+        # Create FastAPI application
+        logger.debug("🔍 Configuring FastAPI instance...")
+        app = FastAPI(
+            title=settings.app_name,
+            version=settings.app_version,
+            description=description,
+            lifespan=lifespan,
+            openapi_tags=tags_metadata,
+            contact={
+                "name": "SMAP AI Team",
+                "email": "support@smap.ai",
+            },
+            license_info={
+                "name": "MIT License",
+                "url": "https://opensource.org/licenses/MIT",
+            },
+            docs_url="/docs",
+            redoc_url="/redoc",
+            openapi_url="/openapi.json",
+        )
+        logger.debug("✅ FastAPI instance configured")
 
-    # Add CORS middleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # Configure appropriately for production
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+        # Add CORS middleware
+        logger.debug("🔍 Adding CORS middleware...")
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],  # Configure appropriately for production
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+        logger.debug("✅ CORS middleware added")
 
-    # Initialize services (Dependency Injection)
-    keyword_service = KeywordService()
-    task_service = TaskService()
-    sentiment_service = SentimentService()
+        # Include task router
+        logger.debug("🔍 Including API routes...")
+        app.include_router(task_router)
+        logger.info("✅ Task routes registered")
 
-    # Create and include routers
-    keyword_router = create_keyword_routes(keyword_service)
-    task_router = create_task_routes(task_service)
-    sentiment_router = create_sentiment_routes(sentiment_service)
-    health_router = create_health_routes(app)
+        logger.info("✅ FastAPI application created successfully")
+        return app
 
-    app.include_router(keyword_router)
-    app.include_router(task_router)
-    app.include_router(sentiment_router)
-    app.include_router(health_router)
-
-    return app
+    except Exception as e:
+        logger.error(f"❌ Failed to create FastAPI application: {e}")
+        logger.exception("Application creation error details:")
+        raise
 
 
 # Create application instance
-app = create_app()
+try:
+    logger.info("📝 Initializing SMAP Speech-to-Text API...")
+    app = create_app()
+    logger.info("✅ Application instance created successfully")
+except Exception as e:
+    logger.error(f"❌ Failed to create application instance: {e}")
+    logger.exception("Startup error details:")
+    raise
 
 
-# Run with: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# Run with: uvicorn cmd.api.main:app --host 0.0.0.0 --port 8000 --reload
 if __name__ == "__main__":
     import uvicorn
 
-    settings = get_settings()
-    uvicorn.run(
-        "main:app",
-        host=settings.api_host,
-        port=settings.api_port,
-        reload=settings.api_reload,
-    )
+    try:
+        settings = get_settings()
+
+        logger.info("📝 ========== Starting Uvicorn Server ==========")
+        logger.info(f"🔍 Host: {settings.api_host}")
+        logger.info(f"🔍 Port: {settings.api_port}")
+        logger.info(f"🔍 Reload: {settings.api_reload}")
+        logger.info(f"🔍 Workers: {settings.api_workers}")
+
+        uvicorn.run(
+            "cmd.api.main:app",
+            host=settings.api_host,
+            port=settings.api_port,
+            reload=settings.api_reload,
+            log_level="info" if settings.debug else "warning",
+        )
+
+    except Exception as e:
+        logger.error(f"❌ Failed to start Uvicorn server: {e}")
+        logger.exception("Uvicorn startup error details:")
+        raise

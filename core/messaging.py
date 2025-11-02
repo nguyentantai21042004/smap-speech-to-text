@@ -1,378 +1,334 @@
 """
-Redis Queue management for asynchronous job processing.
-Includes detailed logging and comprehensive error handling.
+RabbitMQ Message Queue Manager for async job processing.
+Provides comprehensive logging and error handling for message queue operations.
 """
 
-import redis
-from rq import Queue
-from rq.job import Job
-from typing import Optional, Any, Dict, Callable
-from datetime import datetime
+import json
+from typing import Optional, Callable, Any, Dict
+import asyncio
+
+import aio_pika
+from aio_pika import Connection, Channel, Exchange, Queue, Message, DeliveryMode
+from aio_pika.abc import AbstractRobustConnection, AbstractRobustChannel
 
 from core.config import get_settings
 from core.logger import logger
 
-settings = get_settings()
 
-
-class RedisQueueManager:
-    """Manages Redis Queue connections and operations with detailed logging."""
+class QueueManager:
+    """
+    RabbitMQ Queue Manager with comprehensive logging and error handling.
+    Handles connection lifecycle, message publishing, and queue management.
+    """
 
     def __init__(self):
-        """Initialize Redis connection and queues."""
+        """Initialize RabbitMQ queue manager."""
         try:
-            logger.info("📝 Initializing Redis Queue Manager...")
-
-            # Build Redis connection string
-            redis_password_part = (
-                f":{settings.redis_password}@" if settings.redis_password else ""
-            )
-            redis_url = f"redis://{redis_password_part}{settings.redis_host}:{settings.redis_port}/{settings.redis_db}"
-
-            # Mask password for logging
-            masked_url = (
-                redis_url.replace(f":{settings.redis_password}@", ":****@")
-                if settings.redis_password
-                else redis_url
-            )
-            logger.debug(f"Connecting to Redis: {masked_url}")
-
-            # Create Redis connection
-            self.redis_conn = redis.Redis(
-                host=settings.redis_host,
-                port=settings.redis_port,
-                db=settings.redis_db,
-                password=settings.redis_password,
-                decode_responses=False,
-                socket_connect_timeout=5,
-                socket_timeout=5,
-                retry_on_timeout=True,
-            )
-
-            # Test connection
-            self.redis_conn.ping()
-            logger.info(
-                f"✅ Connected to Redis at {settings.redis_host}:{settings.redis_port}"
-            )
-
-            # Define queue priorities
-            self.queue_high = Queue("stt_jobs_high", connection=self.redis_conn)
-            self.queue_normal = Queue("stt_jobs", connection=self.redis_conn)
-            self.queue_low = Queue("stt_jobs_low", connection=self.redis_conn)
-
-            logger.info("✅ Redis Queue Manager initialized")
-            logger.debug(
-                f"Queues created: high={self.queue_high.name}, normal={self.queue_normal.name}, low={self.queue_low.name}"
-            )
-
-        except redis.ConnectionError as e:
-            logger.error(f"❌ Redis connection error: {e}")
-            logger.exception("Redis connection error details:")
-            raise
-
-        except redis.TimeoutError as e:
-            logger.error(f"❌ Redis connection timeout: {e}")
-            logger.exception("Redis timeout error details:")
-            raise
-
+            logger.debug("🔍 Initializing RabbitMQ QueueManager...")
+            self.settings = get_settings()
+            self.connection: Optional[AbstractRobustConnection] = None
+            self.channel: Optional[AbstractRobustChannel] = None
+            self.exchange: Optional[Exchange] = None
+            self.queue: Optional[Queue] = None
+            logger.debug("✅ RabbitMQ QueueManager initialized")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize Redis Queue Manager: {e}")
-            logger.exception("Redis initialization error details:")
+            logger.error(f"❌ Failed to initialize QueueManager: {e}")
+            logger.exception("QueueManager initialization error:")
             raise
 
-    def enqueue_job(
-        self,
-        func: Callable,
-        args: tuple = (),
-        kwargs: Optional[Dict[str, Any]] = None,
-        priority: str = "normal",
-        job_id: Optional[str] = None,
-        job_timeout: Optional[int] = None,
-        result_ttl: int = 86400,
-        failure_ttl: int = 604800,
-    ) -> Job:
+    async def connect(self) -> None:
         """
-        Enqueue a job for processing.
-
-        Args:
-            func: Function to execute (can be function object or string path)
-            args: Positional arguments for the function
-            kwargs: Keyword arguments for the function
-            priority: Job priority ('high', 'normal', 'low')
-            job_id: Optional custom job ID
-            job_timeout: Maximum execution time in seconds
-            result_ttl: How long to keep successful results (seconds)
-            failure_ttl: How long to keep failed job info (seconds)
-
-        Returns:
-            RQ Job object
+        Connect to RabbitMQ server with comprehensive error handling.
 
         Raises:
-            Exception: If job enqueue fails
+            Exception: If connection fails
         """
         try:
-            kwargs = kwargs or {}
-            job_timeout = job_timeout or settings.job_timeout
+            logger.info("📝 Connecting to RabbitMQ...")
 
-            logger.info(
-                f"📝 Enqueueing job: func={func}, priority={priority}, job_id={job_id}"
+            # Mask password in logs
+            rabbitmq_url = self.settings.rabbitmq_url
+            masked_url = rabbitmq_url.replace(
+                f":{self.settings.rabbitmq_password}@",
+                ":****@"
             )
-            logger.debug(f"Job args: {args}, kwargs: {kwargs}")
+            logger.debug(f"Connection URL: {masked_url}")
 
-            # Select queue based on priority
-            if priority == "high":
-                queue = self.queue_high
-            elif priority == "low":
-                queue = self.queue_low
-            else:
-                queue = self.queue_normal
-
-            logger.debug(f"Selected queue: {queue.name}")
-
-            # Enqueue the job
-            job = queue.enqueue(
-                func,
-                args=args,
-                kwargs=kwargs,
-                job_id=job_id,
-                job_timeout=job_timeout,
-                result_ttl=result_ttl,
-                failure_ttl=failure_ttl,
+            # Create robust connection (auto-reconnect)
+            logger.debug("Creating robust connection...")
+            self.connection = await aio_pika.connect_robust(
+                rabbitmq_url,
+                timeout=10.0
             )
+            logger.info(f"✅ Connected to RabbitMQ at {self.settings.rabbitmq_host}:{self.settings.rabbitmq_port}")
 
-            logger.info(
-                f"✅ Job enqueued successfully: job_id={job.id}, queue={queue.name}"
+            # Create channel
+            logger.debug("Creating channel...")
+            self.channel = await self.connection.channel()
+            await self.channel.set_qos(prefetch_count=1)  # Fair dispatch
+            logger.debug("✅ Channel created with QoS prefetch_count=1")
+
+            # Declare exchange
+            logger.debug(f"Declaring exchange: {self.settings.rabbitmq_exchange_name}")
+            self.exchange = await self.channel.declare_exchange(
+                name=self.settings.rabbitmq_exchange_name,
+                type=aio_pika.ExchangeType.DIRECT,
+                durable=True  # Survive broker restart
             )
-            logger.debug(
-                f"Job timeout: {job_timeout}s, result_ttl: {result_ttl}s, failure_ttl: {failure_ttl}s"
+            logger.info(f"✅ Exchange declared: {self.settings.rabbitmq_exchange_name}")
+
+            # Declare queue
+            logger.debug(f"Declaring queue: {self.settings.rabbitmq_queue_name}")
+            self.queue = await self.channel.declare_queue(
+                name=self.settings.rabbitmq_queue_name,
+                durable=True,  # Survive broker restart
+                arguments={
+                    "x-message-ttl": self.settings.job_timeout * 1000,  # Message TTL in ms
+                    "x-max-priority": 10  # Enable priority queue
+                }
             )
+            logger.info(f"✅ Queue declared: {self.settings.rabbitmq_queue_name}")
 
-            return job
+            # Bind queue to exchange
+            logger.debug(f"Binding queue to exchange with routing key: {self.settings.rabbitmq_routing_key}")
+            await self.queue.bind(
+                exchange=self.exchange,
+                routing_key=self.settings.rabbitmq_routing_key
+            )
+            logger.info(f"✅ Queue bound to exchange")
 
-        except redis.ConnectionError as e:
-            logger.error(f"❌ Redis connection error while enqueueing job: {e}")
+            logger.info("✅ RabbitMQ connection established successfully")
+
+        except aio_pika.exceptions.AMQPConnectionError as e:
+            logger.error(f"❌ RabbitMQ connection error: {e}")
+            logger.error(f"Check if RabbitMQ is running at {self.settings.rabbitmq_host}:{self.settings.rabbitmq_port}")
             logger.exception("Connection error details:")
             raise
 
         except Exception as e:
-            logger.error(f"❌ Failed to enqueue job: {e}")
-            logger.exception("Job enqueue error details:")
+            logger.error(f"❌ Failed to connect to RabbitMQ: {e}")
+            logger.exception("RabbitMQ connection error details:")
             raise
 
-    def get_job(self, job_id: str) -> Optional[Job]:
+    async def disconnect(self) -> None:
         """
-        Get job by ID.
-
-        Args:
-            job_id: Job ID
-
-        Returns:
-            Job object or None if not found
+        Disconnect from RabbitMQ server with proper cleanup.
         """
         try:
-            logger.debug(f"🔍 Fetching job: job_id={job_id}")
+            logger.info("📝 Disconnecting from RabbitMQ...")
 
-            job = Job.fetch(job_id, connection=self.redis_conn)
+            if self.channel and not self.channel.is_closed:
+                logger.debug("Closing channel...")
+                await self.channel.close()
+                logger.debug("✅ Channel closed")
 
-            if job:
-                logger.debug(
-                    f"✅ Job found: job_id={job_id}, status={job.get_status()}"
-                )
-            else:
-                logger.warning(f"⚠️ Job not found: job_id={job_id}")
+            if self.connection and not self.connection.is_closed:
+                logger.debug("Closing connection...")
+                await self.connection.close()
+                logger.debug("✅ Connection closed")
 
-            return job
+            logger.info("✅ RabbitMQ disconnected successfully")
 
         except Exception as e:
-            logger.error(f"❌ Failed to fetch job {job_id}: {e}")
-            logger.exception("Job fetch error details:")
-            return None
+            logger.error(f"❌ Error disconnecting from RabbitMQ: {e}")
+            logger.exception("Disconnect error details:")
 
-    def get_job_status(self, job_id: str) -> Optional[Dict[str, Any]]:
+    async def publish_job(
+        self,
+        job_id: str,
+        job_data: Dict[str, Any],
+        priority: int = 5
+    ) -> bool:
         """
-        Get status of a job.
+        Publish a job message to the queue.
 
         Args:
-            job_id: Job ID
+            job_id: Job identifier
+            job_data: Job data dictionary
+            priority: Message priority (0-10, higher = more priority)
 
         Returns:
-            Job status dictionary or None if not found
+            True if published successfully, False otherwise
+
+        Raises:
+            Exception: If publishing fails
         """
         try:
-            logger.debug(f"🔍 Getting status for job: job_id={job_id}")
+            logger.info(f"📝 Publishing job to queue: job_id={job_id}, priority={priority}")
 
-            job = Job.fetch(job_id, connection=self.redis_conn)
+            if not self.exchange:
+                logger.error("❌ Exchange not initialized. Call connect() first.")
+                raise RuntimeError("RabbitMQ not connected")
 
-            status_info = {
-                "job_id": job.id,
-                "status": job.get_status(),
-                "result": job.result,
-                "exc_info": job.exc_info,
-                "created_at": job.created_at.isoformat() if job.created_at else None,
-                "started_at": job.started_at.isoformat() if job.started_at else None,
-                "ended_at": job.ended_at.isoformat() if job.ended_at else None,
-                "meta": job.meta,
+            # Prepare message
+            message_body = {
+                "job_id": job_id,
+                **job_data
             }
 
-            logger.debug(
-                f"✅ Job status retrieved: job_id={job_id}, status={status_info['status']}"
+            # Serialize to JSON
+            message_bytes = json.dumps(message_body).encode("utf-8")
+            logger.debug(f"Message size: {len(message_bytes)} bytes")
+
+            # Create message with options
+            message = Message(
+                body=message_bytes,
+                delivery_mode=DeliveryMode.PERSISTENT,  # Survive broker restart
+                priority=priority,
+                content_type="application/json",
+                message_id=job_id,
+                headers={
+                    "x-job-id": job_id,
+                    "x-published-at": str(asyncio.get_event_loop().time())
+                }
             )
 
-            return status_info
+            # Publish message
+            await self.exchange.publish(
+                message=message,
+                routing_key=self.settings.rabbitmq_routing_key
+            )
 
-        except Exception as e:
-            logger.error(f"❌ Failed to get job status for {job_id}: {e}")
-            logger.exception("Job status retrieval error details:")
-            return None
-
-    def cancel_job(self, job_id: str) -> bool:
-        """
-        Cancel a pending or started job.
-
-        Args:
-            job_id: Job ID
-
-        Returns:
-            True if cancelled successfully
-        """
-        try:
-            logger.info(f"📝 Cancelling job: job_id={job_id}")
-
-            job = Job.fetch(job_id, connection=self.redis_conn)
-            job.cancel()
-
-            logger.info(f"✅ Job cancelled: job_id={job_id}")
+            logger.info(f"✅ Job published successfully: job_id={job_id}")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Failed to cancel job {job_id}: {e}")
-            logger.exception("Job cancellation error details:")
-            return False
+            logger.error(f"❌ Failed to publish job {job_id}: {e}")
+            logger.exception("Publish error details:")
+            raise
 
-    def delete_job(self, job_id: str) -> bool:
+    async def consume_jobs(
+        self,
+        callback: Callable,
+        prefetch_count: int = 1
+    ) -> None:
         """
-        Delete a job from Redis.
+        Start consuming jobs from the queue.
 
         Args:
-            job_id: Job ID
+            callback: Async callback function to process messages
+            prefetch_count: Number of messages to prefetch
 
-        Returns:
-            True if deleted successfully
+        Raises:
+            Exception: If consumption fails
         """
         try:
-            logger.info(f"📝 Deleting job: job_id={job_id}")
+            logger.info(f"📝 Starting to consume jobs from queue: {self.settings.rabbitmq_queue_name}")
 
-            job = Job.fetch(job_id, connection=self.redis_conn)
-            job.delete()
+            if not self.queue:
+                logger.error("❌ Queue not initialized. Call connect() first.")
+                raise RuntimeError("RabbitMQ not connected")
 
-            logger.info(f"✅ Job deleted: job_id={job_id}")
-            return True
+            # Set QoS
+            logger.debug(f"Setting prefetch_count={prefetch_count}")
+            await self.channel.set_qos(prefetch_count=prefetch_count)
 
-        except Exception as e:
-            logger.error(f"❌ Failed to delete job {job_id}: {e}")
-            logger.exception("Job deletion error details:")
-            return False
+            # Start consuming
+            logger.info("✅ Started consuming messages...")
+            logger.info("Press Ctrl+C to stop")
 
-    def get_queue_stats(self) -> Dict[str, Any]:
-        """
-        Get statistics about all queues.
-
-        Returns:
-            Dictionary with queue statistics
-        """
-        try:
-            logger.debug("🔍 Fetching queue statistics...")
-
-            stats = {
-                "high_priority": {
-                    "name": self.queue_high.name,
-                    "pending": len(self.queue_high),
-                    "started": self.queue_high.started_job_registry.count,
-                    "finished": self.queue_high.finished_job_registry.count,
-                    "failed": self.queue_high.failed_job_registry.count,
-                    "workers": len(self.queue_high.workers),
-                },
-                "normal": {
-                    "name": self.queue_normal.name,
-                    "pending": len(self.queue_normal),
-                    "started": self.queue_normal.started_job_registry.count,
-                    "finished": self.queue_normal.finished_job_registry.count,
-                    "failed": self.queue_normal.failed_job_registry.count,
-                    "workers": len(self.queue_normal.workers),
-                },
-                "low_priority": {
-                    "name": self.queue_low.name,
-                    "pending": len(self.queue_low),
-                    "started": self.queue_low.started_job_registry.count,
-                    "finished": self.queue_low.finished_job_registry.count,
-                    "failed": self.queue_low.failed_job_registry.count,
-                    "workers": len(self.queue_low.workers),
-                },
-            }
-
-            logger.debug(f"✅ Queue stats retrieved: {stats}")
-
-            return stats
+            await self.queue.consume(callback)
 
         except Exception as e:
-            logger.error(f"❌ Failed to get queue stats: {e}")
-            logger.exception("Queue stats error details:")
-            return {}
+            logger.error(f"❌ Error consuming jobs: {e}")
+            logger.exception("Consume error details:")
+            raise
 
     def health_check(self) -> bool:
         """
-        Check if Redis connection is healthy.
+        Check if RabbitMQ connection is healthy.
 
         Returns:
             True if healthy, False otherwise
         """
         try:
-            logger.debug("🔍 Performing Redis health check...")
+            if not self.connection:
+                logger.debug("Health check: No connection")
+                return False
 
-            self.redis_conn.ping()
+            if self.connection.is_closed:
+                logger.debug("Health check: Connection is closed")
+                return False
 
-            logger.debug("✅ Redis health check passed")
+            if not self.channel or self.channel.is_closed:
+                logger.debug("Health check: Channel is closed")
+                return False
+
+            logger.debug("Health check: RabbitMQ is healthy")
             return True
 
         except Exception as e:
-            logger.error(f"❌ Redis health check failed: {e}")
-            logger.exception("Health check error details:")
+            logger.error(f"❌ Health check error: {e}")
             return False
 
-    def close(self):
-        """Close Redis connection."""
-        try:
-            logger.info("📝 Closing Redis connection...")
+    async def get_queue_size(self) -> Optional[int]:
+        """
+        Get the number of messages in the queue.
 
-            if self.redis_conn:
-                self.redis_conn.close()
-                logger.info("✅ Redis connection closed")
+        Returns:
+            Number of messages, or None on error
+        """
+        try:
+            if not self.queue:
+                logger.warning("Queue not initialized")
+                return None
+
+            # Declare queue passively to get status
+            queue_info = await self.channel.declare_queue(
+                name=self.settings.rabbitmq_queue_name,
+                passive=True
+            )
+
+            message_count = queue_info.declaration_result.message_count
+            logger.debug(f"Queue size: {message_count} messages")
+            return message_count
 
         except Exception as e:
-            logger.error(f"❌ Error closing Redis connection: {e}")
-            logger.exception("Redis close error details:")
+            logger.error(f"❌ Failed to get queue size: {e}")
+            logger.exception("Queue size error:")
+            return None
+
+    async def purge_queue(self) -> bool:
+        """
+        Purge all messages from the queue.
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            logger.warning(f"⚠️ Purging queue: {self.settings.rabbitmq_queue_name}")
+
+            if not self.queue:
+                logger.error("Queue not initialized")
+                return False
+
+            await self.queue.purge()
+            logger.info(f"✅ Queue purged successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"❌ Failed to purge queue: {e}")
+            logger.exception("Purge error:")
+            return False
 
 
-# Global instance
-_queue_manager: Optional[RedisQueueManager] = None
+# Singleton instance
+_queue_manager: Optional[QueueManager] = None
 
 
-def get_queue_manager() -> RedisQueueManager:
+def get_queue_manager() -> QueueManager:
     """
-    Get or create global queue manager instance.
+    Get QueueManager instance (singleton).
 
     Returns:
-        RedisQueueManager instance
-
-    Raises:
-        Exception: If queue manager initialization fails
+        QueueManager instance
     """
     global _queue_manager
 
     try:
         if _queue_manager is None:
-            logger.info("📝 Creating global Redis Queue Manager...")
-            _queue_manager = RedisQueueManager()
+            logger.debug("Creating new QueueManager instance")
+            _queue_manager = QueueManager()
 
         return _queue_manager
 
@@ -380,19 +336,3 @@ def get_queue_manager() -> RedisQueueManager:
         logger.error(f"❌ Failed to get queue manager: {e}")
         logger.exception("Queue manager initialization error:")
         raise
-
-
-def close_queue_manager():
-    """Close global queue manager."""
-    global _queue_manager
-
-    try:
-        if _queue_manager:
-            logger.info("📝 Closing global queue manager...")
-            _queue_manager.close()
-            _queue_manager = None
-            logger.info("✅ Global queue manager closed")
-
-    except Exception as e:
-        logger.error(f"❌ Error closing queue manager: {e}")
-        logger.exception("Queue manager close error details:")

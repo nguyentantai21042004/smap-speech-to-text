@@ -1,240 +1,324 @@
 """
-Task Management API Routes.
+STT Task API Routes.
+Includes detailed logging and comprehensive error handling.
 """
 
-from fastapi import APIRouter, HTTPException, Query, status
-from typing import Dict, List
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, status
+from typing import Optional
+import time
 
-from internal.api.schemas import (
-    TaskCreateRequest,
-    TaskResponse,
+from core.logger import logger
+from services.task_service import get_task_service
+
+router = APIRouter(prefix="/api/v1/tasks", tags=["STT Tasks"])
+
+
+@router.post(
+    "/upload",
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload Audio for Transcription",
+    description="Upload an audio file and create an STT job",
 )
-from services.interfaces import ITaskService
-from core import logger
-
-
-router = APIRouter(prefix="/api/v1/tasks", tags=["Tasks"])
-
-
-def create_task_routes(task_service: ITaskService) -> APIRouter:
+async def upload_audio(
+    file: UploadFile = File(..., description="Audio file to transcribe"),
+    language: str = Form(default="vi", description="Language code (en, vi, etc.)"),
+    model: str = Form(
+        default="medium", description="Whisper model (tiny, base, small, medium, large)"
+    ),
+):
     """
-    Factory function to create task routes with dependency injection.
+    Upload an audio file for speech-to-text transcription.
 
-    Args:
-        task_service: Implementation of ITaskService
+    **Parameters:**
+    - **file**: Audio file (MP3, WAV, M4A, etc.)
+    - **language**: Language code (default: vi for Vietnamese)
+    - **model**: Whisper model to use (default: medium)
 
-    Returns:
-        APIRouter: Configured router with all task endpoints
+    **Returns:**
+    - job_id: Unique identifier for the transcription job
+    - status: Current job status
+    - message: Success message
+
+    **Supported formats:**
+    MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
     """
+    start_time = time.time()
 
-    @router.post(
-        "",
-        response_model=TaskResponse,
-        status_code=status.HTTP_201_CREATED,
-        summary="Create Task",
-        description="Create a new asynchronous task for background processing",
-        responses={
-            201: {
-                "description": "Task created successfully",
-                "content": {
-                    "application/json": {
-                        "example": {
-                            "id": "task_789xyz",
-                            "task_type": "keyword_extraction",
-                            "status": "pending",
-                            "priority": 5,
-                            "created_at": "2025-10-30T10:30:00Z",
-                        }
-                    }
-                },
+    try:
+        logger.info(
+            f"📝 API: Upload request received: filename={file.filename}, language={language}, model={model}"
+        )
+
+        # Validate file
+        if not file.filename:
+            logger.error("❌ No filename provided")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="No filename provided"
+            )
+
+        # Get file size
+        file_content = await file.read()
+        file_size_bytes = len(file_content)
+        file_size_mb = file_size_bytes / (1024 * 1024)
+
+        logger.debug(f"File size: {file_size_mb:.2f}MB")
+
+        # Validate file size
+        if file_size_mb > 500:
+            logger.error(f"❌ File too large: {file_size_mb:.2f}MB")
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=f"File too large: {file_size_mb:.2f}MB. Maximum size is 500MB",
+            )
+
+        # Create task
+        import io
+
+        task_service = get_task_service()
+
+        result = await task_service.create_stt_task(
+            audio_file=io.BytesIO(file_content),
+            filename=file.filename,
+            file_size_mb=file_size_mb,
+            language=language,
+            model=model,
+        )
+
+        elapsed_time = time.time() - start_time
+        logger.info(
+            f"✅ API: Upload successful: job_id={result['job_id']}, time={elapsed_time:.2f}s"
+        )
+
+        return result
+
+    except HTTPException as e:
+        elapsed_time = time.time() - start_time
+        logger.error(f"❌ API: HTTP error after {elapsed_time:.2f}s: {e.detail}")
+        raise
+
+    except ValueError as e:
+        elapsed_time = time.time() - start_time
+        logger.error(f"❌ API: Validation error after {elapsed_time:.2f}s: {e}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    except Exception as e:
+        elapsed_time = time.time() - start_time
+        logger.error(f"❌ API: Upload failed after {elapsed_time:.2f}s: {e}")
+        logger.exception("API upload error details:")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create transcription job: {str(e)}",
+        )
+
+
+@router.get(
+    "/{job_id}/status",
+    summary="Get Job Status",
+    description="Get the current status of a transcription job",
+)
+async def get_job_status(job_id: str):
+    """
+    Get the status of a transcription job.
+
+    **Parameters:**
+    - **job_id**: Job identifier
+
+    **Returns:**
+    - job_id: Job identifier
+    - status: Current status (PENDING, PROCESSING, COMPLETED, FAILED)
+    - progress: Processing progress (0-100%)
+    - chunks_total: Total number of audio chunks
+    - chunks_completed: Number of completed chunks
+    - created_at: Job creation timestamp
+    - started_at: Job start timestamp (if started)
+    - completed_at: Job completion timestamp (if completed)
+
+    **Status values:**
+    - PENDING: Job is queued, waiting to be processed
+    - PROCESSING: Job is currently being processed
+    - COMPLETED: Job completed successfully
+    - FAILED: Job failed (check error_message)
+    """
+    try:
+        logger.info(f"📝 API: Status request for job_id={job_id}")
+
+        task_service = get_task_service()
+        result = await task_service.get_task_status(job_id)
+
+        if not result:
+            logger.warning(f"⚠️ API: Job not found: job_id={job_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Job not found: {job_id}"
+            )
+
+        logger.info(
+            f"✅ API: Status retrieved: job_id={job_id}, status={result['status']}"
+        )
+
+        return result
+
+    except HTTPException as e:
+        logger.error(f"❌ API: HTTP error: {e.detail}")
+        raise
+
+    except Exception as e:
+        logger.error(f"❌ API: Failed to get status for {job_id}: {e}")
+        logger.exception("API status error details:")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get job status: {str(e)}",
+        )
+
+
+@router.get(
+    "/{job_id}/result",
+    summary="Get Transcription Result",
+    description="Get the transcription result for a completed job",
+)
+async def get_job_result(job_id: str):
+    """
+    Get the transcription result for a completed job.
+
+    **Parameters:**
+    - **job_id**: Job identifier
+
+    **Returns:**
+    - job_id: Job identifier
+    - status: Job status
+    - transcription: Transcribed text
+    - filename: Original filename
+    - language: Language used
+    - duration_seconds: Audio duration
+    - processing_time_seconds: Processing time
+    - download_url: URL to download result file (valid for 1 hour)
+
+    **Note:**
+    - Only available for COMPLETED jobs
+    - For jobs still processing, returns status information
+    """
+    try:
+        logger.info(f"📝 API: Result request for job_id={job_id}")
+
+        task_service = get_task_service()
+        result = await task_service.get_task_result(job_id)
+
+        if not result:
+            logger.warning(f"⚠️ API: Job not found: job_id={job_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Job not found: {job_id}"
+            )
+
+        if result["status"] != "COMPLETED":
+            logger.info(
+                f"⚠️ API: Job not completed: job_id={job_id}, status={result['status']}"
+            )
+
+        logger.info(
+            f"✅ API: Result retrieved: job_id={job_id}, status={result['status']}"
+        )
+
+        return result
+
+    except HTTPException as e:
+        logger.error(f"❌ API: HTTP error: {e.detail}")
+        raise
+
+    except Exception as e:
+        logger.error(f"❌ API: Failed to get result for {job_id}: {e}")
+        logger.exception("API result error details:")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to get job result: {str(e)}",
+        )
+
+
+@router.get(
+    "",
+    summary="List Jobs",
+    description="List transcription jobs with optional status filter",
+)
+async def list_jobs(status: Optional[str] = None, limit: int = 10):
+    """
+    List transcription jobs.
+
+    **Query Parameters:**
+    - **status**: Filter by status (PENDING, PROCESSING, COMPLETED, FAILED)
+    - **limit**: Maximum number of jobs to return (default: 10, max: 100)
+
+    **Returns:**
+    Array of job summaries with basic information.
+    """
+    try:
+        logger.info(f"📝 API: List jobs request: status={status}, limit={limit}")
+
+        # Validate limit
+        if limit > 100:
+            limit = 100
+
+        task_service = get_task_service()
+        results = await task_service.list_tasks(limit=limit, status=status)
+
+        logger.info(f"✅ API: Jobs listed: count={len(results)}")
+
+        return {"status": "success", "count": len(results), "jobs": results}
+
+    except Exception as e:
+        logger.error(f"❌ API: Failed to list jobs: {e}")
+        logger.exception("API list error details:")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to list jobs: {str(e)}",
+        )
+
+
+@router.get(
+    "/health", summary="Health Check", description="Check if the API is healthy"
+)
+async def health_check():
+    """
+    Health check endpoint.
+
+    **Returns:**
+    Service health status.
+    """
+    try:
+        logger.debug("🔍 API: Health check requested")
+
+        # Check database connection
+        from core.database import get_database
+
+        db = await get_database()
+        db_healthy = await db.health_check()
+
+        # Check Redis connection
+        from core.messaging import get_queue_manager
+
+        queue_manager = get_queue_manager()
+        redis_healthy = queue_manager.health_check()
+
+        overall_healthy = db_healthy and redis_healthy
+
+        status_code = (
+            status.HTTP_200_OK
+            if overall_healthy
+            else status.HTTP_503_SERVICE_UNAVAILABLE
+        )
+
+        result = {
+            "status": "healthy" if overall_healthy else "unhealthy",
+            "services": {
+                "mongodb": "healthy" if db_healthy else "unhealthy",
+                "redis": "healthy" if redis_healthy else "unhealthy",
             },
-            500: {"description": "Internal server error"},
-        },
-    )
-    async def create_task(request: TaskCreateRequest):
-        """
-        Create a new asynchronous task.
+        }
 
-        Submit a background job for asynchronous processing. The task will be
-        queued and processed by worker services.
+        logger.debug(f"✅ API: Health check result: {result['status']}")
 
-        **Parameters:**
-        - **task_type**: Type of task to execute (e.g., "keyword_extraction")
-        - **payload**: Task-specific data and parameters
-        - **priority**: Task priority (0-10, higher = more important)
+        return result
 
-        **Returns:**
-        Task object with unique ID and initial status "pending".
-        Use the task ID to check status and retrieve results.
-        """
-        try:
-            result = await task_service.create_task(
-                task_type=request.task_type,
-                payload=request.payload,
-                priority=request.priority,
-            )
-            return TaskResponse(**result)
-        except Exception as e:
-            logger.error(f"Error creating task: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error creating task: {str(e)}",
-            )
-
-    @router.get(
-        "/{task_id}",
-        response_model=Dict,
-        summary="Get Task",
-        description="Retrieve task details and status by ID",
-        responses={
-            200: {
-                "description": "Task found",
-                "content": {
-                    "application/json": {
-                        "example": {
-                            "id": "task_789xyz",
-                            "task_type": "keyword_extraction",
-                            "status": "completed",
-                            "result": {"keywords": ["python", "fastapi"]},
-                            "created_at": "2025-10-30T10:30:00Z",
-                            "completed_at": "2025-10-30T10:30:15Z",
-                        }
-                    }
-                },
-            },
-            404: {"description": "Task not found"},
-            500: {"description": "Internal server error"},
-        },
-    )
-    async def get_task(task_id: str):
-        """
-        Get task details by ID.
-
-        Retrieve complete information about a task including its current status,
-        results (if completed), and timing information.
-
-        **Parameters:**
-        - **task_id**: Unique task identifier
-
-        **Returns:**
-        Task object with status, result, and metadata.
-
-        **Task Status Values:**
-        - `pending`: Waiting in queue
-        - `processing`: Currently being processed
-        - `completed`: Successfully finished
-        - `failed`: Processing failed (check error field)
-        """
-        try:
-            task = await task_service.get_task(task_id)
-            if not task:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Task {task_id} not found",
-                )
-            return task
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error getting task: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error getting task: {str(e)}",
-            )
-
-    @router.get(
-        "",
-        response_model=List[Dict],
-        summary="List Tasks",
-        description="Retrieve tasks filtered by status with pagination",
-        responses={
-            200: {"description": "List of tasks"},
-            500: {"description": "Internal server error"},
-        },
-    )
-    async def get_tasks(
-        status: str = Query(
-            default="pending",
-            description="Filter by task status (pending/processing/completed/failed)",
-        ),
-        skip: int = Query(
-            default=0, ge=0, description="Number of tasks to skip (pagination)"
-        ),
-        limit: int = Query(
-            default=100, ge=1, le=1000, description="Maximum number of tasks to return"
-        ),
-    ):
-        """
-        Get tasks filtered by status.
-
-        Retrieve a paginated list of tasks matching the specified status.
-        Useful for monitoring pending work, checking completed jobs, or
-        investigating failures.
-
-        **Query Parameters:**
-        - **status**: Filter by status (pending/processing/completed/failed)
-        - **skip**: Pagination offset (default: 0)
-        - **limit**: Maximum results (1-1000, default: 100)
-
-        **Returns:**
-        Array of task objects sorted by creation time.
-        """
-        try:
-            return await task_service.get_tasks_by_status(status, skip, limit)
-        except Exception as e:
-            logger.error(f"Error getting tasks: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error getting tasks: {str(e)}",
-            )
-
-    @router.get(
-        "/stats/summary",
-        response_model=Dict,
-        summary="Get Task Statistics",
-        description="Retrieve aggregate statistics about task processing",
-        responses={
-            200: {
-                "description": "Statistics retrieved successfully",
-                "content": {
-                    "application/json": {
-                        "example": {
-                            "total_tasks": 5420,
-                            "by_status": {
-                                "pending": 45,
-                                "processing": 12,
-                                "completed": 5310,
-                                "failed": 53,
-                            },
-                            "success_rate": 0.99,
-                            "average_processing_time": 3.45,
-                        }
-                    }
-                },
-            },
-            500: {"description": "Internal server error"},
-        },
-    )
-    async def get_task_statistics():
-        """
-        Get task processing statistics.
-
-        Provides aggregate metrics about task execution including:
-        - Total number of tasks
-        - Distribution by status
-        - Success/failure rates
-        - Average processing times
-
-        **Returns:**
-        Statistics object with various task-related metrics.
-        """
-        try:
-            return await task_service.get_statistics()
-        except Exception as e:
-            logger.error(f"Error getting task statistics: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error getting statistics: {str(e)}",
-            )
-
-    return router
+    except Exception as e:
+        logger.error(f"❌ API: Health check failed: {e}")
+        logger.exception("Health check error details:")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Service unhealthy"
+        )

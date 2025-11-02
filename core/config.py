@@ -40,13 +40,7 @@ class Settings(BaseSettings):
     mongodb_max_pool_size: int = Field(default=10, alias="MONGODB_MAX_POOL_SIZE")
     mongodb_min_pool_size: int = Field(default=1, alias="MONGODB_MIN_POOL_SIZE")
 
-    # Redis Settings (Job Queue)
-    redis_host: str = Field(default="localhost", alias="REDIS_HOST")
-    redis_port: int = Field(default=6379, alias="REDIS_PORT")
-    redis_db: int = Field(default=0, alias="REDIS_DB")
-    redis_password: Optional[str] = Field(default=None, alias="REDIS_PASSWORD")
-
-    # RabbitMQ (Message Queue) - Legacy, will be replaced by Redis Queue
+    # RabbitMQ Settings (Message Queue)
     rabbitmq_host: str = Field(default="localhost", alias="RABBITMQ_HOST")
     rabbitmq_port: int = Field(default=5672, alias="RABBITMQ_PORT")
     rabbitmq_user: str = Field(default="guest", alias="RABBITMQ_USER")
@@ -77,19 +71,14 @@ class Settings(BaseSettings):
     whisper_models_dir: str = Field(
         default="./whisper/whisper.cpp/models", alias="WHISPER_MODELS_DIR"
     )
-    default_model: str = Field(default="medium", alias="DEFAULT_MODEL")
-    default_language: str = Field(default="vi", alias="DEFAULT_LANGUAGE")
 
     # Chunking Settings
-    chunk_strategy: str = Field(default="silence_based", alias="CHUNK_STRATEGY")
     chunk_duration: int = Field(default=30, alias="CHUNK_DURATION")
-    chunk_overlap: int = Field(default=3, alias="CHUNK_OVERLAP")
     silence_threshold: int = Field(default=-40, alias="SILENCE_THRESHOLD")
     min_silence_duration: float = Field(default=1.0, alias="MIN_SILENCE_DURATION")
 
     # Processing Settings
     max_retries: int = Field(default=3, alias="MAX_RETRIES")
-    retry_delay: int = Field(default=2, alias="RETRY_DELAY")
     job_timeout: int = Field(default=3600, alias="JOB_TIMEOUT")
     chunk_timeout: int = Field(default=300, alias="CHUNK_TIMEOUT")
     max_concurrent_jobs: int = Field(default=4, alias="MAX_CONCURRENT_JOBS")

@@ -78,18 +78,21 @@ class TaskService:
             job = await repo.create_job(job_data)
             logger.info(f"✅ Job created in database: job_id={job.job_id}")
 
-            # Enqueue job for processing
-            logger.info(f"📝 Enqueueing job for processing...")
+            # Publish job to RabbitMQ queue
+            logger.info(f"📝 Publishing job to RabbitMQ queue...")
             queue_manager = get_queue_manager()
 
-            # Enqueue the job - use string path to function
-            rq_job = queue_manager.enqueue_job(
-                func="worker.processor.process_stt_job",
-                args=(job.job_id,),
+            # Publish the job to RabbitMQ
+            await queue_manager.publish_job(
                 job_id=job.job_id,
-                priority="normal"
+                job_data={
+                    "language": language,
+                    "model": model,
+                    "filename": filename
+                },
+                priority=5  # Normal priority (0-10 scale)
             )
-            logger.info(f"✅ Job enqueued: rq_job_id={rq_job.id}")
+            logger.info(f"✅ Job published to RabbitMQ: job_id={job.job_id}")
 
             logger.info(f"✅ STT task created successfully: job_id={job.job_id}")
 

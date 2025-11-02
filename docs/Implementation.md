@@ -268,7 +268,6 @@ class Settings(BaseSettings):
     # API Settings
     api_host: str = "0.0.0.0"
     api_port: int = 8000
-    api_workers: int = 4
     max_upload_size_mb: int = 500
     
     # Database
@@ -1550,7 +1549,6 @@ if __name__ == "__main__":
         "api.main:app",
         host=settings.api_host,
         port=settings.api_port,
-        workers=settings.api_workers,
         reload=True
     )
 ```
