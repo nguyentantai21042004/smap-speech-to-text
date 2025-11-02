@@ -133,7 +133,7 @@ class ModelDownloader:
         try:
             # Check if file exists
             if not model_path.exists():
-                logger.debug(f"🔍 Model file not found: {model_path}")
+                logger.debug(f"Model file not found: {model_path}")
                 return False
 
             # Check file size (basic validation)
@@ -236,7 +236,7 @@ class ModelDownloader:
             MD5 checksum as hex string
         """
         try:
-            logger.debug(f"🔍 Calculating MD5 for: {file_path}")
+            logger.debug(f"Calculating MD5 for: {file_path}")
             md5_hash = hashlib.md5()
 
             with open(file_path, "rb") as f:

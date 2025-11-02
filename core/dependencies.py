@@ -46,7 +46,7 @@ def validate_dependencies() -> None:
     Raises:
         MissingDependencyError: If required dependencies are missing
     """
-    logger.info("🔍 Validating system dependencies...")
+    logger.info("Validating system dependencies...")
 
     # Check ffmpeg/ffprobe
     ffmpeg_available, ffmpeg_path = check_ffmpeg()

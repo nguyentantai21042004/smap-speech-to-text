@@ -200,7 +200,7 @@ def example_function(param):
 - Starting operation
 - Success
 - Error
-- 🔍 Debug/Investigation
+- Debug/Investigation
 - Warning
 - Statistics/Metrics
 

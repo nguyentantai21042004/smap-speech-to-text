@@ -140,7 +140,7 @@ class AudioChunker:
             InvalidAudioFormatError: If format not supported
         """
         try:
-            logger.debug(f"🔍 Validating audio file: {audio_path}")
+            logger.debug(f"Validating audio file: {audio_path}")
 
             # Check file exists
             if not os.path.exists(audio_path):
@@ -175,7 +175,7 @@ class AudioChunker:
             CorruptedFileError: If file is corrupted
         """
         try:
-            logger.debug(f"🔍 Loading audio file: {audio_path}")
+            logger.debug(f"Loading audio file: {audio_path}")
 
             # Get file format
             file_ext = Path(audio_path).suffix.lower().replace(".", "")
@@ -284,7 +284,7 @@ class AudioChunker:
             filtered_ranges = []
             if settings.filter_intro_outro:
                 logger.debug(
-                    f"🔍 Filtering intro/outro: intro_threshold={intro_threshold}s, outro_threshold={outro_threshold}s"
+                    f"Filtering intro/outro: intro_threshold={intro_threshold}s, outro_threshold={outro_threshold}s"
                 )
                 for start_ms, end_ms in nonsilent_ranges:
                     start_sec = start_ms / 1000.0
@@ -329,7 +329,7 @@ class AudioChunker:
                     duration_sec = end_sec - start_sec
 
                     logger.debug(
-                        f"🔍 Processing chunk {i}: start={start_sec:.2f}s, end={end_sec:.2f}s, duration={duration_sec:.2f}s"
+                        f"Processing chunk {i}: start={start_sec:.2f}s, end={end_sec:.2f}s, duration={duration_sec:.2f}s"
                     )
 
                     # Validate chunk duration using config settings
@@ -572,7 +572,7 @@ class AudioChunker:
                     end_sec = end_ms / 1000.0
 
                     logger.debug(
-                        f"🔍 Processing chunk {i}: {start_sec:.2f}s - {end_sec:.2f}s"
+                        f"Processing chunk {i}: {start_sec:.2f}s - {end_sec:.2f}s"
                     )
 
                     # Extract and save chunk
@@ -627,7 +627,7 @@ class AudioChunker:
         """
         try:
             logger.debug(
-                f"🔍 Splitting long chunk: duration={len(chunk_audio)/1000.0:.2f}s"
+                f"Splitting long chunk: duration={len(chunk_audio)/1000.0:.2f}s"
             )
 
             sub_chunks = []
@@ -680,7 +680,7 @@ def get_audio_duration(audio_path: str) -> float:
         Exception: If duration cannot be determined
     """
     try:
-        logger.debug(f"🔍 Getting audio duration: {audio_path}")
+        logger.debug(f"Getting audio duration: {audio_path}")
 
         file_ext = Path(audio_path).suffix.lower().replace(".", "")
         audio = AudioSegment.from_file(audio_path, format=file_ext)

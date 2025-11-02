@@ -7,7 +7,6 @@ help:
 	@echo "  make run-api            - Run API service locally (original)"
 	@echo "  make run-api-refactored - Run API service locally (refactored)"
 	@echo "  make run-consumer       - Run Consumer service locally (refactored)"
-	@echo "  make run-scheduler      - Run Scheduler service locally"
 	@echo "  make docker-build       - Build Docker images"
 	@echo "  make docker-up          - Start all services with Docker Compose"
 	@echo "  make docker-down        - Stop all services"
@@ -32,8 +31,6 @@ run-api-refactored:
 run-consumer:
 	PYTHONPATH=. myenv/bin/python cmd/consumer/main.py
 
-run-scheduler:
-	PYTHONPATH=. myenv/bin/python cmd/scheduler/main.py
 
 docker-build:
 	docker-compose build
@@ -84,9 +81,6 @@ logs-api:
 
 logs-queue:
 	docker-compose logs -f queue
-
-logs-scheduler:
-	docker-compose logs -f scheduler
 
 logs-mongodb:
 	docker-compose logs -f mongodb

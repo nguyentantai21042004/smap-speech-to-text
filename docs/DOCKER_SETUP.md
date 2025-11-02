@@ -207,7 +207,7 @@ docker-compose build --no-cache consumer
 
 ---
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Consumer fails to start
 

@@ -45,7 +45,7 @@ Each parallel worker was:
 **Before:**
 ```python
 def _transcribe_single_chunk(chunk_data, job, ...):
-    transcriber = WhisperTranscriber()  # ❌ New instance per chunk!
+    transcriber = WhisperTranscriber()  # New instance per chunk!
     transcription = transcriber.transcribe(...)
 ```
 
@@ -67,7 +67,7 @@ def _transcribe_single_chunk(chunk_data, job, ..., transcriber):
 **Before:**
 ```python
 def ensure_model_exists(self, model):
-    # ❌ Always checks file system
+    # Always checks file system
     if self._is_model_valid(model, model_path):
         return str(model_path)
 ```
@@ -109,7 +109,7 @@ def get_model_downloader():
 
 ```
 Sequential Mode: 600 seconds
-Parallel Mode (4 workers): 650 seconds  ❌ SLOWER due to overhead!
+Parallel Mode (4 workers): 650 seconds  SLOWER due to overhead!
 
 Overhead per chunk:
 - WhisperTranscriber init: ~50ms
@@ -140,7 +140,7 @@ Efficiency: 3.6 / 4 workers = 90% (excellent!)
 
 ---
 
-## 🔍 What Changed
+## What Changed
 
 ### File: `worker/processor.py`
 
@@ -251,7 +251,7 @@ DEBUG - Model already validated in cache: medium
 **NOT seeing this (old behavior):**
 
 ```bash
-# ❌ Multiple initializations (BAD!)
+# Multiple initializations (BAD!)
 INFO - Creating ModelDownloader instance...
 INFO - Creating ModelDownloader instance...
 INFO - Creating ModelDownloader instance...
@@ -320,7 +320,7 @@ time curl -X POST ... -F "file=@30min_audio.mp3"
 - Minimize per-iteration overhead
 - Use thread-safe shared instances
 
-❌ **DON'T:**
+**DON'T:**
 - Create new instances in worker functions
 - Repeat expensive I/O operations
 - Initialize heavy objects per-iteration
@@ -342,7 +342,7 @@ The system is now **actually faster** with parallel processing enabled! 🚀
 
 ---
 
-## 📝 Summary
+## Summary
 
 ### Changes Made
 
@@ -356,7 +356,7 @@ The system is now **actually faster** with parallel processing enabled! 🚀
 | Metric | Before Optimization | After Optimization |
 |--------|--------------------|--------------------|
 | Sequential Time | 600s | 600s (no change) |
-| Parallel Time (4 workers) | 650s ❌ | 165s |
+| Parallel Time (4 workers) | 650s | 165s |
 | Speedup | 0.92x (slower!) | 3.6x (faster!) |
 | Efficiency | -8% (overhead) | 90% (excellent!) |
 | Overhead | 43s wasted | 0.18s total |

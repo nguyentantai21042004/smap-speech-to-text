@@ -50,9 +50,9 @@ class ConsumerService:
             logger.info(
                 f"========== Starting {self.settings.app_name} Consumer Service =========="
             )
-            logger.info(f"🔍 Environment: {self.settings.environment}")
-            logger.info(f"🔍 Debug mode: {self.settings.debug}")
-            logger.info(f"🔍 Max concurrent jobs: {self.settings.max_concurrent_jobs}")
+            logger.info(f"Environment: {self.settings.environment}")
+            logger.info(f"Debug mode: {self.settings.debug}")
+            logger.info(f"Max concurrent jobs: {self.settings.max_concurrent_jobs}")
 
             # Validate system dependencies (ffmpeg/ffprobe)
             try:
@@ -115,12 +115,12 @@ class ConsumerService:
             try:
                 logger.info("Initializing WhisperTranscriber singleton...")
                 transcriber = get_whisper_transcriber()
-                logger.info("✅ WhisperTranscriber initialized successfully")
+                logger.info("WhisperTranscriber initialized successfully")
 
                 # Pre-warm model downloader
                 logger.info("Pre-warming model downloader...")
                 model_downloader = get_model_downloader()
-                logger.info("✅ Model downloader initialized")
+                logger.info("Model downloader initialized")
 
                 # Pre-validate default model
                 logger.info(
@@ -130,7 +130,7 @@ class ConsumerService:
                     self.settings.default_whisper_model
                 )
                 logger.info(
-                    f"✅ Default model ready: {self.settings.default_whisper_model}"
+                    f"Default model ready: {self.settings.default_whisper_model}"
                 )
 
             except Exception as e:
@@ -186,8 +186,8 @@ class ConsumerService:
         """
         try:
             logger.info("========== Starting RabbitMQ Consumer ==========")
-            logger.info(f"🔍 Queue: {self.settings.rabbitmq_queue_name}")
-            logger.info(f"🔍 Prefetch: {self.settings.max_concurrent_jobs}")
+            logger.info(f"Queue: {self.settings.rabbitmq_queue_name}")
+            logger.info(f"Prefetch: {self.settings.max_concurrent_jobs}")
 
             # Start consuming with our handler
             await self.queue_manager.consume_jobs(

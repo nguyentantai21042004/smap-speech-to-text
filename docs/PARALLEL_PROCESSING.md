@@ -214,12 +214,12 @@ MAX_CONCURRENT_JOBS=1
 
 ```
 🚀 Using parallel transcription mode
-📝 Transcribing 60 chunks in parallel (workers=4)...
+Transcribing 60 chunks in parallel (workers=4)...
 
-📝 [1/60] Transcribing: /tmp/chunk_001.wav
-📝 [2/60] Transcribing: /tmp/chunk_002.wav
-📝 [3/60] Transcribing: /tmp/chunk_003.wav
-📝 [4/60] Transcribing: /tmp/chunk_004.wav
+[1/60] Transcribing: /tmp/chunk_001.wav
+[2/60] Transcribing: /tmp/chunk_002.wav
+[3/60] Transcribing: /tmp/chunk_003.wav
+[4/60] Transcribing: /tmp/chunk_004.wav
 
 [1/60] Completed in 8.2s: 1245 chars
 Progress: 1/60 (1.7%)
@@ -240,7 +240,7 @@ Success rate: 100.0% (60/60)
 
 ```
 🐌 Using sequential transcription mode
-🔍 Transcribing 60 chunks...
+Transcribing 60 chunks...
 
 Transcribing chunk 1/60: /tmp/chunk_001.wav
 Chunk 1 transcribed: 1245 chars

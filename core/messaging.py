@@ -24,7 +24,7 @@ class QueueManager:
     def __init__(self):
         """Initialize RabbitMQ queue manager."""
         try:
-            logger.debug("🔍 Initializing RabbitMQ QueueManager...")
+            logger.debug("Initializing RabbitMQ QueueManager...")
             self.settings = get_settings()
             self.connection: Optional[AbstractRobustConnection] = None
             self.channel: Optional[AbstractRobustChannel] = None

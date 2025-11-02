@@ -154,7 +154,7 @@ class AudioChunker:
             List of (start_ms, end_ms) tuples
         """
         try:
-            logger.info("🔍 Detecting non-silent segments...")
+            logger.info("Detecting non-silent segments...")
 
             # Detect non-silent chunks
             nonsilent_chunks = detect_nonsilent(

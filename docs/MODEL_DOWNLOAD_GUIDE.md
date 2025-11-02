@@ -236,7 +236,7 @@ volumes:
 
 ---
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
 ### Issue 1: Model download fails
 

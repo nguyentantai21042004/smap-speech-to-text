@@ -153,7 +153,7 @@ Model to dict conversion
 Operation start with parameters
 Success with result details
 Failure with exception
-🔍 Query operations
+Query operations
 Warning conditions (not found, etc.)
 ```
 
@@ -183,7 +183,7 @@ Priority: HIGH | Est. Time: 3 hours
 Audio file loading with path and size
 Audio format detection
 Duration calculation
-🔍 Silence detection parameters
+Silence detection parameters
 Each chunk creation with timestamps
 Audio loading errors
 Chunking failures
@@ -216,7 +216,7 @@ Final chunk statistics (count, avg duration)
 ```
 Transcription start with chunk info
 Whisper command construction
-🔍 Subprocess execution details
+Subprocess execution details
 Transcription success with text length
 Whisper process failures
 Timeout errors
@@ -247,7 +247,7 @@ Processing time for each chunk
 **Logging Points:**
 ```
 Merge start with chunk count
-🔍 Processing each chunk with index
+Processing each chunk with index
 Boundary overlap detection
 Merge completion with final text length
 Merge failures
@@ -276,18 +276,18 @@ Merge failures
 **Logging Points:**
 ```
 Job processing start with job_id
-🔍 Download audio from MinIO
+Download audio from MinIO
 Audio download success
-🔍 Chunking audio
+Chunking audio
 Chunks created with count
-🔍 Processing each chunk
+Processing each chunk
 Chunk transcription success
 Chunk transcription failure
-🔍 Merging results
+Merging results
 Merge success
-🔍 Uploading results to MinIO
+Uploading results to MinIO
 Upload success
-🔍 Updating job status
+Updating job status
 Job completion
 Any failures with retry count
 Total processing time
@@ -356,7 +356,7 @@ File size and format info
 Request received with endpoint
 Request validation success
 Validation errors
-🔍 Service call
+Service call
 Response sent with status code
 Any errors
 Request processing time
@@ -390,7 +390,7 @@ Job received from queue
 Job processing started
 Processing success
 Processing failure
-🔍 Retry attempts
+Retry attempts
 Processing metrics
 ```
 
@@ -444,7 +444,7 @@ Worker startup
 MongoDB connection
 Redis connection
 Worker ready
-🔍 Job processing
+Job processing
 Any failures
 ```
 
@@ -510,7 +510,7 @@ logger = get_logger(__name__)
 logger.info(f"Operation successful: details={value}")
 
 # Debug
-logger.debug(f"🔍 Processing: step={step}, data={data}")
+logger.debug(f"Processing: step={step}, data={data}")
 
 # Error
 logger.error(f"Operation failed: {error}")

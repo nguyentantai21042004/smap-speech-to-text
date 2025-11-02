@@ -113,7 +113,7 @@ class FileService:
             MinIO object path
         """
         try:
-            logger.debug(f"🔍 Uploading to MinIO: filename={filename}, file_id={file_id}")
+            logger.debug(f"Uploading to MinIO: filename={filename}, file_id={file_id}")
 
             # Create MinIO path
             file_extension = Path(filename).suffix

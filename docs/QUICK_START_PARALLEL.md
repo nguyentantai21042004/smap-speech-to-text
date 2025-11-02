@@ -114,13 +114,13 @@ Watch your logs when processing a job:
 ```bash
 # You should see this:
 🚀 Using parallel transcription mode
-📝 Transcribing 60 chunks in parallel (workers=4)...
+Transcribing 60 chunks in parallel (workers=4)...
 
 # Multiple chunks processing simultaneously:
-📝 [1/60] Transcribing: chunk_001.wav
-📝 [2/60] Transcribing: chunk_002.wav
-📝 [3/60] Transcribing: chunk_003.wav
-📝 [4/60] Transcribing: chunk_004.wav
+[1/60] Transcribing: chunk_001.wav
+[2/60] Transcribing: chunk_002.wav
+[3/60] Transcribing: chunk_003.wav
+[4/60] Transcribing: chunk_004.wav
 
 # Progress updates as chunks complete:
 [1/60] Completed in 8.2s: 1245 chars

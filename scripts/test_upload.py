@@ -64,7 +64,7 @@ def print_error(message: str):
 
 def print_info(message: str):
     """Print an info message."""
-    print(f"{Colors.CYAN}🔍 {message}{Colors.ENDC}")
+    print(f"{Colors.CYAN}{message}{Colors.ENDC}")
 
 
 def print_warning(message: str):

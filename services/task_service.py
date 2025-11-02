@@ -239,7 +239,7 @@ class TaskService:
             Exception: If upload fails
         """
         try:
-            logger.debug(f"🔍 Uploading to MinIO: filename={filename}, job_id={job_id}")
+            logger.debug(f"Uploading to MinIO: filename={filename}, job_id={job_id}")
 
             # Create MinIO path
             file_extension = Path(filename).suffix

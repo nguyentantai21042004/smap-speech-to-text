@@ -409,7 +409,7 @@ class TaskRepository:
             JobModel or None if not found
         """
         try:
-            logger.debug(f"🔍 Fetching job: job_id={job_id}")
+            logger.debug(f"Fetching job: job_id={job_id}")
 
             db = await get_database()
             collection = await db.get_collection(self.collection_name)
@@ -510,7 +510,7 @@ class TaskRepository:
     async def get_pending_jobs(self, limit: int = 10) -> List[JobModel]:
         """Get pending jobs."""
         try:
-            logger.debug(f"🔍 Fetching pending jobs (limit={limit})")
+            logger.debug(f"Fetching pending jobs (limit={limit})")
 
             db = await get_database()
             collection = await db.get_collection(self.collection_name)

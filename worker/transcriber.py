@@ -40,7 +40,7 @@ class WhisperTranscriber:
             FileNotFoundError: If executable or model not found
         """
         try:
-            logger.debug("🔍 Validating Whisper setup...")
+            logger.debug("Validating Whisper setup...")
 
             # Check executable exists
             if not os.path.exists(settings.whisper_executable):
@@ -212,7 +212,7 @@ class WhisperTranscriber:
         """
         try:
             logger.debug(
-                f"🔍 Building Whisper command for model={model}, language={language}"
+                f"Building Whisper command for model={model}, language={language}"
             )
 
             # OPTIMIZATION: Cache model path to avoid repeated checks/downloads
@@ -301,7 +301,7 @@ class WhisperTranscriber:
             Transcribed text
         """
         try:
-            logger.debug("🔍 Parsing Whisper output...")
+            logger.debug("Parsing Whisper output...")
 
             # Log stderr for debugging
             if stderr:

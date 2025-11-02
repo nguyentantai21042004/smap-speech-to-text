@@ -125,10 +125,6 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_file: str = Field(default="logs/stt.log", alias="LOG_FILE")
 
-    # Scheduler
-    scheduler_timezone: str = Field(
-        default="Asia/Ho_Chi_Minh", alias="SCHEDULER_TIMEZONE"
-    )
 
     @property
     def rabbitmq_url(self) -> str:

@@ -70,7 +70,7 @@ async def process_stt_job(job_id: str) -> dict:
         repo = get_task_repository()
 
         # Get job from database
-        logger.info(f"🔍 Fetching job from database...")
+        logger.info(f"Fetching job from database...")
         job = await repo.get_job(job_id)
 
         if not job:
@@ -251,7 +251,7 @@ async def _download_audio_from_minio(job, temp_dir: str) -> str:
         Exception: If download fails
     """
     try:
-        logger.debug(f"🔍 Downloading from MinIO: {job.minio_audio_path}")
+        logger.debug(f"Downloading from MinIO: {job.minio_audio_path}")
 
         # Validate minio_audio_path
         if not job.minio_audio_path or job.minio_audio_path.strip() == "":
@@ -293,7 +293,7 @@ async def _chunk_audio(audio_path: str, temp_dir: str, job) -> list:
         Exception: If chunking fails
     """
     try:
-        logger.debug(f"🔍 Chunking audio: strategy={job.chunk_strategy}")
+        logger.debug(f"Chunking audio: strategy={job.chunk_strategy}")
 
         # Create chunks directory
         chunks_dir = os.path.join(temp_dir, "chunks")
@@ -360,7 +360,7 @@ def _transcribe_single_chunk(
     """
     try:
         logger.info(
-            f"📝 [{chunk_index+1}/{total_chunks}] Transcribing: {chunk_data['file_path']}"
+            f"[{chunk_index+1}/{total_chunks}] Transcribing: {chunk_data['file_path']}"
         )
         start_time = time.time()
 
@@ -385,19 +385,19 @@ def _transcribe_single_chunk(
         return chunk_data
 
     except STTTimeoutError as e:
-        logger.error(f"❌ [{chunk_index+1}/{total_chunks}] Timeout: {e}")
+        logger.error(f"[{chunk_index+1}/{total_chunks}] Timeout: {e}")
         chunk_data["status"] = JobStatus.FAILED
         chunk_data["error_message"] = str(e)
         return chunk_data
 
     except WhisperCrashError as e:
-        logger.error(f"❌ [{chunk_index+1}/{total_chunks}] Whisper crash: {e}")
+        logger.error(f"[{chunk_index+1}/{total_chunks}] Whisper crash: {e}")
         chunk_data["status"] = JobStatus.FAILED
         chunk_data["error_message"] = str(e)
         return chunk_data
 
     except Exception as e:
-        logger.error(f"❌ [{chunk_index+1}/{total_chunks}] Failed: {e}")
+        logger.error(f"[{chunk_index+1}/{total_chunks}] Failed: {e}")
         logger.exception("Chunk transcription error:")
         chunk_data["status"] = JobStatus.FAILED
         chunk_data["error_message"] = str(e)
@@ -425,14 +425,14 @@ async def _transcribe_chunks_parallel(
     try:
         total_chunks = len(chunks)
         logger.info(
-            f"📝 Transcribing {total_chunks} chunks in parallel (workers={settings.max_parallel_workers})..."
+            f"Transcribing {total_chunks} chunks in parallel (workers={settings.max_parallel_workers})..."
         )
         start_time = time.time()
 
         # Get shared transcriber instance (initialized once at consumer startup)
         logger.debug("🔧 Getting shared WhisperTranscriber instance...")
         transcriber = get_whisper_transcriber()
-        logger.debug("✅ Using shared WhisperTranscriber instance")
+        logger.debug("Using shared WhisperTranscriber instance")
 
         transcribed_chunks = []
 
@@ -457,7 +457,7 @@ async def _transcribe_chunks_parallel(
                     if result_chunk.get("status") == JobStatus.COMPLETED:
                         transcribed_chunks.append(result_chunk)
                     else:
-                        logger.warning(f"⚠️ Chunk {chunk_index+1} failed transcription")
+                        logger.warning(f"Chunk {chunk_index+1} failed transcription")
 
                     # OPTIMIZATION: Batch database updates - only update at key milestones
                     # Reduces DB calls from N (per chunk) to ~3-4 (milestones only)
@@ -493,7 +493,7 @@ async def _transcribe_chunks_parallel(
                         )
 
                 except Exception as e:
-                    logger.error(f"❌ Error processing chunk {chunk_index+1}: {e}")
+                    logger.error(f"Error processing chunk {chunk_index+1}: {e}")
                     logger.exception("Future processing error:")
 
         elapsed = time.time() - start_time
@@ -540,7 +540,7 @@ async def _transcribe_chunks(chunks: list, job, repo, job_id: str) -> list:
     logger.info("🐌 Using sequential transcription mode")
 
     try:
-        logger.debug(f"🔍 Transcribing {len(chunks)} chunks...")
+        logger.debug(f"Transcribing {len(chunks)} chunks...")
 
         # Get shared transcriber instance (initialized once at consumer startup)
         transcriber = get_whisper_transcriber()
@@ -623,7 +623,7 @@ async def _merge_results(chunks: list) -> str:
         Exception: If merging fails
     """
     try:
-        logger.debug(f"🔍 Merging {len(chunks)} chunk transcriptions...")
+        logger.debug(f"Merging {len(chunks)} chunk transcriptions...")
 
         merger = ResultMerger()
         merged_text = merger.merge_chunks(chunks)
@@ -662,7 +662,7 @@ async def _upload_results_to_minio(job_id: str, transcription: str) -> str:
         Exception: If upload fails
     """
     try:
-        logger.debug(f"🔍 Uploading results to MinIO for job {job_id}...")
+        logger.debug(f"Uploading results to MinIO for job {job_id}...")
 
         # Create result filename
         result_filename = f"result_{job_id}.txt"

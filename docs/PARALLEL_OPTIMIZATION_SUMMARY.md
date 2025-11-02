@@ -6,7 +6,7 @@ Successfully implemented **parallel chunk transcription** to speed up audio proc
 
 ---
 
-## 📝 Changes Made
+## Changes Made
 
 ### 1. Configuration Updates
 
@@ -108,7 +108,7 @@ Created three comprehensive guides:
 Check your logs for:
 ```
 🚀 Using parallel transcription mode
-📝 Transcribing 60 chunks in parallel (workers=4)...
+Transcribing 60 chunks in parallel (workers=4)...
 ```
 
 Instead of:
@@ -251,7 +251,7 @@ Don't use more workers than CPU cores:
 MAX_PARALLEL_WORKERS=4  Good
 
 # 4-core CPU
-MAX_PARALLEL_WORKERS=8  ❌ Overkill (no benefit, more overhead)
+MAX_PARALLEL_WORKERS=8  Overkill (no benefit, more overhead)
 ```
 
 ### 2. Balance Jobs and Workers
@@ -347,7 +347,7 @@ Potential improvements:
 
 ```
 🚀 Using parallel transcription mode
-📝 Transcribing 60 chunks in parallel (workers=4)...
+Transcribing 60 chunks in parallel (workers=4)...
 Parallel transcription complete in 165.3s
 ```
 

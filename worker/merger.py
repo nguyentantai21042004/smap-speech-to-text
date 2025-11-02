@@ -123,7 +123,7 @@ class ResultMerger:
             Merged text
         """
         try:
-            logger.debug("🔍 Merging with overlap removal...")
+            logger.debug("Merging with overlap removal...")
 
             if len(transcriptions) == 1:
                 return transcriptions[0]
@@ -137,7 +137,7 @@ class ResultMerger:
                 overlap_len = self._find_overlap(merged, current)
 
                 if overlap_len > 0:
-                    logger.debug(f"🔍 Found overlap of {overlap_len} chars between chunks {i-1} and {i}")
+                    logger.debug(f"Found overlap of {overlap_len} chars between chunks {i-1} and {i}")
                     # Remove overlap from current transcription
                     current = current[overlap_len:]
 
@@ -197,7 +197,7 @@ class ResultMerger:
             Cleaned text
         """
         try:
-            logger.debug("🔍 Performing final cleanup...")
+            logger.debug("Performing final cleanup...")
 
             # Remove multiple spaces
             text = re.sub(r' +', ' ', text)

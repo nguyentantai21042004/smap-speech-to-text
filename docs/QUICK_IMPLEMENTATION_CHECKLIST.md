@@ -112,7 +112,7 @@ Logging (EVERY method):
 Operation start
 Success
 Failures
-🔍 Queries
+Queries
 
 Error Handling:
 try-catch for EVERY method
@@ -158,7 +158,7 @@ Classes/Functions:
 Logging:
 Transcription start
 Command construction
-🔍 Subprocess execution
+Subprocess execution
 Success with text length
 Process failures
 Processing time
@@ -181,7 +181,7 @@ Classes/Functions:
 
 Logging:
 Merge start
-🔍 Each chunk
+Each chunk
 Completion
 Failures
 
@@ -205,7 +205,7 @@ Main Function:
 
 Logging (EXTENSIVE):
 Job start
-🔍 Every step
+Every step
 Step success
 Step failures
 Metrics
@@ -397,7 +397,7 @@ def example_function(param1, param2):
         result = do_something()
 
         logger.info(f"Operation successful: result={result}")
-        logger.debug(f"🔍 Detailed info: {details}")
+        logger.debug(f"Detailed info: {details}")
 
         return result
 

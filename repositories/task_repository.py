@@ -90,7 +90,7 @@ class TaskRepository:
             Exception: If database query fails
         """
         try:
-            logger.debug(f"🔍 Fetching job: id={job_id}")
+            logger.debug(f"Fetching job: id={job_id}")
 
             # Convert string to ObjectId for query
             object_id = str_to_objectid(job_id)
@@ -250,7 +250,7 @@ class TaskRepository:
             Exception: If query fails
         """
         try:
-            logger.debug(f"🔍 Fetching pending jobs (limit={limit})")
+            logger.debug(f"Fetching pending jobs (limit={limit})")
 
             # Get database collection
             db = await get_database()
@@ -302,7 +302,7 @@ class TaskRepository:
             Exception: If query fails
         """
         try:
-            logger.debug(f"🔍 Fetching jobs by status: status={status}, limit={limit}")
+            logger.debug(f"Fetching jobs by status: status={status}, limit={limit}")
 
             # Get database collection
             db = await get_database()
@@ -346,7 +346,7 @@ class TaskRepository:
             Exception: If query fails
         """
         try:
-            logger.debug(f"🔍 Listing jobs: limit={limit}, status={status}")
+            logger.debug(f"Listing jobs: limit={limit}, status={status}")
 
             # Get database collection
             db = await get_database()

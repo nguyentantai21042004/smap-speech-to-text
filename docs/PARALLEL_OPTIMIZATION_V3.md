@@ -18,13 +18,13 @@ Even after V2 optimization, the system still had per-job initialization overhead
 Consumer starts
     ↓
 Job 1 arrives
-    ↓ Creates WhisperTranscriber()  ❌ OVERHEAD
+    ↓ Creates WhisperTranscriber()  OVERHEAD
     ↓ Validates Whisper setup (file I/O)
     ↓ Processes chunks (shared transcriber)
     ↓ Job completes
     ↓
 Job 2 arrives
-    ↓ Creates WhisperTranscriber()  ❌ OVERHEAD AGAIN!
+    ↓ Creates WhisperTranscriber()  OVERHEAD AGAIN!
     ↓ Validates Whisper setup (file I/O)
     ↓ Processes chunks (shared transcriber)
     ↓ Job completes
@@ -38,7 +38,7 @@ Job 2 arrives
 
 ```python
 async def _transcribe_chunks_parallel(...):
-    # ❌ Created for EACH JOB
+    # Created for EACH JOB
     transcriber = WhisperTranscriber()
 
     # Process chunks...
@@ -51,7 +51,7 @@ async def _transcribe_chunks_parallel(...):
 
 ---
 
-## ✅ Solution Implemented
+## Solution Implemented
 
 ### Three-Level Optimization Architecture
 
@@ -103,17 +103,17 @@ async def startup(self):
     # Initialize WhisperTranscriber (once for all jobs)
     logger.info("Initializing WhisperTranscriber singleton...")
     transcriber = get_whisper_transcriber()
-    logger.info("✅ WhisperTranscriber initialized successfully")
+    logger.info("WhisperTranscriber initialized successfully")
 
     # Pre-warm model downloader
     logger.info("Pre-warming model downloader...")
     model_downloader = get_model_downloader()
-    logger.info("✅ Model downloader initialized")
+    logger.info("Model downloader initialized")
 
     # Pre-validate default model
     logger.info(f"Pre-validating default model: {self.settings.whisper_model}")
     model_downloader.ensure_model_exists(self.settings.whisper_model)
-    logger.info(f"✅ Default model ready: {self.settings.whisper_model}")
+    logger.info(f"Default model ready: {self.settings.whisper_model}")
 ```
 
 **Benefits**:
@@ -126,10 +126,10 @@ async def startup(self):
 **Parallel mode**:
 ```python
 async def _transcribe_chunks_parallel(...):
-    # ✅ Get shared instance (no initialization)
+    # Get shared instance (no initialization)
     logger.debug("🔧 Getting shared WhisperTranscriber instance...")
     transcriber = get_whisper_transcriber()
-    logger.debug("✅ Using shared WhisperTranscriber instance")
+    logger.debug("Using shared WhisperTranscriber instance")
 
     # Process chunks...
 ```
@@ -137,7 +137,7 @@ async def _transcribe_chunks_parallel(...):
 **Sequential mode**:
 ```python
 async def _transcribe_chunks(...):
-    # ✅ Get shared instance (no initialization)
+    # Get shared instance (no initialization)
     transcriber = get_whisper_transcriber()
 
     # Process chunks...
@@ -161,7 +161,7 @@ Job 1:
     Total: 60.05s
 
 Job 2:
-    WhisperTranscriber init: 50ms  ❌ REDUNDANT
+    WhisperTranscriber init: 50ms  REDUNDANT
     Process chunks: 60s
     Total: 60.05s
 
@@ -177,12 +177,12 @@ Consumer Startup:
     Total startup: 150ms
 
 Job 1:
-    Get transcriber: <1ms  ✅ INSTANT
+    Get transcriber: <1ms  INSTANT
     Process chunks: 60s
     Total: 60.001s
 
 Job 2:
-    Get transcriber: <1ms  ✅ INSTANT
+    Get transcriber: <1ms  INSTANT
     Process chunks: 60s
     Total: 60.001s
 
@@ -246,7 +246,7 @@ Efficiency: 90.8%
 
 ---
 
-## 🔍 How to Verify
+## How to Verify
 
 ### Startup Logs
 
@@ -262,15 +262,15 @@ RabbitMQ connected successfully
 Initializing WhisperTranscriber singleton...  ✅
 Creating WhisperTranscriber instance...
 WhisperTranscriber initialized
-✅ WhisperTranscriber initialized successfully
+WhisperTranscriber initialized successfully
 
 Pre-warming model downloader...
-✅ Model downloader initialized
+Model downloader initialized
 
 Pre-validating default model: medium
 Ensuring model exists: medium
 Model already exists and is valid: whisper/models/ggml-medium.bin
-✅ Default model ready: medium
+Default model ready: medium
 
 ========== Consumer Service startup complete ==========
 ```
@@ -282,19 +282,19 @@ When processing jobs, you should see **instant access** (no initialization):
 ```bash
 # Job 1
 🔧 Getting shared WhisperTranscriber instance...
-✅ Using shared WhisperTranscriber instance
-📝 Transcribing 60 chunks in parallel (workers=4)...
+Using shared WhisperTranscriber instance
+Transcribing 60 chunks in parallel (workers=4)...
 
 # Job 2 (later)
-🔧 Getting shared WhisperTranscriber instance...  ✅ INSTANT (no init)
-✅ Using shared WhisperTranscriber instance
-📝 Transcribing 60 chunks in parallel (workers=4)...
+🔧 Getting shared WhisperTranscriber instance...  INSTANT (no init)
+Using shared WhisperTranscriber instance
+Transcribing 60 chunks in parallel (workers=4)...
 ```
 
 **NOT seeing this** (old behavior):
 
 ```bash
-# ❌ BAD - Creating new instance per job
+# BAD - Creating new instance per job
 Creating WhisperTranscriber instance...
 WhisperTranscriber initialized
 Validating Whisper setup...
@@ -388,19 +388,19 @@ MAX_PARALLEL_WORKERS=4
 ## 🔄 Evolution Timeline
 
 ### V1: Basic Parallel Processing
-- ❌ Transcriber created per chunk
-- ❌ Model validated per chunk
+- Transcriber created per chunk
+- Model validated per chunk
 - Performance: Slower than sequential!
 
 ### V2: Chunk-Level Optimization
-- ✅ Transcriber shared across chunks
-- ✅ Model validation cached
+- Transcriber shared across chunks
+- Model validation cached
 - Performance: 3.6x faster than sequential
 
 ### V3: Consumer-Level Singleton ⭐
-- ✅ Transcriber shared across jobs
-- ✅ Pre-validation at startup
-- ✅ Zero per-job overhead
+- Transcriber shared across jobs
+- Pre-validation at startup
+- Zero per-job overhead
 - Performance: 3.63x faster, 90.8% efficiency
 
 ---
@@ -449,10 +449,10 @@ The optimization is complete and production-ready!
 **"Initialize once, use many times"**
 
 Heavy resources (transcriber, models, connections) should be:
-1. ✅ Initialized at startup (fail fast)
-2. ✅ Shared across all operations (singleton)
-3. ✅ Cached/validated once (avoid redundancy)
-4. ❌ Never created per-operation (overhead!)
+1. Initialized at startup (fail fast)
+2. Shared across all operations (singleton)
+3. Cached/validated once (avoid redundancy)
+4. Never created per-operation (overhead!)
 
 ### Performance Formula
 
@@ -497,10 +497,10 @@ tail -f logs/stt.log | grep -i "whisper"
 ## 🎉 Summary
 
 ### What Changed
-✅ WhisperTranscriber is now a singleton
-✅ Initialized once at consumer startup
-✅ Shared across all jobs
-✅ Zero per-job initialization overhead
+WhisperTranscriber is now a singleton
+Initialized once at consumer startup
+Shared across all jobs
+Zero per-job initialization overhead
 
 ### Performance
 - **Per-job overhead**: 50ms → <1ms (50x faster)
@@ -508,9 +508,9 @@ tail -f logs/stt.log | grep -i "whisper"
 - **Efficiency**: 90.8% (near-perfect scaling)
 
 ### Compatibility
-- ✅ Backward compatible (no config changes)
-- ✅ Works with both parallel and sequential modes
-- ✅ Thread-safe (Python GIL)
+- Backward compatible (no config changes)
+- Works with both parallel and sequential modes
+- Thread-safe (Python GIL)
 
 ---
 
