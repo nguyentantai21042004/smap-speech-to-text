@@ -47,7 +47,9 @@ class ConsumerService:
         Sets up MongoDB and RabbitMQ connections.
         """
         try:
-            logger.info(f"========== Starting {self.settings.app_name} Consumer Service ==========")
+            logger.info(
+                f"========== Starting {self.settings.app_name} Consumer Service =========="
+            )
             logger.info(f"🔍 Environment: {self.settings.environment}")
             logger.info(f"🔍 Debug mode: {self.settings.debug}")
             logger.info(f"🔍 Max concurrent jobs: {self.settings.max_concurrent_jobs}")
@@ -121,9 +123,15 @@ class ConsumerService:
                 logger.info("✅ Model downloader initialized")
 
                 # Pre-validate default model
-                logger.info(f"Pre-validating default model: {self.settings.whisper_model}")
-                model_downloader.ensure_model_exists(self.settings.whisper_model)
-                logger.info(f"✅ Default model ready: {self.settings.whisper_model}")
+                logger.info(
+                    f"Pre-validating default model: {self.settings.default_whisper_model}"
+                )
+                model_downloader.ensure_model_exists(
+                    self.settings.default_whisper_model
+                )
+                logger.info(
+                    f"✅ Default model ready: {self.settings.default_whisper_model}"
+                )
 
             except Exception as e:
                 logger.error(f"Failed to initialize transcriber: {e}")
@@ -184,7 +192,7 @@ class ConsumerService:
             # Start consuming with our handler
             await self.queue_manager.consume_jobs(
                 callback=handle_stt_message,
-                prefetch_count=self.settings.max_concurrent_jobs
+                prefetch_count=self.settings.max_concurrent_jobs,
             )
 
             logger.info("Consumer started successfully")

@@ -247,10 +247,23 @@ class AudioChunker:
                 f"Chunking by silence: min_silence={min_silence_len}ms, thresh={silence_thresh}dB"
             )
 
-            # Detect non-silent regions
-            nonsilent_ranges = detect_nonsilent(
-                audio, min_silence_len=min_silence_len, silence_thresh=silence_thresh
-            )
+            # OPTIMIZATION: Use ffmpeg silencedetect for large files (much faster than pydub)
+            # For files > 60 seconds, use ffmpeg directly; otherwise use pydub (simpler)
+            audio_duration_ms = len(audio)
+
+            if audio_duration_ms > 60000:  # 60 seconds
+                logger.debug("Using ffmpeg silencedetect (optimized for large files)")
+                nonsilent_ranges = self._detect_silence_ffmpeg_fast(
+                    audio, min_silence_len, silence_thresh
+                )
+            else:
+                logger.debug("Using pydub detect_nonsilent (good for small files)")
+                # Detect non-silent regions using pydub (for smaller files)
+                nonsilent_ranges = detect_nonsilent(
+                    audio,
+                    min_silence_len=min_silence_len,
+                    silence_thresh=silence_thresh,
+                )
 
             logger.debug(f"Found {len(nonsilent_ranges)} non-silent regions")
 
@@ -378,6 +391,156 @@ class AudioChunker:
             logger.warning("Falling back to fixed duration chunking")
             return self._chunk_fixed_duration(
                 audio, output_dir, settings.chunk_duration
+            )
+
+    def _detect_silence_ffmpeg_fast(
+        self,
+        audio: AudioSegment,
+        min_silence_len: int,
+        silence_thresh: int,
+    ) -> List[Tuple[int, int]]:
+        """
+        Fast silence detection using ffmpeg silencedetect filter.
+        Much faster than pydub for large files (doesn't load entire audio into memory).
+
+        Args:
+            audio: AudioSegment (used to get source file path)
+            min_silence_len: Minimum silence length in ms
+            silence_thresh: Silence threshold in dBFS
+
+        Returns:
+            List of (start_ms, end_ms) tuples for non-silent regions
+        """
+        try:
+            # Convert dBFS to dB (ffmpeg uses different scale)
+            # pydub uses dBFS, ffmpeg silencedetect uses dB relative to peak
+            # For -40 dBFS, we use approximately -50 dB in ffmpeg
+            ffmpeg_thresh = silence_thresh - 10  # Adjust threshold
+
+            min_silence_sec = min_silence_len / 1000.0
+
+            # Save audio to temp file for ffmpeg (if audio is in-memory)
+            # If audio was loaded from file, we need the original file path
+            # For now, save to temp and use that
+            import tempfile
+
+            temp_audio = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+            temp_audio_path = temp_audio.name
+            temp_audio.close()
+
+            try:
+                # Export audio to temp file
+                audio.export(temp_audio_path, format="wav")
+
+                # Run ffmpeg silencedetect
+                # Format: silencedetect=n=-50dB:d=1.0
+                # Output format: silence_start: X.XXX | silence_end: Y.YYY | silence_duration: Z.ZZZ
+                cmd = [
+                    "ffmpeg",
+                    "-i",
+                    temp_audio_path,
+                    "-af",
+                    f"silencedetect=n={ffmpeg_thresh}dB:d={min_silence_sec}",
+                    "-f",
+                    "null",
+                    "-",
+                ]
+
+                logger.debug(f"Running ffmpeg silencedetect: {' '.join(cmd)}")
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,  # Timeout after 30s
+                    check=False,
+                )
+
+                if result.returncode != 0:
+                    logger.warning(f"ffmpeg silencedetect failed: {result.stderr}")
+                    # Fallback to pydub
+                    logger.debug("Falling back to pydub detect_nonsilent")
+                    from pydub.silence import detect_nonsilent
+
+                    return detect_nonsilent(
+                        audio,
+                        min_silence_len=min_silence_len,
+                        silence_thresh=silence_thresh,
+                    )
+
+                # Parse ffmpeg output to find silence periods
+                # Example output:
+                # [silencedetect @ 0x...] silence_start: 5.234
+                # [silencedetect @ 0x...] silence_end: 8.456 | silence_duration: 3.222
+                silence_periods = []
+                silence_start = None
+
+                for line in result.stderr.split("\n"):
+                    if "silence_start:" in line:
+                        try:
+                            silence_start = float(
+                                line.split("silence_start:")[1].strip()
+                            )
+                        except (ValueError, IndexError):
+                            continue
+                    elif "silence_end:" in line and silence_start is not None:
+                        try:
+                            silence_end_str = (
+                                line.split("silence_end:")[1].split("|")[0].strip()
+                            )
+                            silence_end = float(silence_end_str)
+                            silence_periods.append((silence_start, silence_end))
+                            silence_start = None
+                        except (ValueError, IndexError):
+                            continue
+
+                # Convert silence periods to non-silent regions
+                audio_duration_sec = len(audio) / 1000.0
+                nonsilent_ranges = []
+                last_end = 0.0
+
+                for silence_start, silence_end in silence_periods:
+                    if silence_start > last_end:
+                        # There's a non-silent region before this silence
+                        nonsilent_ranges.append(
+                            (int(last_end * 1000), int(silence_start * 1000))
+                        )
+                    last_end = silence_end
+
+                # Add final non-silent region if exists
+                if last_end < audio_duration_sec:
+                    nonsilent_ranges.append(
+                        (int(last_end * 1000), int(audio_duration_sec * 1000))
+                    )
+
+                # If no silence detected, entire audio is non-silent
+                if not silence_periods:
+                    nonsilent_ranges = [(0, len(audio))]
+
+                logger.debug(
+                    f"ffmpeg detected {len(nonsilent_ranges)} non-silent regions"
+                )
+                return nonsilent_ranges
+
+            finally:
+                # Clean up temp file
+                try:
+                    os.unlink(temp_audio_path)
+                except Exception:
+                    pass
+
+        except subprocess.TimeoutExpired:
+            logger.warning("ffmpeg silencedetect timed out, falling back to pydub")
+            from pydub.silence import detect_nonsilent
+
+            return detect_nonsilent(
+                audio, min_silence_len=min_silence_len, silence_thresh=silence_thresh
+            )
+        except Exception as e:
+            logger.warning(f"ffmpeg silencedetect failed: {e}, falling back to pydub")
+            from pydub.silence import detect_nonsilent
+
+            return detect_nonsilent(
+                audio, min_silence_len=min_silence_len, silence_thresh=silence_thresh
             )
 
     def _chunk_fixed_duration(

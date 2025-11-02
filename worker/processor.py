@@ -8,7 +8,7 @@ import time
 import tempfile
 import shutil
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import asyncio
@@ -20,6 +20,9 @@ from repositories.task_repository import get_task_repository
 from repositories.models import JobStatus, JobUpdate, ChunkModel
 from worker.chunking import AudioChunker, get_audio_duration
 from worker.transcriber import get_whisper_transcriber
+
+if TYPE_CHECKING:
+    from worker.transcriber import WhisperTranscriber
 from worker.merger import ResultMerger
 from worker.errors import (
     TransientError,
@@ -330,7 +333,13 @@ async def _chunk_audio(audio_path: str, temp_dir: str, job) -> list:
         raise TransientError(f"Chunking failed: {e}")
 
 
-def _transcribe_single_chunk(chunk_data: Dict[str, Any], job, chunk_index: int, total_chunks: int, transcriber: WhisperTranscriber) -> Dict[str, Any]:
+def _transcribe_single_chunk(
+    chunk_data: Dict[str, Any],
+    job,
+    chunk_index: int,
+    total_chunks: int,
+    transcriber: "WhisperTranscriber",
+) -> Dict[str, Any]:
     """
     Transcribe a single chunk (for parallel processing).
     This function runs in a separate thread/process.
@@ -350,7 +359,9 @@ def _transcribe_single_chunk(chunk_data: Dict[str, Any], job, chunk_index: int, 
         The transcriber instance is shared across all workers to avoid initialization overhead.
     """
     try:
-        logger.info(f"📝 [{chunk_index+1}/{total_chunks}] Transcribing: {chunk_data['file_path']}")
+        logger.info(
+            f"📝 [{chunk_index+1}/{total_chunks}] Transcribing: {chunk_data['file_path']}"
+        )
         start_time = time.time()
 
         # Transcribe with retry (using shared transcriber instance)
@@ -367,7 +378,9 @@ def _transcribe_single_chunk(chunk_data: Dict[str, Any], job, chunk_index: int, 
         chunk_data["processed_at"] = datetime.utcnow()
 
         elapsed = time.time() - start_time
-        logger.info(f"[{chunk_index+1}/{total_chunks}] Completed in {elapsed:.1f}s: {len(transcription)} chars")
+        logger.info(
+            f"[{chunk_index+1}/{total_chunks}] Completed in {elapsed:.1f}s: {len(transcription)} chars"
+        )
 
         return chunk_data
 
@@ -391,7 +404,9 @@ def _transcribe_single_chunk(chunk_data: Dict[str, Any], job, chunk_index: int, 
         return chunk_data
 
 
-async def _transcribe_chunks_parallel(chunks: List[Dict], job, repo, job_id: str) -> List[Dict]:
+async def _transcribe_chunks_parallel(
+    chunks: List[Dict], job, repo, job_id: str
+) -> List[Dict]:
     """
     Transcribe chunks in parallel using ThreadPoolExecutor.
 
@@ -409,7 +424,9 @@ async def _transcribe_chunks_parallel(chunks: List[Dict], job, repo, job_id: str
     """
     try:
         total_chunks = len(chunks)
-        logger.info(f"📝 Transcribing {total_chunks} chunks in parallel (workers={settings.max_parallel_workers})...")
+        logger.info(
+            f"📝 Transcribing {total_chunks} chunks in parallel (workers={settings.max_parallel_workers})..."
+        )
         start_time = time.time()
 
         # Get shared transcriber instance (initialized once at consumer startup)
@@ -423,7 +440,9 @@ async def _transcribe_chunks_parallel(chunks: List[Dict], job, repo, job_id: str
         with ThreadPoolExecutor(max_workers=settings.max_parallel_workers) as executor:
             # Submit all chunks for processing (pass shared transcriber instance)
             future_to_chunk = {
-                executor.submit(_transcribe_single_chunk, chunk, job, i, total_chunks, transcriber): (i, chunk)
+                executor.submit(
+                    _transcribe_single_chunk, chunk, job, i, total_chunks, transcriber
+                ): (i, chunk)
                 for i, chunk in enumerate(chunks)
             }
 
@@ -440,13 +459,38 @@ async def _transcribe_chunks_parallel(chunks: List[Dict], job, repo, job_id: str
                     else:
                         logger.warning(f"⚠️ Chunk {chunk_index+1} failed transcription")
 
-                    # Update progress in database (async)
-                    await repo.update_job(
-                        job_id, JobUpdate(chunks_completed=len(transcribed_chunks))
-                    )
-
+                    # OPTIMIZATION: Batch database updates - only update at key milestones
+                    # Reduces DB calls from N (per chunk) to ~3-4 (milestones only)
                     progress_pct = (len(transcribed_chunks) / total_chunks) * 100
-                    logger.info(f"Progress: {len(transcribed_chunks)}/{total_chunks} ({progress_pct:.1f}%)")
+
+                    # Determine if we should update DB based on milestones
+                    should_update_db = False
+                    if len(transcribed_chunks) == 1:
+                        # First chunk completed - always update
+                        should_update_db = True
+                    elif len(transcribed_chunks) == total_chunks:
+                        # Last chunk completed - always update
+                        should_update_db = True
+                    elif total_chunks >= 4:
+                        # For jobs with 4+ chunks, update at 50% and 75% milestones
+                        if progress_pct >= 50 and progress_pct < 55:
+                            should_update_db = True
+                        elif progress_pct >= 75 and progress_pct < 80:
+                            should_update_db = True
+
+                    if should_update_db:
+                        # Update progress in database (async)
+                        await repo.update_job(
+                            job_id, JobUpdate(chunks_completed=len(transcribed_chunks))
+                        )
+                        logger.info(
+                            f"Progress: {len(transcribed_chunks)}/{total_chunks} ({progress_pct:.1f}%)"
+                        )
+                    else:
+                        # Just log progress without DB update for intermediate chunks
+                        logger.debug(
+                            f"Progress: {len(transcribed_chunks)}/{total_chunks} ({progress_pct:.1f}%)"
+                        )
 
                 except Exception as e:
                     logger.error(f"❌ Error processing chunk {chunk_index+1}: {e}")
@@ -456,7 +500,9 @@ async def _transcribe_chunks_parallel(chunks: List[Dict], job, repo, job_id: str
         success_rate = len(transcribed_chunks) / total_chunks * 100
 
         logger.info(f"Parallel transcription complete in {elapsed:.1f}s")
-        logger.info(f"Success rate: {success_rate:.1f}% ({len(transcribed_chunks)}/{total_chunks})")
+        logger.info(
+            f"Success rate: {success_rate:.1f}% ({len(transcribed_chunks)}/{total_chunks})"
+        )
 
         if not transcribed_chunks:
             raise PermanentError("All chunks failed to transcribe")

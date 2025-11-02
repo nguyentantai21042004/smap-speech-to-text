@@ -29,6 +29,8 @@ class WhisperTranscriber:
         """Initialize Whisper transcriber."""
         logger.debug("WhisperTranscriber initialized")
         self._validate_whisper_setup()
+        self._model_path_cache: dict[str, str] = {}
+        self._model_downloader = None
 
     def _validate_whisper_setup(self) -> None:
         """
@@ -213,12 +215,21 @@ class WhisperTranscriber:
                 f"🔍 Building Whisper command for model={model}, language={language}"
             )
 
-            # Ensure model exists (download from MinIO if missing)
-            logger.info(f"Ensuring model '{model}' is available...")
-            model_downloader = get_model_downloader()
-            model_path = model_downloader.ensure_model_exists(model)
-
-            logger.debug(f"Using model: {model_path}")
+            # OPTIMIZATION: Cache model path to avoid repeated checks/downloads
+            # This is critical for parallel transcription where multiple chunks check the same model
+            if model in self._model_path_cache:
+                model_path = self._model_path_cache[model]
+                # No log - already cached, silent success
+            else:
+                # Lazy-load model downloader (singleton, shared across all chunks)
+                if self._model_downloader is None:
+                    self._model_downloader = get_model_downloader()
+                
+                # Check and cache model path (only first time, subsequent chunks use cache)
+                model_path = self._model_downloader.ensure_model_exists(model)
+                self._model_path_cache[model] = model_path
+                # Log only once when model is first checked/cached
+                logger.debug(f"Model '{model}' ensured and cached: {model_path}")
 
             # Build command with optimized flags for quality and accuracy
             # Anti-repetition flags:
