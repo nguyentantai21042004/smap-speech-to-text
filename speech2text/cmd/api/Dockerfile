@@ -3,7 +3,7 @@
 # ==============================================================================
 # STAGE 1: BUILDER (Use uv for ultra-fast builds)
 # ==============================================================================
-FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim AS builder
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
 # Optimize for uv
 ENV UV_COMPILE_BYTECODE=1 \
@@ -11,6 +11,15 @@ ENV UV_COMPILE_BYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 WORKDIR /app
+
+# Install build dependencies (needed for compiling packages like numpy, scipy)
+# Note: Using Python 3.12 instead of 3.13 to use pre-built wheels for pydantic-core
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    make \
+    && rm -rf /var/lib/apt/lists/*
 
 # 1. Install dependencies (This layer changes infrequently, can be cached)
 # Use bind mount to avoid copying files into the image, keep layers clean
