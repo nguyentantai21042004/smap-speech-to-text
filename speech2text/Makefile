@@ -1,4 +1,4 @@
-.PHONY: help install dev-install run-api run-queue run-scheduler docker-build docker-up docker-down docker-logs clean test format lint upgrade
+.PHONY: help install dev-install run-api run-queue run-scheduler setup-models setup-model setup-model-tiny setup-model-base setup-model-small setup-model-medium setup-model-large setup-whisper setup-whisper-custom docker-build docker-up docker-down docker-logs clean test format lint upgrade
 
 # ==============================================================================
 # HELPERS
@@ -10,6 +10,9 @@ help:
 	@echo "  make upgrade            - Upgrade all packages in lock file"
 	@echo "  make run-api            - Run API service"
 	@echo "  make run-consumer       - Run Consumer service"
+	@echo "  make setup-models       - Download all Whisper models from MinIO"
+	@echo "  make setup-model-medium - Download specific model (tiny/base/small/medium/large)"
+	@echo "  make setup-whisper      - Build whisper.cpp binary from source"
 	@echo "  make docker-build       - Build Docker images"
 	@echo "  make docker-up          - Start all services"
 	@echo "  make docker-down        - Stop all services"
@@ -51,6 +54,52 @@ run-api-refactored:
 
 run-consumer:
 	PYTHONPATH=. uv run cmd/consumer/main.py
+
+# ==============================================================================
+# WHISPER SETUP
+# ==============================================================================
+# Download Whisper models from MinIO (for local development)
+# Requires MinIO connection configured in .env
+setup-models:
+	@echo "Downloading Whisper models from MinIO..."
+	PYTHONPATH=. uv run scripts/setup_models.py
+
+# Download specific model (e.g., make setup-model MODEL=medium)
+setup-model:
+	@echo "Downloading model: $(MODEL)..."
+	PYTHONPATH=. uv run scripts/setup_models.py $(MODEL)
+
+# Quick shortcuts for common models
+setup-model-tiny:
+	@echo "Downloading tiny model..."
+	PYTHONPATH=. uv run scripts/setup_models.py tiny
+
+setup-model-base:
+	@echo "Downloading base model..."
+	PYTHONPATH=. uv run scripts/setup_models.py base
+
+setup-model-small:
+	@echo "Downloading small model..."
+	PYTHONPATH=. uv run scripts/setup_models.py small
+
+setup-model-medium:
+	@echo "Downloading medium model..."
+	PYTHONPATH=. uv run scripts/setup_models.py medium
+
+setup-model-large:
+	@echo "Downloading large model..."
+	PYTHONPATH=. uv run scripts/setup_models.py large
+
+# Build whisper.cpp binary from source (for local development)
+# Requires: cmake, make, and whisper.cpp repo cloned
+setup-whisper:
+	@echo "Building whisper.cpp binary..."
+	bash scripts/setup_whisper.sh
+
+# Build whisper.cpp with specific models
+setup-whisper-custom:
+	@echo "Building whisper.cpp with models: $(MODELS)..."
+	bash scripts/setup_whisper.sh --models "$(MODELS)"
 
 # ==============================================================================
 # DOCKER OPERATIONS
