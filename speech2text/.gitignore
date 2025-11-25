@@ -1,64 +1,39 @@
-# Python
-myenv/
+# .gitignore template for Python/uv
+
+# 1. Ignore Bytecode (IMPORTANT)
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 2. Ignore virtual environments (IMPORTANT)
+# uv creates .venv, legacy pip may create venv or env
+
+.venv/
 venv/
 env/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.pyw
-*.pyz
-*.pywz
-*.pyzw
-*.pyzwz
-.Python
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+ENV/
 
-# Environment Variables
+# 3. Ignore build/dist files
+
+build/
+dist/
+*.egg-info/
+
+# 4. Ignore environment config files (SECURITY)
+
 .env
 .env.local
-.env.*.local
 
-# Log files
-logs/
-*.log
+# 5. Tool test/lint cache files
 
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Operating System files
-.DS_Store
-Thumbs.db
-
-# Test outputs
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
 htmlcov/
-.tox/
 
-# Docker
-.docker/
-
-# Temporary files
-tmp/
-temp/
+# ========== Additional section for project-specific ignores ==========
 
 # Whisper Models (Large files not committed to Git)
 whisper/models/*
@@ -73,10 +48,23 @@ whisper/models/*.json
 # Model cache file
 whisper/models/.model_cache.json
 
-# IDE and editor files
-.cursor/
+# IDE/editor and system files
 .vscode/
 .idea/
+.cursor/
 *.swp
 *.swo
 *~
+.DS_Store
+Thumbs.db
+
+# Log files
+logs/
+*.log
+
+# Docker files
+.docker/
+
+# Temporary files
+tmp/
+temp/
