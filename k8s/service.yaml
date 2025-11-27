@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: smap-stt-api
-  namespace: smap-stt
+  name: stt-api
+  namespace: stt
   labels:
-    app: smap-stt-api
+    app: stt-api
 spec:
   type: ClusterIP
   selector:
-    app: smap-stt-api
+    app: stt-api
   ports:
   - name: http
     port: 8000
@@ -20,8 +20,8 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: smap-stt-api-ingress
-  namespace: smap-stt
+  name: stt-api-ingress
+  namespace: stt
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/proxy-body-size: "500m"  # Max upload size
@@ -38,11 +38,11 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: smap-stt-api
+            name: stt-api
             port:
               number: 8000
   # tls:  # Optional: Enable HTTPS
   # - hosts:
   #   - stt.yourdomain.com
-  #   secretName: smap-stt-tls
+  #   secretName: stt-tls
 

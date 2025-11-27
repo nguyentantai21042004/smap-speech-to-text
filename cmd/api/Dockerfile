@@ -53,9 +53,9 @@ RUN apt-get update && \
     && apt-get clean
 
 # Standard OCI Metadata
-LABEL org.opencontainers.image.title="SMAP Speech2Text API Service" \
+LABEL org.opencontainers.image.title="Speech-to-Text API Service" \
       org.opencontainers.image.description="Secure, Fast Speech2Text API with UV and Distroless" \
-      org.opencontainers.image.source="https://github.com/smap/speech2text" \
+      org.opencontainers.image.source="https://github.com/nguyentantai21042004/speech-to-text" \
       org.opencontainers.image.licenses="MIT"
 
 # Set optimal environment variables for Python Runtime
@@ -76,8 +76,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
     WHISPER_CHUNK_OVERLAP=1 \
     # MinIO Configuration (Override in production with secrets)
     MINIO_ENDPOINT=http://172.16.19.115:9000 \
-    MINIO_ACCESS_KEY=smap \
-    MINIO_SECRET_KEY=hcmut2025 \
+    MINIO_ACCESS_KEY=minioadmin \
+    MINIO_SECRET_KEY=minioadmin \
     # Timeout Configuration
     TRANSCRIBE_TIMEOUT_SECONDS=90
 

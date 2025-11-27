@@ -1,5 +1,5 @@
 """
-FastAPI Service - Main entry point for SMAP Speech-to-Text API.
+FastAPI Service - Main entry point for Speech-to-Text API.
 Stateless transcription service using Whisper.cpp.
 """
 
@@ -88,7 +88,7 @@ def create_app() -> FastAPI:
 
         # OpenAPI metadata
         description = """
-## SMAP Speech-to-Text API
+## Speech-to-Text API
 
 A stateless Speech-to-Text service powered by Whisper.cpp.
 
@@ -132,7 +132,7 @@ MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
             lifespan=lifespan,
             openapi_tags=tags_metadata,
             contact={
-                "name": "SMAP Team",
+                "name": "Development Team",
                 "email": "nguyentantai.dev@gmail.com",
             },
             license_info={},
@@ -230,7 +230,7 @@ MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
 
 # Create application instance
 try:
-    logger.info("Initializing SMAP Speech-to-Text API...")
+    logger.info("Initializing Speech-to-Text API...")
     app = create_app()
     logger.info("Application instance created successfully")
 except Exception as e:

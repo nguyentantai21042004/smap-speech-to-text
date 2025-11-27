@@ -17,10 +17,10 @@ sys.path.insert(0, str(project_root))
 os.chdir(project_root)
 
 # Mock TranscribeService before importing main to avoid loading Whisper
-with patch('services.transcription.TranscribeService') as MockTranscribe:
+with patch("services.transcription.TranscribeService") as MockTranscribe:
     mock_service = MagicMock()
     MockTranscribe.return_value = mock_service
-    
+
     # Import cmd.api.main by path to avoid conflict with stdlib cmd
     file_path = Path("cmd/api/main.py").resolve()
     spec = importlib.util.spec_from_file_location("cmd.api.main", file_path)
@@ -32,7 +32,7 @@ with patch('services.transcription.TranscribeService') as MockTranscribe:
 client = TestClient(app)
 
 # Test constants
-VALID_API_KEY = "smap-internal-key-changeme"
+VALID_API_KEY = "your-api-key-here"
 INVALID_API_KEY = "wrong-key"
 TEST_MEDIA_URL = "https://minio.internal/bucket/audio_123.mp3?token=xyz"
 
@@ -63,7 +63,10 @@ class TestTranscribeV2Authentication:
         assert data["error_code"] == 1
         assert "Invalid API key" in data["message"]
 
-    @patch("internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url", new_callable=AsyncMock)
+    @patch(
+        "internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url",
+        new_callable=AsyncMock,
+    )
     def test_valid_api_key_success(self, mock_transcribe):
         """Should succeed with valid API key."""
         # Mock successful transcription (AsyncMock automatically handles await)
@@ -112,7 +115,10 @@ class TestTranscribeV2RequestValidation:
         )
         assert response.status_code == 422
 
-    @patch("internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url", new_callable=AsyncMock)
+    @patch(
+        "internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url",
+        new_callable=AsyncMock,
+    )
     def test_optional_language_parameter(self, mock_transcribe):
         """Should use default language when not provided."""
         mock_transcribe.return_value = {
@@ -139,7 +145,10 @@ class TestTranscribeV2RequestValidation:
 class TestTranscribeV2ResponseFormat:
     """Test response format for /transcribe endpoint."""
 
-    @patch("internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url", new_callable=AsyncMock)
+    @patch(
+        "internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url",
+        new_callable=AsyncMock,
+    )
     def test_success_response_structure(self, mock_transcribe):
         """Should return proper response structure on success."""
         mock_transcribe.return_value = {
@@ -179,10 +188,13 @@ class TestTranscribeV2ResponseFormat:
 class TestTranscribeV2ErrorHandling:
     """Test error handling for /transcribe endpoint."""
 
-    @patch("internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url")
+    @patch(
+        "internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url"
+    )
     def test_timeout_error(self, mock_transcribe):
         """Should return timeout status when processing exceeds limit."""
         import asyncio
+
         mock_transcribe.side_effect = asyncio.TimeoutError()
 
         response = client.post(
@@ -195,7 +207,9 @@ class TestTranscribeV2ErrorHandling:
         assert data["status"] == "timeout"
         assert data["transcription"] == ""
 
-    @patch("internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url")
+    @patch(
+        "internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url"
+    )
     def test_file_too_large_error(self, mock_transcribe):
         """Should return 413 when file exceeds size limit."""
         mock_transcribe.side_effect = ValueError("File too large: 600MB > 500MB")
@@ -207,12 +221,12 @@ class TestTranscribeV2ErrorHandling:
         )
         assert response.status_code == 413
 
-    @patch("internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url")
+    @patch(
+        "internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url"
+    )
     def test_invalid_url_error(self, mock_transcribe):
         """Should return 400 when URL cannot be fetched."""
-        mock_transcribe.side_effect = ValueError(
-            "Failed to download file: HTTP 404"
-        )
+        mock_transcribe.side_effect = ValueError("Failed to download file: HTTP 404")
 
         response = client.post(
             "/transcribe",
@@ -224,7 +238,9 @@ class TestTranscribeV2ErrorHandling:
         assert data["error_code"] == 1
         assert "Failed to download" in data["message"]
 
-    @patch("internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url")
+    @patch(
+        "internal.api.routes.transcribe_routes.transcribe_service.transcribe_from_url"
+    )
     def test_internal_server_error(self, mock_transcribe):
         """Should return 500 on unexpected errors."""
         mock_transcribe.side_effect = Exception("Unexpected error")
@@ -259,4 +275,3 @@ class TestSwaggerUI:
         assert "paths" in data
         # Verify /transcribe endpoint is documented
         assert "/transcribe" in data["paths"]
-

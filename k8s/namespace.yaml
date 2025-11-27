@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: smap-stt
+  name: stt
   labels:
-    name: smap-stt
+    name: stt
     environment: production
     app: speech-to-text
 

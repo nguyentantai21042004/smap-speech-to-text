@@ -1,4 +1,4 @@
-# SMAP Speech-to-Text System
+# Speech-to-Text System
 
 A high-performance **stateless** Speech-to-Text (STT) API built with **FastAPI** and **Whisper.cpp**. Designed for simplicity, direct transcription, and minimal infrastructure dependencies.
 
@@ -13,14 +13,14 @@ A high-performance **stateless** Speech-to-Text (STT) API built with **FastAPI**
 - **Multiple Languages** - Support for Vietnamese, English, and 90+ languages
 - **Production-Ready** - Comprehensive logging, error handling, and health monitoring
 
-### NEW: Dynamic Model Loading
+### Dynamic Model Loading
 - **Runtime Model Switching** - Change between small/medium models via environment variable
 - **90% Faster** - Direct C library integration eliminates subprocess overhead
 - **No Rebuild Required** - Single Docker image for all environments
 - **Auto-Download** - Artifacts automatically downloaded from MinIO if missing
 - **Memory Efficient** - Model loaded once at startup, reused for all requests
 
-### NEW: Sequential Smart-Chunking (Production-Ready)
+### Sequential Smart-Chunking (Production-Ready)
 - **Long Audio Support** - Handle audio up to 30+ minutes without timeout
 - **Flat Memory Usage** - Consistent ~500MB regardless of audio length
 - **High Performance** - Process at 4-5x faster than realtime
@@ -329,7 +329,7 @@ Transcribe audio from presigned URL (e.g., MinIO).
 ```bash
 curl -X POST http://localhost:8000/transcribe \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: smap-internal-key-changeme" \
+  -H "X-API-Key: your-api-key-here" \
   -d '{
     "media_url": "https://minio.internal/bucket/audio_123.mp3?token=xyz",
     "language": "vi"
@@ -346,7 +346,7 @@ Service health check.
   "message": "Service is healthy",
   "data": {
     "status": "healthy",
-    "service": "SMAP Speech-to-Text",
+    "service": "Speech-to-Text API",
     "version": "1.0.0"
   }
 }
@@ -376,7 +376,7 @@ Root endpoint with service information.
 
 ```bash
 # Application
-APP_NAME="SMAP Speech-to-Text"
+APP_NAME="Speech-to-Text API"
 APP_VERSION="1.0.0"
 ENVIRONMENT="development"
 DEBUG=true
@@ -404,13 +404,13 @@ WHISPER_CHUNK_OVERLAP=1          # Overlap in seconds
 WHISPER_N_THREADS=0              # 0 for auto-detect (recommended)
 
 # API Security
-INTERNAL_API_KEY="smap-internal-key-changeme"
+INTERNAL_API_KEY="your-api-key-here"
 TRANSCRIBE_TIMEOUT_SECONDS=90    # Base timeout (adaptive for long audio)
 
 # MinIO (for artifact download)
 MINIO_ENDPOINT="http://172.16.19.115:9000"
-MINIO_ACCESS_KEY="smap"
-MINIO_SECRET_KEY="hcmut2025"
+MINIO_ACCESS_KEY="minioadmin"
+MINIO_SECRET_KEY="minioadmin"
 
 # Logging
 LOG_LEVEL="INFO"
@@ -626,11 +626,11 @@ make setup-artifacts-small
 #### 7. Transcription timeout (Long Audio)
 ```bash
 # Verify chunking is enabled
-docker exec smap-api-dev printenv | grep WHISPER_CHUNK_ENABLED
+docker exec stt-api-dev printenv | grep WHISPER_CHUNK_ENABLED
 # Should output: WHISPER_CHUNK_ENABLED=true
 
 # Check timeout setting
-docker exec smap-api-dev printenv | grep TRANSCRIBE_TIMEOUT
+docker exec stt-api-dev printenv | grep TRANSCRIBE_TIMEOUT
 # Should output: TRANSCRIBE_TIMEOUT_SECONDS=90
 
 # Increase timeout if needed (for very long audio)
@@ -644,10 +644,10 @@ docker-compose restart api-dev
 #### 8. High memory usage
 ```bash
 # Check if chunking is enabled
-docker exec smap-api-dev printenv | grep WHISPER_CHUNK
+docker exec stt-api-dev printenv | grep WHISPER_CHUNK
 
 # Memory should stay ~500MB regardless of audio length
-docker stats smap-api-dev
+docker stats stt-api-dev
 
 # If memory is high:
 # 1. Verify WHISPER_CHUNK_ENABLED=true
@@ -659,7 +659,7 @@ docker-compose logs -f api-dev
 #### 9. Slow transcription performance
 ```bash
 # Check thread configuration
-docker exec smap-api-dev printenv | grep WHISPER_N_THREADS
+docker exec stt-api-dev printenv | grep WHISPER_N_THREADS
 # Should output: WHISPER_N_THREADS=0 (auto-detect)
 
 # Check CPU allocation
@@ -672,8 +672,8 @@ docker stats smap-api-dev
 #### 10. Chunking not working
 ```bash
 # Verify FFmpeg is installed
-docker exec smap-api-dev ffmpeg -version
-docker exec smap-api-dev ffprobe -version
+docker exec stt-api-dev ffmpeg -version
+docker exec stt-api-dev ffprobe -version
 
 # Check logs for chunking messages
 docker-compose logs -f api-dev | grep -i chunk
@@ -698,4 +698,3 @@ docker-compose logs -f api
 ## Contact
 
 - **Email**: nguyentantai.dev@gmail.com
-- **Team**: SMAP Team

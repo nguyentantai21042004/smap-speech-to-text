@@ -1,6 +1,6 @@
 # Kubernetes Deployment Guide
 
-This directory contains Kubernetes manifests for deploying the SMAP Speech-to-Text API with **production-ready chunking support**.
+This directory contains Kubernetes manifests for deploying the Speech-to-Text API with **production-ready chunking support**.
 
 ## Prerequisites
 
@@ -19,10 +19,10 @@ This directory contains Kubernetes manifests for deploying the SMAP Speech-to-Te
 ```bash
 # Build image
 cd /Users/tantai/Workspaces/smap/smap-ai-internal/speech2text
-docker build -t your-registry/smap-stt-api:latest -f cmd/api/Dockerfile .
+docker build -t your-registry/stt-api:latest -f cmd/api/Dockerfile .
 
 # Push to registry
-docker push your-registry/smap-stt-api:latest
+docker push your-registry/stt-api:latest
 ```
 
 ### 2. Update Configuration
@@ -40,7 +40,7 @@ MINIO_SECRET_KEY: "your-minio-secret-key"
 **`k8s/deployment.yaml`:**
 ```yaml
 # Update image URL
-image: your-registry/smap-stt-api:latest
+image: your-registry/stt-api:latest
 ```
 
 **`k8s/service.yaml`:**
@@ -72,16 +72,16 @@ kubectl apply -f k8s/service.yaml
 
 ```bash
 # Check pods
-kubectl get pods -n smap-stt
+kubectl get pods -n stt
 
 # Check deployment status
-kubectl rollout status deployment/smap-stt-api -n smap-stt
+kubectl rollout status deployment/stt-api -n stt
 
 # View logs
-kubectl logs -f deployment/smap-stt-api -n smap-stt
+kubectl logs -f deployment/stt-api -n stt
 
 # Test health endpoint
-kubectl port-forward -n smap-stt deployment/smap-stt-api 8000:8000
+kubectl port-forward -n stt deployment/stt-api 8000:8000
 curl http://localhost:8000/health
 ```
 
@@ -180,7 +180,7 @@ See `CHUNKING_TEST_REPORT.md` for full test results.
 
 ```bash
 # Scale to 5 replicas
-kubectl scale deployment/smap-stt-api -n smap-stt --replicas=5
+kubectl scale deployment/stt-api -n stt --replicas=5
 ```
 
 ### Auto-Scaling (HPA)
@@ -199,7 +199,7 @@ metrics:
 Enable HPA:
 ```bash
 kubectl apply -f k8s/deployment.yaml
-kubectl get hpa -n smap-stt
+kubectl get hpa -n stt
 ```
 
 ---
@@ -228,11 +228,11 @@ kubectl apply -f https://raw.githubusercontent.com/external-secrets/external-sec
 #### Option 3: Manual Creation
 ```bash
 # Create secret manually (not in git)
-kubectl create secret generic smap-stt-secrets \
+kubectl create secret generic stt-secrets \
   --from-literal=INTERNAL_API_KEY="your-secure-key" \
   --from-literal=MINIO_ACCESS_KEY="your-minio-key" \
   --from-literal=MINIO_SECRET_KEY="your-minio-secret" \
-  -n smap-stt
+  -n stt
 ```
 
 ---
@@ -243,20 +243,20 @@ kubectl create secret generic smap-stt-secrets \
 
 ```bash
 # Check pod health
-kubectl get pods -n smap-stt
+kubectl get pods -n stt
 
 # Describe pod for events
-kubectl describe pod <pod-name> -n smap-stt
+kubectl describe pod <pod-name> -n stt
 
 # View logs
-kubectl logs -f <pod-name> -n smap-stt
+kubectl logs -f <pod-name> -n stt
 ```
 
 ### Resource Usage
 
 ```bash
 # Check resource consumption
-kubectl top pods -n smap-stt
+kubectl top pods -n stt
 
 # Check node allocation
 kubectl top nodes
@@ -281,10 +281,10 @@ annotations:
 
 ```bash
 # Check events
-kubectl describe pod <pod-name> -n smap-stt
+kubectl describe pod <pod-name> -n stt
 
 # Check logs
-kubectl logs <pod-name> -n smap-stt
+kubectl logs <pod-name> -n stt
 
 # Common issues:
 # - Image pull errors: Check registry access
@@ -296,13 +296,13 @@ kubectl logs <pod-name> -n smap-stt
 
 ```bash
 # Check PVC status
-kubectl get pvc -n smap-stt
+kubectl get pvc -n stt
 
 # Check PV binding
 kubectl get pv
 
 # Exec into pod
-kubectl exec -it <pod-name> -n smap-stt -- /bin/bash
+kubectl exec -it <pod-name> -n stt -- /bin/bash
 ls -la /app/whisper_small_xeon/
 ```
 
@@ -310,7 +310,7 @@ ls -la /app/whisper_small_xeon/
 
 ```bash
 # Check current usage
-kubectl top pods -n smap-stt
+kubectl top pods -n stt
 
 # If consistently high:
 # 1. Verify chunking is enabled (WHISPER_CHUNK_ENABLED=true)
@@ -322,10 +322,10 @@ kubectl top pods -n smap-stt
 
 ```bash
 # Check CPU allocation
-kubectl top pods -n smap-stt
+kubectl top pods -n stt
 
 # Verify threading configuration
-kubectl exec -it <pod-name> -n smap-stt -- env | grep WHISPER_N_THREADS
+kubectl exec -it <pod-name> -n stt -- env | grep WHISPER_N_THREADS
 
 # Should be "0" for auto-detect or "8" for manual
 ```
@@ -338,29 +338,29 @@ kubectl exec -it <pod-name> -n smap-stt -- env | grep WHISPER_N_THREADS
 
 ```bash
 # Update image
-kubectl set image deployment/smap-stt-api \
-  smap-stt-api=your-registry/smap-stt-api:v2 \
-  -n smap-stt
+kubectl set image deployment/stt-api \
+  stt-api=your-registry/stt-api:v2 \
+  -n stt
 
 # Watch rollout
-kubectl rollout status deployment/smap-stt-api -n smap-stt
+kubectl rollout status deployment/stt-api -n stt
 
 # Rollback if needed
-kubectl rollout undo deployment/smap-stt-api -n smap-stt
+kubectl rollout undo deployment/stt-api -n stt
 ```
 
 ### Backup
 
 ```bash
 # Backup all manifests
-kubectl get all -n smap-stt -o yaml > backup-$(date +%Y%m%d).yaml
+kubectl get all -n stt -o yaml > backup-$(date +%Y%m%d).yaml
 ```
 
 ### Cleanup
 
 ```bash
 # Delete all resources
-kubectl delete namespace smap-stt
+kubectl delete namespace stt
 
 # Or delete individually
 kubectl delete -f k8s/
@@ -390,7 +390,7 @@ Before deploying to production:
 ## Support
 
 For issues or questions:
-- Check logs: `kubectl logs -f deployment/smap-stt-api -n smap-stt`
+- Check logs: `kubectl logs -f deployment/stt-api -n stt`
 - Review test report: `CHUNKING_TEST_REPORT.md`
 - Contact: nguyentantai.dev@gmail.com
 

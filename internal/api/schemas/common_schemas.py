@@ -44,7 +44,7 @@ class HealthResponse(BaseModel):
             "examples": [
                 {
                     "status": "healthy",
-                    "service": "SMAP Service",
+                    "service": "Speech-to-Text API",
                     "version": "1.0.0",
                 }
             ]

@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: smap-stt-models-pvc
-  namespace: smap-stt
+  name: stt-models-pvc
+  namespace: stt
   labels:
-    app: smap-stt-api
+    app: stt-api
 spec:
   accessModes:
   - ReadWriteMany  # Shared across multiple pods

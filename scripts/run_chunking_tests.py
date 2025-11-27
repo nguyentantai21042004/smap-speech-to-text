@@ -16,7 +16,7 @@ from typing import Any
 import requests
 
 API_URL = os.environ.get("API_URL", "http://localhost:8000/transcribe")
-API_KEY = os.environ.get("API_KEY", "smap-internal-key-changeme")
+API_KEY = os.environ.get("API_KEY", "your-api-key-here")
 INPUT_FILE = Path("speech2text/file.json")
 OUTPUT_DIR = Path("/tmp/base_chunking_tests")
 RESULTS_JSON = OUTPUT_DIR / "results.json"
@@ -93,10 +93,14 @@ def run_test_case(index: int, case: dict[str, Any]) -> TestResult:
         response_text = resp.text
     except Exception as exc:
         wall_time = time.perf_counter() - start
-        response_text = json.dumps({"status": "error", "message": str(exc)}, ensure_ascii=False)
+        response_text = json.dumps(
+            {"status": "error", "message": str(exc)}, ensure_ascii=False
+        )
         resp = None
 
-    response_path = OUTPUT_DIR / f"test{index}_{minutes if minutes > 0 else 'unknown'}min.json"
+    response_path = (
+        OUTPUT_DIR / f"test{index}_{minutes if minutes > 0 else 'unknown'}min.json"
+    )
     response_path.write_text(response_text, encoding="utf-8")
 
     api_status = None
@@ -110,7 +114,9 @@ def run_test_case(index: int, case: dict[str, Any]) -> TestResult:
             api_status = data.get("status")
             if isinstance(data.get("data"), dict):
                 processing_time = data["data"].get("processing_time")
-                audio_duration = data["data"].get("duration") or data["data"].get("audio_duration")
+                audio_duration = data["data"].get("duration") or data["data"].get(
+                    "audio_duration"
+                )
             if api_status != "success":
                 error_message = data.get("message")
         except ValueError:
@@ -139,7 +145,10 @@ def main() -> None:
     results: list[TestResult] = []
 
     for idx, case in enumerate(cases, start=1):
-        print(f"=== Running test {idx}/{len(cases)}: {case.get('duration')} ===", flush=True)
+        print(
+            f"=== Running test {idx}/{len(cases)}: {case.get('duration')} ===",
+            flush=True,
+        )
         result = run_test_case(idx, case)
         results.append(result)
         print(
@@ -164,4 +173,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

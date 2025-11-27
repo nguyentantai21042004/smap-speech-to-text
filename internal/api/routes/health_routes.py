@@ -40,7 +40,7 @@ def create_health_routes(app) -> APIRouter:
                             "error_code": 0,
                             "message": "API service is running",
                             "data": {
-                                "service": "SMAP Service",
+                                "service": "Speech-to-Text API",
                                 "version": "1.0.0",
                                 "status": "running",
                             },
@@ -83,16 +83,16 @@ def create_health_routes(app) -> APIRouter:
                     "application/json": {
                         "examples": {
                             "healthy": {
-                            "summary": "Service operational",
-                            "value": {
-                                "error_code": 0,
-                                "message": "Service is healthy",
-                                "data": {
-                                    "status": "healthy",
-                                    "service": "SMAP Service",
-                                    "version": "1.0.0",
+                                "summary": "Service operational",
+                                "value": {
+                                    "error_code": 0,
+                                    "message": "Service is healthy",
+                                    "data": {
+                                        "status": "healthy",
+                                        "service": "SMAP Service",
+                                        "version": "1.0.0",
+                                    },
                                 },
-                            },
                             },
                         }
                     }

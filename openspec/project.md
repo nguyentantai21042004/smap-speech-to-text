@@ -132,10 +132,10 @@ make -f Makefile.dev dev-logs
 ### Production Build
 ```bash
 # Build Docker image
-docker build -t smap-stt:latest -f cmd/api/Dockerfile .
+docker build -t stt-api:latest -f cmd/api/Dockerfile .
 
 # Run with model selection
-docker run -e WHISPER_MODEL_SIZE=small -p 8000:8000 smap-stt:latest
+docker run -e WHISPER_MODEL_SIZE=small -p 8000:8000 stt-api:latest
 ```
 
 ### Model Switching

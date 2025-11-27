@@ -28,7 +28,7 @@ try:
 except ImportError:
     # Fallback to environment variables if config not available
     MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://172.16.19.115:9000")
-    MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "smap")
+    MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
     MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "hcmut2025")
 
 BUCKET_NAME = "whisper-artifacts"

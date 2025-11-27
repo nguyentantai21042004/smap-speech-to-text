@@ -1,10 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: smap-stt-api
-  namespace: smap-stt
+  name: stt-api
+  namespace: stt
   labels:
-    app: smap-stt-api
+    app: stt-api
     version: v1
 spec:
   replicas: 2  # Adjust based on load
@@ -15,11 +15,11 @@ spec:
       maxUnavailable: 0  # Zero-downtime deployment
   selector:
     matchLabels:
-      app: smap-stt-api
+      app: stt-api
   template:
     metadata:
       labels:
-        app: smap-stt-api
+        app: stt-api
         version: v1
       annotations:
         prometheus.io/scrape: "true"
@@ -35,8 +35,8 @@ spec:
           type: RuntimeDefault
       
       containers:
-      - name: smap-stt-api
-        image: your-registry/smap-stt-api:latest  # Replace with your registry
+      - name: stt-api
+        image: your-registry/stt-api:latest  # Replace with your registry
         imagePullPolicy: Always
         
         ports:
@@ -47,24 +47,24 @@ spec:
         # Environment Variables from ConfigMap
         envFrom:
         - configMapRef:
-            name: smap-stt-config
+            name: stt-config
         
         # Sensitive Environment Variables from Secret
         env:
         - name: INTERNAL_API_KEY
           valueFrom:
             secretKeyRef:
-              name: smap-stt-secrets
+              name: stt-secrets
               key: INTERNAL_API_KEY
         - name: MINIO_ACCESS_KEY
           valueFrom:
             secretKeyRef:
-              name: smap-stt-secrets
+              name: stt-secrets
               key: MINIO_ACCESS_KEY
         - name: MINIO_SECRET_KEY
           valueFrom:
             secretKeyRef:
-              name: smap-stt-secrets
+              name: stt-secrets
               key: MINIO_SECRET_KEY
         
         # Resource Limits (Optimized for Whisper Small Model with Chunking)
@@ -134,7 +134,7 @@ spec:
           sizeLimit: 1Gi
       - name: whisper-models
         persistentVolumeClaim:
-          claimName: smap-stt-models-pvc
+          claimName: stt-models-pvc
       - name: tmp
         emptyDir:
           sizeLimit: 5Gi  # For audio chunking temp files
@@ -150,7 +150,7 @@ spec:
                 - key: app
                   operator: In
                   values:
-                  - smap-stt-api
+                  - stt-api
               topologyKey: kubernetes.io/hostname
       
       # Tolerations (Optional: for dedicated nodes)
@@ -164,13 +164,13 @@ spec:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: smap-stt-api-hpa
-  namespace: smap-stt
+  name: stt-api-hpa
+  namespace: stt
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: smap-stt-api
+    name: stt-api
   minReplicas: 2
   maxReplicas: 10
   metrics:

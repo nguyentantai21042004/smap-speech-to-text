@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     )
 
     # Application
-    app_name: str = Field(default="SMAP Speech-to-Text", alias="APP_NAME")
+    app_name: str = Field(default="Speech-to-Text API", alias="APP_NAME")
     app_version: str = Field(default="1.0.0", alias="APP_VERSION")
     environment: str = Field(default="development", alias="ENVIRONMENT")
     debug: bool = Field(default=True, alias="DEBUG")
@@ -41,12 +41,18 @@ class Settings(BaseSettings):
     whisper_artifacts_dir: str = Field(default=".", alias="WHISPER_ARTIFACTS_DIR")
     whisper_language: str = Field(default="vi", alias="WHISPER_LANGUAGE")
     whisper_model: str = Field(default="base", alias="WHISPER_MODEL")
-    whisper_n_threads: int = Field(default=0, alias="WHISPER_N_THREADS")  # 0 = auto-detect
+    whisper_n_threads: int = Field(
+        default=0, alias="WHISPER_N_THREADS"
+    )  # 0 = auto-detect
 
     # Chunking Configuration (for long audio processing)
     whisper_chunk_enabled: bool = Field(default=True, alias="WHISPER_CHUNK_ENABLED")
-    whisper_chunk_duration: int = Field(default=30, alias="WHISPER_CHUNK_DURATION")  # seconds
-    whisper_chunk_overlap: int = Field(default=1, alias="WHISPER_CHUNK_OVERLAP")  # seconds
+    whisper_chunk_duration: int = Field(
+        default=30, alias="WHISPER_CHUNK_DURATION"
+    )  # seconds
+    whisper_chunk_overlap: int = Field(
+        default=1, alias="WHISPER_CHUNK_OVERLAP"
+    )  # seconds
 
     # MinIO Configuration (for artifact download)
     minio_endpoint: str = Field(
