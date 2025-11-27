@@ -13,7 +13,7 @@ A high-performance **stateless** Speech-to-Text (STT) API built with **FastAPI**
 - **Multiple Languages** - Support for Vietnamese, English, and 90+ languages
 - **Production-Ready** - Comprehensive logging, error handling, and health monitoring
 
-### 🆕 Dynamic Model Loading (NEW!)
+### NEW: Dynamic Model Loading
 - **Runtime Model Switching** - Change between small/medium models via environment variable
 - **90% Faster** - Direct C library integration eliminates subprocess overhead
 - **No Rebuild Required** - Single Docker image for all environments
@@ -229,16 +229,16 @@ WHISPER_MODEL_SIZE=medium docker-compose up
 
 | Metric | Before (CLI) | After (Library) | Improvement |
 |--------|-------------|-----------------|-------------|
-| First request | 2-3s | 0.5-1s | **60-75%** ⚡ |
-| Subsequent requests | 2-3s | 0.1-0.3s | **90%** ⚡⚡⚡ |
+| First request | 2-3s | 0.5-1s | **60-75%** |
+| Subsequent requests | 2-3s | 0.1-0.3s | **90%** |
 | Memory (small) | ~200MB/req | ~500MB total | Constant |
-| Model loads | Every request | Once at startup | **∞%** |
+| Model loads | Every request | Once at startup | (Very large improvement) |
 
 ### Documentation
 
-- 📖 [User Guide](docs/DYNAMIC_MODEL_LOADING_GUIDE.md)
-- 📋 [Implementation Summary](IMPLEMENTATION_SUMMARY.md)
-- 📝 [Change Log](CHANGES.md)
+- [User Guide](docs/DYNAMIC_MODEL_LOADING_GUIDE.md)
+- [Implementation Summary](IMPLEMENTATION_SUMMARY.md)
+- [Change Log](CHANGES.md)
 
 ### Makefile Commands
 
@@ -246,9 +246,9 @@ WHISPER_MODEL_SIZE=medium docker-compose up
 make help                     # Show all available commands
 make setup-artifacts-small    # Download small model
 make setup-artifacts-medium   # Download medium model
-make test-library            # Test library adapter
-make test-integration        # Test model switching
-make clean-old               # Remove old/unused files
+make test-library             # Test library adapter
+make test-integration         # Test model switching
+make clean-old                # Remove old/unused files
 ```
 
 ---
@@ -346,13 +346,7 @@ MAX_UPLOAD_SIZE_MB=500
 # Storage
 TEMP_DIR="/tmp/stt_processing"
 
-# Whisper Settings (Legacy CLI)
-WHISPER_EXECUTABLE="./whisper/bin/whisper-cli"
-WHISPER_MODELS_DIR="./whisper/models"
-WHISPER_LANGUAGE="vi"
-WHISPER_MODEL="small"
-
-# Whisper Library (Dynamic Model Loading) 🆕
+# Whisper Library (Dynamic Model Loading)
 WHISPER_MODEL_SIZE="small"       # or "medium"
 WHISPER_ARTIFACTS_DIR="."
 
@@ -360,13 +354,6 @@ WHISPER_ARTIFACTS_DIR="."
 MINIO_ENDPOINT="http://172.16.19.115:9000"
 MINIO_ACCESS_KEY="smap"
 MINIO_SECRET_KEY="hcmut2025"
-
-# Whisper Quality/Accuracy Flags
-WHISPER_MAX_CONTEXT=0
-WHISPER_NO_SPEECH_THOLD=0.7
-WHISPER_ENTROPY_THOLD=2.6
-WHISPER_LOGPROB_THOLD=-0.8
-WHISPER_NO_FALLBACK=true
 
 # Logging
 LOG_LEVEL="INFO"
@@ -385,13 +372,12 @@ speech2text/
 ├── adapters/
 │   └── whisper/              # Whisper.cpp integration
 │       ├── engine.py         # Legacy CLI transcriber
-│       ├── library_adapter.py # 🆕 Direct C library integration
+│       ├── library_adapter.py # NEW Direct C library integration
 │       └── model_downloader.py
 ├── cmd/
 │   └── api/                  # API service entry point
-│       ├── Dockerfile        # Updated for dynamic loading
-│       ├── entrypoint.sh     # 🆕 Smart entrypoint for Docker
-│       └── main.py
+│       ├── Dockerfile        # Production Docker image
+│       └── main.py           # FastAPI application
 ├── core/                     # Core configuration and utilities
 │   ├── config.py             # Settings management
 │   ├── logger.py             # Logging setup
@@ -406,15 +392,18 @@ speech2text/
 │       ├── schemas/          # Request/response models
 │       │   └── common_schemas.py
 │       └── utils.py          # API utilities
-├── scripts/                  # 🆕 Utility scripts
+├── scripts/                  # NEW Utility scripts
+│   ├── entrypoint.sh         # NEW Smart entrypoint for Docker
+│   ├── dev-startup.sh        # Dev container startup
 │   └── download_whisper_artifacts.py # Download from MinIO
 ├── services/
 │   └── transcription.py      # Transcription service
-├── tests/                    # Unit tests
-│   ├── test_whisper_library.py  # 🆕 Library adapter tests
-│   └── test_model_switching.py  # 🆕 Integration tests
+├── tests/                    # Test suite
+│   ├── test_whisper_library.py  # Library adapter tests
+│   └── test_model_switching.py  # Integration tests
 ├── whisper/                  # Whisper models and binaries
 ├── docker-compose.yml
+├── docker-compose.dev.yml    # NEW Development compose
 ├── pyproject.toml
 └── README.md
 ```

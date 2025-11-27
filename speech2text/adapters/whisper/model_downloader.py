@@ -11,8 +11,8 @@ import json
 
 from core.config import get_settings
 from core.logger import logger
-from minio import Minio
-from minio.error import S3Error
+from minio import Minio  # type: ignore
+from minio.error import S3Error  # type: ignore
 
 settings = get_settings()
 
@@ -217,9 +217,7 @@ class ModelDownloader:
                 raise
 
             # Download model from models bucket
-            logger.info(
-                f"Downloading from bucket '{models_bucket}' to: {model_path}"
-            )
+            logger.info(f"Downloading from bucket '{models_bucket}' to: {model_path}")
             minio_client.fget_object(
                 models_bucket, config["minio_path"], str(model_path)
             )

@@ -7,6 +7,9 @@ import os
 import sys
 from pathlib import Path
 
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 try:
     import boto3
     from botocore.exceptions import ClientError
@@ -15,10 +18,19 @@ except ImportError:
     print("Error: boto3 not installed. Install with: pip install boto3")
     sys.exit(1)
 
-# MinIO Configuration (from environment or defaults)
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://172.16.19.115:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "smap")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "hcmut2025")
+try:
+    from core.config import get_settings
+
+    settings = get_settings()
+    MINIO_ENDPOINT = settings.minio_endpoint
+    MINIO_ACCESS_KEY = settings.minio_access_key
+    MINIO_SECRET_KEY = settings.minio_secret_key
+except ImportError:
+    # Fallback to environment variables if config not available
+    MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "http://172.16.19.115:9000")
+    MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "smap")
+    MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "hcmut2025")
+
 BUCKET_NAME = "whisper-artifacts"
 
 
@@ -36,12 +48,12 @@ def download_artifacts(model_size="small"):
 
     # Create S3 client
     s3_client = boto3.client(
-        's3',
+        "s3",
         endpoint_url=MINIO_ENDPOINT,
         aws_access_key_id=MINIO_ACCESS_KEY,
         aws_secret_access_key=MINIO_SECRET_KEY,
-        config=Config(signature_version='s3v4'),
-        region_name='us-east-1'
+        config=Config(signature_version="s3v4"),
+        region_name="us-east-1",
     )
 
     # List of files to download
@@ -51,20 +63,20 @@ def download_artifacts(model_size="small"):
         # List objects in bucket
         response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
 
-        if 'Contents' not in response:
+        if "Contents" not in response:
             print(f"❌ No artifacts found for {model_size} model")
             return False
 
         # Download each file
-        for obj in response['Contents']:
-            key = obj['Key']
-            filename = key.split('/')[-1]
+        for obj in response["Contents"]:
+            key = obj["Key"]
+            filename = key.split("/")[-1]
 
             if not filename:  # Skip directory entries
                 continue
 
             local_path = output_dir / filename
-            file_size_mb = obj['Size'] / (1024 * 1024)
+            file_size_mb = obj["Size"] / (1024 * 1024)
 
             print(f"⬇️  {filename} ({file_size_mb:.1f} MB)...", end=" ", flush=True)
 
@@ -84,7 +96,7 @@ def download_artifacts(model_size="small"):
             "libggml.so.0",
             "libggml-base.so.0",
             "libggml-cpu.so.0",
-            f"ggml-{model_size}-q5_1.bin"
+            f"ggml-{model_size}-q5_1.bin",
         ]
 
         for file in required_files:

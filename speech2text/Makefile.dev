@@ -1,0 +1,54 @@
+# Development Makefile Targets
+
+.PHONY: dev-up dev-down dev-logs dev-shell dev-restart dev-build
+
+# Start development container (mounts source code)
+dev-up:
+	@echo "🚀 Starting development container..."
+	docker-compose -f docker-compose.dev.yml up -d
+	@echo "✅ Development container started!"
+	@echo "📝 API: http://localhost:8000"
+	@echo "📝 Docs: http://localhost:8000/docs"
+	@echo "💡 Edit code locally, changes reflect in container"
+
+# Stop development container
+dev-down:
+	@echo "🛑 Stopping development container..."
+	docker-compose -f docker-compose.dev.yml down
+
+# View development logs
+dev-logs:
+	docker-compose -f docker-compose.dev.yml logs -f api-dev
+
+# Shell into development container
+dev-shell:
+	docker-compose -f docker-compose.dev.yml exec api-dev bash
+
+# Restart development container
+dev-restart:
+	@echo "🔄 Restarting development container..."
+	docker-compose -f docker-compose.dev.yml restart api-dev
+
+# Rebuild development container (if dependencies changed)
+dev-build:
+	@echo "🔨 Rebuilding development container..."
+	docker-compose -f docker-compose.dev.yml up -d --build
+
+# Run tests in development container
+dev-test:
+	docker-compose -f docker-compose.dev.yml exec api-dev uv run pytest
+
+# Switch to medium model
+dev-medium:
+	@echo "🔄 Switching to medium model..."
+	WHISPER_MODEL_SIZE=medium docker-compose -f docker-compose.dev.yml up -d
+
+# Switch to small model
+dev-small:
+	@echo "🔄 Switching to small model..."
+	WHISPER_MODEL_SIZE=small docker-compose -f docker-compose.dev.yml up -d
+
+# Clean volumes
+dev-clean:
+	@echo "🧹 Cleaning volumes..."
+	docker-compose -f docker-compose.dev.yml down -v

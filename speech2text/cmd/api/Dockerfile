@@ -73,19 +73,19 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 
 # Copy source code (all required modules)
-COPY --from=builder /app/cmd /app/cmd
-COPY --from=builder /app/core /app/core
-COPY --from=builder /app/internal /app/internal
-COPY --from=builder /app/services /app/services
-COPY --from=builder /app/adapters /app/adapters
-COPY --from=builder /app/whisper /app/whisper
+COPY cmd /app/cmd
+COPY core /app/core
+COPY internal /app/internal
+COPY services /app/services
+COPY adapters /app/adapters
+COPY whisper /app/whisper
+COPY scripts /app/scripts
 
-# Copy scripts for artifact download
-COPY scripts/download_whisper_artifacts.py /app/scripts/
-RUN chmod +x /app/scripts/download_whisper_artifacts.py
+# Make scripts executable
+RUN chmod +x /app/scripts/download_whisper_artifacts.py || true
 
 # Copy and setup entrypoint
-COPY cmd/api/entrypoint.sh /entrypoint.sh
+COPY scripts/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Native Healthcheck

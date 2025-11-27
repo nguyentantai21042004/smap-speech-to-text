@@ -62,4 +62,5 @@ class CorruptedFileError(PermanentError):
 
 class MissingDependencyError(PermanentError):
     """Missing system dependency (e.g., ffmpeg/ffprobe)."""
+
     pass

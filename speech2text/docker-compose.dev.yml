@@ -1,0 +1,96 @@
+services:
+  # ========================================
+  # Development API Service (for macOS)
+  # ========================================
+  # This mounts your source code so you can edit locally
+  # and run in Linux container (required for .so libraries)
+  api-dev:
+    image: python:3.12-slim-bookworm
+    container_name: smap-api-dev
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    working_dir: /app
+    
+    # Mount entire source directory
+    volumes:
+      - .:/app
+      - whisper_models:/app/whisper/models
+      - whisper_library_small:/app/whisper_small_xeon
+      - whisper_library_medium:/app/whisper_medium_xeon
+      # Cache pip packages
+      - pip_cache:/root/.cache/pip
+    
+    environment:
+      # Application
+      APP_NAME: "SMAP Speech-to-Text"
+      APP_VERSION: "1.0.0"
+      ENVIRONMENT: "development"
+      DEBUG: "True"
+
+      # API
+      API_HOST: "0.0.0.0"
+      API_PORT: "8000"
+      API_RELOAD: "True"
+      API_WORKERS: "1"
+      MAX_UPLOAD_SIZE_MB: "500"
+
+      # Storage
+      TEMP_DIR: "/tmp/stt_processing"
+
+      # Whisper Library Settings
+      WHISPER_MODEL_SIZE: "${WHISPER_MODEL_SIZE:-small}"
+      WHISPER_ARTIFACTS_DIR: "."
+      
+      # MinIO Configuration
+      MINIO_ENDPOINT: "${MINIO_ENDPOINT:-http://172.16.19.115:9000}"
+      MINIO_ACCESS_KEY: "${MINIO_ACCESS_KEY:-smap}"
+      MINIO_SECRET_KEY: "${MINIO_SECRET_KEY:-hcmut2025}"
+
+      # Whisper Settings
+      WHISPER_EXECUTABLE: "/app/whisper/bin/whisper-cli"
+      WHISPER_MODELS_DIR: "/app/whisper/models"
+      WHISPER_LANGUAGE: "vi"
+      WHISPER_MODEL: "small"
+
+      # Whisper Flags
+      WHISPER_MAX_CONTEXT: "0"
+      WHISPER_NO_SPEECH_THOLD: "0.7"
+      WHISPER_ENTROPY_THOLD: "2.6"
+      WHISPER_LOGPROB_THOLD: "-0.8"
+      WHISPER_NO_FALLBACK: "true"
+
+      # Logging
+      LOG_LEVEL: "INFO"
+      LOG_FILE: "logs/stt.log"
+
+      # Python
+      PYTHONPATH: "/app"
+      PYTHONUNBUFFERED: "1"
+    
+    # Run startup script
+    command: ["/bin/bash", "/app/scripts/dev-startup.sh"]
+    
+    networks:
+      - smap-network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  smap-network:
+    driver: bridge
+
+volumes:
+  whisper_models:
+    driver: local
+  whisper_library_small:
+    driver: local
+  whisper_library_medium:
+    driver: local
+  pip_cache:
+    driver: local

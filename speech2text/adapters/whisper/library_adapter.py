@@ -8,7 +8,7 @@ import ctypes
 import os
 from pathlib import Path
 from typing import Optional
-import numpy as np
+import numpy as np  # type: ignore
 
 from core.config import get_settings
 from core.logger import logger
@@ -16,21 +16,25 @@ from core.logger import logger
 
 class WhisperLibraryError(Exception):
     """Base exception for Whisper library errors"""
+
     pass
 
 
 class LibraryLoadError(WhisperLibraryError):
     """Failed to load .so files"""
+
     pass
 
 
 class ModelInitError(WhisperLibraryError):
     """Failed to initialize Whisper context"""
+
     pass
 
 
 class TranscriptionError(WhisperLibraryError):
     """Failed to transcribe audio"""
+
     pass
 
 
@@ -40,14 +44,14 @@ MODEL_CONFIGS = {
         "dir": "whisper_small_xeon",
         "model": "ggml-small-q5_1.bin",
         "size_mb": 181,
-        "ram_mb": 500
+        "ram_mb": 500,
     },
     "medium": {
         "dir": "whisper_medium_xeon",
         "model": "ggml-medium-q5_1.bin",
         "size_mb": 1500,
-        "ram_mb": 2000
-    }
+        "ram_mb": 2000,
+    },
 }
 
 
@@ -76,7 +80,9 @@ class WhisperLibraryAdapter:
 
         # Validate model size
         if self.model_size not in MODEL_CONFIGS:
-            raise ValueError(f"Unsupported model size: {self.model_size}. Must be one of {list(MODEL_CONFIGS.keys())}")
+            raise ValueError(
+                f"Unsupported model size: {self.model_size}. Must be one of {list(MODEL_CONFIGS.keys())}"
+            )
 
         self.config = MODEL_CONFIGS[self.model_size]
         self.lib_dir = self.artifacts_dir / self.config["dir"]
@@ -89,7 +95,9 @@ class WhisperLibraryAdapter:
         try:
             self._load_libraries()
             self._initialize_context()
-            logger.info(f"WhisperLibraryAdapter initialized successfully (model={self.model_size})")
+            logger.info(
+                f"WhisperLibraryAdapter initialized successfully (model={self.model_size})"
+            )
         except Exception as e:
             logger.error(f"Failed to initialize WhisperLibraryAdapter: {e}")
             raise
@@ -113,7 +121,9 @@ class WhisperLibraryAdapter:
 
             # Set LD_LIBRARY_PATH for this process
             old_ld_path = os.environ.get("LD_LIBRARY_PATH", "")
-            new_ld_path = f"{self.lib_dir}:{old_ld_path}" if old_ld_path else str(self.lib_dir)
+            new_ld_path = (
+                f"{self.lib_dir}:{old_ld_path}" if old_ld_path else str(self.lib_dir)
+            )
             os.environ["LD_LIBRARY_PATH"] = new_ld_path
             logger.debug(f"Set LD_LIBRARY_PATH={new_ld_path}")
 
@@ -121,21 +131,18 @@ class WhisperLibraryAdapter:
             # 1. Base libraries first
             logger.debug("Loading libggml-base.so.0...")
             libggml_base = ctypes.CDLL(
-                str(self.lib_dir / "libggml-base.so.0"),
-                mode=ctypes.RTLD_GLOBAL
+                str(self.lib_dir / "libggml-base.so.0"), mode=ctypes.RTLD_GLOBAL
             )
 
             logger.debug("Loading libggml-cpu.so.0...")
             libggml_cpu = ctypes.CDLL(
-                str(self.lib_dir / "libggml-cpu.so.0"),
-                mode=ctypes.RTLD_GLOBAL
+                str(self.lib_dir / "libggml-cpu.so.0"), mode=ctypes.RTLD_GLOBAL
             )
 
             # 2. GGML core
             logger.debug("Loading libggml.so.0...")
             libggml = ctypes.CDLL(
-                str(self.lib_dir / "libggml.so.0"),
-                mode=ctypes.RTLD_GLOBAL
+                str(self.lib_dir / "libggml.so.0"), mode=ctypes.RTLD_GLOBAL
             )
 
             # 3. Whisper (depends on GGML)
@@ -172,7 +179,7 @@ class WhisperLibraryAdapter:
             self.lib.whisper_init_from_file.restype = ctypes.c_void_p
 
             # Initialize context
-            model_path_bytes = str(self.model_path).encode('utf-8')
+            model_path_bytes = str(self.model_path).encode("utf-8")
             self.ctx = self.lib.whisper_init_from_file(model_path_bytes)
 
             if not self.ctx:
@@ -181,19 +188,16 @@ class WhisperLibraryAdapter:
                     f"Model file may be corrupted: {self.model_path}"
                 )
 
-            logger.info(f"Whisper context initialized (model={self.model_size}, ram~{self.config['ram_mb']}MB)")
+            logger.info(
+                f"Whisper context initialized (model={self.model_size}, ram~{self.config['ram_mb']}MB)"
+            )
 
         except ModelInitError:
             raise
         except Exception as e:
             raise ModelInitError(f"Failed to initialize Whisper context: {e}")
 
-    def transcribe(
-        self,
-        audio_path: str,
-        language: str = "vi",
-        **kwargs
-    ) -> str:
+    def transcribe(self, audio_path: str, language: str = "vi", **kwargs) -> str:
         """
         Transcribe audio file using Whisper library.
 

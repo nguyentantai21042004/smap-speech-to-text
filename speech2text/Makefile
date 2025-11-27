@@ -13,7 +13,6 @@ help:
 	@echo ""
 	@echo "🚀 RUN SERVICES:"
 	@echo "  make run-api                 - Run API service locally"
-	@echo "  make run-consumer            - Run Consumer service"
 	@echo ""
 	@echo "📥 WHISPER ARTIFACTS (Dynamic Model Loading):"
 	@echo "  make setup-artifacts         - Download Whisper library artifacts (default: small)"
@@ -69,9 +68,6 @@ run-api:
 
 run-api-refactored:
 	PYTHONPATH=. uv run cmd/api/main.py
-
-run-consumer:
-	PYTHONPATH=. uv run cmd/consumer/main.py
 
 # ==============================================================================
 # WHISPER SETUP

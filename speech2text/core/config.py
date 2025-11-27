@@ -4,8 +4,6 @@ Follows Single Responsibility Principle - only handles configuration.
 """
 
 from functools import lru_cache
-from typing import Optional
-from pathlib import Path
 
 from pydantic import Field  # type: ignore
 from pydantic_settings import BaseSettings, SettingsConfigDict  # type: ignore
@@ -19,7 +17,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
-        protected_namespaces=(),  # Allow 'model_*' fields (e.g., model_used)
+        protected_namespaces=(),  # Allow 'model_*' fields
     )
 
     # Application
@@ -38,43 +36,16 @@ class Settings(BaseSettings):
     # Storage (temporary processing)
     temp_dir: str = Field(default="/tmp/stt_processing", alias="TEMP_DIR")
 
-    # Whisper Settings
-    whisper_executable: str = Field(
-        default="./whisper/bin/whisper-cli", alias="WHISPER_EXECUTABLE"
-    )
-    whisper_models_dir: str = Field(
-        default="./whisper/models", alias="WHISPER_MODELS_DIR"
-    )
-    default_whisper_model: str = Field(default="medium", alias="DEFAULT_WHISPER_MODEL")
-    whisper_language: str = Field(default="vi", alias="WHISPER_LANGUAGE")
-    whisper_model: str = Field(default="small", alias="WHISPER_MODEL")
-
     # Whisper Library Settings (for direct C library integration)
     whisper_model_size: str = Field(default="small", alias="WHISPER_MODEL_SIZE")
     whisper_artifacts_dir: str = Field(default=".", alias="WHISPER_ARTIFACTS_DIR")
 
-    # Whisper Quality/Accuracy Flags
-    whisper_max_context: int = Field(
-        default=0, alias="WHISPER_MAX_CONTEXT"
-    )  # 0 = disable context reuse
-    whisper_no_speech_thold: float = Field(
-        default=0.7, alias="WHISPER_NO_SPEECH_THOLD"
-    )  # Higher = less false positives
-    whisper_entropy_thold: float = Field(
-        default=2.6, alias="WHISPER_ENTROPY_THOLD"
-    )  # Higher = less hallucination
-    whisper_logprob_thold: float = Field(
-        default=-0.8, alias="WHISPER_LOGPROB_THOLD"
-    )  # Higher = filter low quality
-    whisper_no_fallback: bool = Field(
-        default=True, alias="WHISPER_NO_FALLBACK"
-    )  # Disable temperature fallback
-    whisper_suppress_regex: Optional[str] = Field(
-        default=None, alias="WHISPER_SUPPRESS_REGEX"
-    )  # Suppress specific tokens
-
-    # Processing Settings
-    chunk_timeout: int = Field(default=300, alias="CHUNK_TIMEOUT")
+    # MinIO Configuration (for artifact download)
+    minio_endpoint: str = Field(
+        default="http://172.16.19.115:9000", alias="MINIO_ENDPOINT"
+    )
+    minio_access_key: str = Field(default="smap", alias="MINIO_ACCESS_KEY")
+    minio_secret_key: str = Field(default="hcmut2025", alias="MINIO_SECRET_KEY")
 
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")

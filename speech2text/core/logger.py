@@ -4,11 +4,10 @@ Follows Single Responsibility Principle - only handles logging setup.
 """
 
 import sys
-import traceback
 from pathlib import Path
 from typing import Optional
 
-from loguru import logger
+from loguru import logger  # type: ignore
 
 
 def format_exception_short(exception: Exception, context: Optional[str] = None) -> str:

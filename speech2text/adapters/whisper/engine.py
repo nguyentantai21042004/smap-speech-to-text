@@ -7,7 +7,6 @@ Auto-downloads models from MinIO if not present locally.
 import subprocess
 import os
 import time
-from pathlib import Path
 from typing import Optional
 
 from core.config import get_settings

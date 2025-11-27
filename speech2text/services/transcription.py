@@ -1,8 +1,7 @@
 import os
 import uuid
-import shutil
 import asyncio
-import httpx
+import httpx  # type: ignore
 import time
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -28,13 +27,16 @@ class TranscribeService:
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         self.max_size_mb = settings.max_upload_size_mb
 
-        logger.info(f"TranscribeService initialized (mode: {'library' if self.use_library else 'CLI'})")
+        logger.info(
+            f"TranscribeService initialized (mode: {'library' if self.use_library else 'CLI'})"
+        )
 
     def _get_transcriber(self):
         """Get transcriber (try library first, fall back to CLI)"""
         try:
             # Try library adapter first (NEW dynamic loading)
             from adapters.whisper.library_adapter import get_whisper_library_adapter
+
             logger.info("Using WhisperLibraryAdapter (direct C library integration)")
             return get_whisper_library_adapter()
         except Exception as e:
@@ -42,6 +44,7 @@ class TranscribeService:
             try:
                 # Fall back to CLI wrapper
                 from adapters.whisper.engine import get_whisper_transcriber
+
                 logger.info("Using WhisperTranscriber (CLI wrapper)")
                 return get_whisper_transcriber()
             except Exception as e2:
