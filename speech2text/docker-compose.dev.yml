@@ -52,6 +52,12 @@ services:
       WHISPER_MODELS_DIR: "/app/whisper/models"
       WHISPER_LANGUAGE: "vi"
       WHISPER_MODEL: "small"
+      WHISPER_N_THREADS: "${WHISPER_N_THREADS:-0}"  # 0=auto (min(cpu_count, 8)), or set explicit value
+
+      # Chunking Configuration (for long audio processing)
+      WHISPER_CHUNK_ENABLED: "${WHISPER_CHUNK_ENABLED:-true}"
+      WHISPER_CHUNK_DURATION: "${WHISPER_CHUNK_DURATION:-30}"  # seconds
+      WHISPER_CHUNK_OVERLAP: "${WHISPER_CHUNK_OVERLAP:-1}"     # seconds
 
       # Whisper Flags
       WHISPER_MAX_CONTEXT: "0"

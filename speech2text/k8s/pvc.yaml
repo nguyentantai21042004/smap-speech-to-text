@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: smap-stt-models-pvc
+  namespace: smap-stt
+  labels:
+    app: smap-stt-api
+spec:
+  accessModes:
+  - ReadWriteMany  # Shared across multiple pods
+  resources:
+    requests:
+      storage: 2Gi  # 181MB for small model + buffer, 1.5GB for medium
+  storageClassName: standard  # Adjust based on your cluster
+

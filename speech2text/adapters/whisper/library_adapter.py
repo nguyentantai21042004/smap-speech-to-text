@@ -5,7 +5,9 @@ Provides significant performance improvements by loading model once and reusing 
 """
 
 import ctypes
+import json
 import os
+import subprocess
 import sys
 import threading
 import time
@@ -283,6 +285,7 @@ class WhisperLibraryAdapter:
     def transcribe(self, audio_path: str, language: str = "vi", **kwargs) -> str:
         """
         Transcribe audio file using Whisper library.
+        Automatically uses chunking for audio > 30 seconds.
 
         Args:
             audio_path: Path to audio file (must be 16kHz WAV)
@@ -302,19 +305,245 @@ class WhisperLibraryAdapter:
             if not os.path.exists(audio_path):
                 raise TranscriptionError(f"Audio file not found: {audio_path}")
 
-            # Load audio data with librosa (resampled to 16kHz mono)
-            audio_data, audio_duration = self._load_audio(audio_path)
+            # Get settings
+            settings = get_settings()
 
-            # Call whisper_full() for transcription
-            result = self._call_whisper_full(audio_data, language, audio_duration)
+            # Detect audio duration
+            duration = self._get_audio_duration(audio_path)
+            logger.info(f"Audio duration: {duration:.2f}s")
 
-            logger.debug(f"Transcription successful: {len(result['text'])} chars")
-            return result["text"]
+            # Decide: chunk or direct?
+            if settings.whisper_chunk_enabled and duration > settings.whisper_chunk_duration:
+                logger.info(f"Using chunked transcription (duration > {settings.whisper_chunk_duration}s)")
+                return self._transcribe_chunked(audio_path, language, duration)
+            else:
+                logger.info("Using direct transcription (fast path)")
+                return self._transcribe_direct(audio_path, language)
 
         except TranscriptionError:
             raise
         except Exception as e:
             raise TranscriptionError(f"Transcription failed: {e}")
+
+    def _transcribe_direct(self, audio_path: str, language: str) -> str:
+        """
+        Direct transcription without chunking (fast path).
+
+        Args:
+            audio_path: Path to audio file
+            language: Language code
+
+        Returns:
+            Transcribed text
+        """
+        # Load audio data with librosa (resampled to 16kHz mono)
+        audio_data, audio_duration = self._load_audio(audio_path)
+
+        # Call whisper_full() for transcription
+        result = self._call_whisper_full(audio_data, language, audio_duration)
+
+        logger.debug(f"Transcription successful: {len(result['text'])} chars")
+        return result["text"]
+
+    def _transcribe_chunked(self, audio_path: str, language: str, duration: float) -> str:
+        """
+        Chunked transcription for long audio files.
+
+        Args:
+            audio_path: Path to audio file
+            language: Language code
+            duration: Total audio duration in seconds
+
+        Returns:
+            Merged transcription text
+
+        Raises:
+            TranscriptionError: If chunking or transcription fails
+        """
+        settings = get_settings()
+        chunk_duration = settings.whisper_chunk_duration
+        chunk_overlap = settings.whisper_chunk_overlap
+
+        logger.info(f"Starting chunked transcription: duration={duration:.2f}s, chunk_size={chunk_duration}s, overlap={chunk_overlap}s")
+
+        try:
+            # Split audio into chunks
+            chunk_files = self._split_audio(audio_path, duration, chunk_duration, chunk_overlap)
+            logger.info(f"Audio split into {len(chunk_files)} chunks")
+
+            # Process chunks sequentially
+            chunk_texts = []
+            for i, chunk_path in enumerate(chunk_files):
+                try:
+                    logger.info(f"Processing chunk {i+1}/{len(chunk_files)}")
+
+                    # Transcribe chunk
+                    chunk_text = self._transcribe_direct(chunk_path, language)
+                    chunk_texts.append(chunk_text)
+
+                    logger.debug(f"Chunk {i+1}/{len(chunk_files)} completed: {len(chunk_text)} chars")
+
+                except Exception as e:
+                    logger.error(f"Failed to process chunk {i+1}/{len(chunk_files)}: {e}")
+                    # Continue with remaining chunks, mark failed chunk as inaudible
+                    chunk_texts.append("[inaudible]")
+
+                finally:
+                    # Cleanup chunk file immediately
+                    try:
+                        if os.path.exists(chunk_path):
+                            os.remove(chunk_path)
+                            logger.debug(f"Cleaned up chunk file: {chunk_path}")
+                    except Exception as e:
+                        logger.warning(f"Failed to cleanup chunk file: {e}")
+
+            # Merge chunk results
+            merged_text = self._merge_chunks(chunk_texts)
+            logger.info(f"Chunked transcription complete: {len(chunk_texts)} chunks, {len(merged_text)} chars")
+
+            return merged_text
+
+        except Exception as e:
+            logger.error(f"Chunked transcription failed: {e}")
+            raise TranscriptionError(f"Chunked transcription failed: {e}")
+
+    def _get_audio_duration(self, audio_path: str) -> float:
+        """
+        Get audio duration using ffprobe.
+
+        Args:
+            audio_path: Path to audio file
+
+        Returns:
+            Duration in seconds
+
+        Raises:
+            TranscriptionError: If ffprobe fails
+        """
+        try:
+            # Use ffprobe to get duration
+            cmd = [
+                "ffprobe",
+                "-v", "quiet",
+                "-print_format", "json",
+                "-show_format",
+                audio_path
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            data = json.loads(result.stdout)
+
+            duration = float(data["format"]["duration"])
+            logger.debug(f"Detected audio duration: {duration:.2f}s")
+
+            return duration
+
+        except subprocess.CalledProcessError as e:
+            raise TranscriptionError(f"ffprobe failed: {e.stderr}")
+        except (KeyError, ValueError, json.JSONDecodeError) as e:
+            raise TranscriptionError(f"Failed to parse ffprobe output: {e}")
+
+    def _split_audio(self, audio_path: str, duration: float, chunk_duration: int, overlap: int) -> list[str]:
+        """
+        Split audio into chunks using FFmpeg.
+
+        Args:
+            audio_path: Path to source audio file
+            duration: Total audio duration in seconds
+            chunk_duration: Duration of each chunk in seconds
+            overlap: Overlap between chunks in seconds
+
+        Returns:
+            List of chunk file paths
+
+        Raises:
+            TranscriptionError: If FFmpeg splitting fails
+        """
+        try:
+            logger.debug(f"Starting audio split: duration={duration}, chunk_duration={chunk_duration}, overlap={overlap}")
+
+            # Calculate chunk boundaries
+            chunks = []
+            start = 0.0
+
+            while start < duration:
+                end = min(start + chunk_duration, duration)
+                chunks.append((start, end))
+
+                # Check if we've reached the end
+                if end >= duration:
+                    break
+
+                # Move to next chunk with overlap
+                next_start = end - overlap
+
+                # Prevent infinite loop: ensure we're making progress
+                if next_start <= start:
+                    logger.warning(f"Chunk calculation would not advance (start={start}, next={next_start}), breaking")
+                    break
+
+                start = next_start
+
+                # Safety check to prevent infinite loop
+                if len(chunks) > 1000:
+                    raise TranscriptionError("Too many chunks calculated, possible infinite loop")
+
+            logger.info(f"Calculated {len(chunks)} chunk boundaries")
+
+            # Create chunks using FFmpeg
+            chunk_files = []
+            base_path = Path(audio_path).parent
+            base_name = Path(audio_path).stem
+
+            for i, (start_time, end_time) in enumerate(chunks):
+                chunk_path = base_path / f"{base_name}_chunk_{i}.wav"
+                chunk_duration_actual = end_time - start_time
+
+                cmd = [
+                    "ffmpeg",
+                    "-y",  # Overwrite output
+                    "-loglevel", "error",  # Only show errors
+                    "-i", audio_path,
+                    "-ss", str(start_time),
+                    "-t", str(chunk_duration_actual),
+                    "-ar", "16000",  # Resample to 16kHz
+                    "-ac", "1",  # Convert to mono
+                    "-c:a", "pcm_s16le",  # PCM 16-bit (WAV)
+                    str(chunk_path)
+                ]
+
+                logger.info(f"Creating chunk {i+1}/{len(chunks)}: {start_time:.2f}s - {end_time:.2f}s")
+
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+
+                if result.returncode != 0:
+                    logger.error(f"FFmpeg failed for chunk {i}: {result.stderr}")
+                    raise TranscriptionError(f"FFmpeg failed for chunk {i}")
+
+                chunk_files.append(str(chunk_path))
+
+            logger.info(f"Successfully created {len(chunk_files)} chunk files")
+            return chunk_files
+
+        except Exception as e:
+            logger.error(f"Audio splitting failed: {e}")
+            raise TranscriptionError(f"Audio splitting failed: {e}")
+
+    def _merge_chunks(self, chunk_texts: list[str]) -> str:
+        """
+        Merge chunk transcriptions into final text.
+        MVP implementation: simple concatenation with space.
+
+        Args:
+            chunk_texts: List of transcription texts from each chunk
+
+        Returns:
+            Merged transcription text
+        """
+        # Simple MVP merge: join with space
+        merged = " ".join(text.strip() for text in chunk_texts if text.strip())
+        logger.debug(f"Merged {len(chunk_texts)} chunks into {len(merged)} chars")
+        return merged
 
     def _load_audio(self, audio_path: str) -> tuple[np.ndarray, float]:
         """
@@ -389,22 +618,29 @@ class WhisperLibraryAdapter:
         try:
             logger.debug(f"Starting Whisper inference (language={language})")
             
-            # Define Whisper API functions - use opaque struct approach
-            # Don't define full struct, let whisper_full_default_params() handle it
-            self.lib.whisper_full_default_params.argtypes = [ctypes.c_int]
-            self.lib.whisper_full_default_params.restype = ctypes.c_void_p  # Treat as opaque pointer
+            # Define minimal WhisperFullParams struct to modify n_threads
+            # We only need access to first few fields for performance tuning
+            class WhisperFullParamsPartial(ctypes.Structure):
+                _fields_ = [
+                    ("strategy", ctypes.c_int),         # 0: WHISPER_SAMPLING_GREEDY
+                    ("n_threads", ctypes.c_int),        # ← This is what we need!
+                    ("n_max_text_ctx", ctypes.c_int),
+                    ("offset_ms", ctypes.c_int),
+                    ("duration_ms", ctypes.c_int),
+                    # ... rest of fields omitted, we only modify n_threads
+                ]
+            
+            # Define Whisper API functions
+            self.lib.whisper_full_default_params_by_ref.argtypes = [ctypes.c_int]
+            self.lib.whisper_full_default_params_by_ref.restype = ctypes.POINTER(WhisperFullParamsPartial)
             
             self.lib.whisper_full.argtypes = [
                 ctypes.c_void_p,  # ctx
-                ctypes.c_void_p,  # params (opaque pointer from whisper_full_default_params)
+                ctypes.c_void_p,  # params
                 ctypes.POINTER(ctypes.c_float),  # samples
                 ctypes.c_int,  # n_samples
             ]
             self.lib.whisper_full.restype = ctypes.c_int
-            
-            # For params modification, we need whisper_full_default_params_by_ref
-            self.lib.whisper_full_default_params_by_ref.argtypes = [ctypes.c_int]
-            self.lib.whisper_full_default_params_by_ref.restype = ctypes.c_void_p
             
             self.lib.whisper_free_params.argtypes = [ctypes.c_void_p]
             self.lib.whisper_free_params.restype = None
@@ -436,9 +672,25 @@ class WhisperLibraryAdapter:
             if not params_ptr:
                 raise TranscriptionError("Failed to get default whisper params")
             
-            # Note: We cannot easily modify params fields without full struct definition
-            # For now, use default params and rely on model's language detection
-            # TODO: Add struct definition to modify language, n_threads, etc.
+            # Optimize n_threads for CPU utilization
+            import os
+            from core.config import get_settings
+            
+            settings = get_settings()
+            n_threads = settings.whisper_n_threads
+            
+            if n_threads == 0:
+                # Auto-detect: use CPU count but cap for efficiency
+                cpu_count = os.cpu_count() or 4
+                # Whisper.cpp has diminishing returns after 8 threads
+                # Cap at 8 for optimal speed/resource ratio
+                n_threads = min(cpu_count, 8)
+                logger.debug(f"Auto-detected {cpu_count} CPUs, using {n_threads} threads")
+            else:
+                logger.debug(f"Using configured WHISPER_N_THREADS={n_threads}")
+            
+            params_ptr.contents.n_threads = n_threads
+            logger.info(f"Whisper inference configured with {n_threads} threads")
             
             # Prepare audio data as ctypes array
             n_samples = len(audio_data)

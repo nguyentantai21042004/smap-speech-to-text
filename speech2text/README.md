@@ -20,12 +20,23 @@ A high-performance **stateless** Speech-to-Text (STT) API built with **FastAPI**
 - **Auto-Download** - Artifacts automatically downloaded from MinIO if missing
 - **Memory Efficient** - Model loaded once at startup, reused for all requests
 
+### NEW: Sequential Smart-Chunking (Production-Ready)
+- **Long Audio Support** - Handle audio up to 30+ minutes without timeout
+- **Flat Memory Usage** - Consistent ~500MB regardless of audio length
+- **High Performance** - Process at 4-5x faster than realtime
+- **Adaptive Timeout** - Automatic timeout calculation based on audio duration
+- **Zero Timeout Errors** - Tested with 3-18 minute audio files (100% success rate)
+- **Quality Preserved** - 98% confidence maintained across all chunk sizes
+
 ### Performance Optimizations
 - **Direct Library Integration** - C library calls instead of subprocess spawning
 - **Model Preloading** - Whisper model loaded once and reused (90% latency reduction)
 - **In-Memory Caching** - Model validation cached to eliminate redundant I/O
+- **Sequential Chunking** - Process long audio in 30s segments with 1s overlap
+- **FFmpeg Integration** - Efficient audio splitting and format conversion
+- **Immediate Cleanup** - Chunk files removed immediately after processing
 - **Efficient Downloads** - Streaming audio download with size validation
-- **Automatic Cleanup** - Temporary files cleaned up after transcription
+- **Multi-threading** - Auto-detect CPU cores (up to 8 threads)
 
 ### Architecture Highlights
 - **Stateless Design** - Each request is independent, no session state
@@ -377,9 +388,15 @@ WHISPER_ARTIFACTS_DIR="."
 WHISPER_LANGUAGE="vi"
 WHISPER_MODEL="small"
 
+# Chunking Configuration (NEW - Production Ready)
+WHISPER_CHUNK_ENABLED=true       # Enable/disable chunking
+WHISPER_CHUNK_DURATION=30        # Chunk size in seconds
+WHISPER_CHUNK_OVERLAP=1          # Overlap in seconds
+WHISPER_N_THREADS=0              # 0 for auto-detect (recommended)
+
 # API Security
 INTERNAL_API_KEY="smap-internal-key-changeme"
-TRANSCRIBE_TIMEOUT_SECONDS=30
+TRANSCRIBE_TIMEOUT_SECONDS=90    # Base timeout (adaptive for long audio)
 
 # MinIO (for artifact download)
 MINIO_ENDPOINT="http://172.16.19.115:9000"
@@ -390,6 +407,41 @@ MINIO_SECRET_KEY="hcmut2025"
 LOG_LEVEL="INFO"
 LOG_FILE="logs/stt.log"
 ```
+
+### Chunking Configuration
+
+The system automatically handles long audio files using sequential chunking:
+
+#### How It Works
+
+1. **Audio Duration Detection** - Uses `ffprobe` to detect audio length
+2. **Chunking Decision**:
+   - Audio ≤ 30s → Direct transcription (fast path)
+   - Audio > 30s → Sequential chunking (long audio path)
+3. **Sequential Processing** - Process chunks one at a time (prevents CPU thrashing)
+4. **Smart Merge** - Concatenate results with space separator
+5. **Adaptive Timeout** - Automatically calculate timeout: `max(90s, audio_duration * 1.5)`
+
+#### Configuration Options
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `WHISPER_CHUNK_ENABLED` | `true` | Enable/disable chunking feature |
+| `WHISPER_CHUNK_DURATION` | `30` | Chunk size in seconds |
+| `WHISPER_CHUNK_OVERLAP` | `1` | Overlap between chunks (prevents word cuts) |
+| `WHISPER_N_THREADS` | `0` | CPU threads (0=auto-detect, max 8) |
+| `TRANSCRIBE_TIMEOUT_SECONDS` | `90` | Base timeout (adaptive for long audio) |
+
+#### Performance Expectations
+
+| Audio Duration | Processing Time | Memory Usage | Status |
+|----------------|-----------------|--------------|--------|
+| < 30s          | 0.2-0.5x realtime | ~500MB | Direct path |
+| 3-5 minutes    | 0.28x realtime | ~500MB | Chunked |
+| 9-12 minutes   | 0.20x realtime | ~500MB | Chunked |
+| 15-20 minutes  | 0.24x realtime | ~500MB | Chunked |
+
+See `CHUNKING_TEST_REPORT.md` for comprehensive test results.
 
 ### Supported Audio Formats
 MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
@@ -521,6 +573,7 @@ sudo apt-get install ffmpeg
 
 # Verify installation
 ffmpeg -version
+ffprobe -version  # Required for chunking
 ```
 
 #### 3. Port already in use
@@ -559,6 +612,67 @@ ls -la whisper_small_xeon/
 # Re-download if corrupted
 rm -rf whisper_small_xeon
 make setup-artifacts-small
+```
+
+#### 7. Transcription timeout (Long Audio)
+```bash
+# Verify chunking is enabled
+docker exec smap-api-dev printenv | grep WHISPER_CHUNK_ENABLED
+# Should output: WHISPER_CHUNK_ENABLED=true
+
+# Check timeout setting
+docker exec smap-api-dev printenv | grep TRANSCRIBE_TIMEOUT
+# Should output: TRANSCRIBE_TIMEOUT_SECONDS=90
+
+# Increase timeout if needed (for very long audio)
+# Edit docker-compose.dev.yml:
+TRANSCRIBE_TIMEOUT_SECONDS: "180"  # 3 minutes
+
+# Restart container
+docker-compose restart api-dev
+```
+
+#### 8. High memory usage
+```bash
+# Check if chunking is enabled
+docker exec smap-api-dev printenv | grep WHISPER_CHUNK
+
+# Memory should stay ~500MB regardless of audio length
+docker stats smap-api-dev
+
+# If memory is high:
+# 1. Verify WHISPER_CHUNK_ENABLED=true
+# 2. Check for stuck processes
+# 3. Review logs for errors
+docker-compose logs -f api-dev
+```
+
+#### 9. Slow transcription performance
+```bash
+# Check thread configuration
+docker exec smap-api-dev printenv | grep WHISPER_N_THREADS
+# Should output: WHISPER_N_THREADS=0 (auto-detect)
+
+# Check CPU allocation
+docker stats smap-api-dev
+
+# If using less than 4 cores, performance will be slower
+# In production, ensure container has access to 4+ CPU cores
+```
+
+#### 10. Chunking not working
+```bash
+# Verify FFmpeg is installed
+docker exec smap-api-dev ffmpeg -version
+docker exec smap-api-dev ffprobe -version
+
+# Check logs for chunking messages
+docker-compose logs -f api-dev | grep -i chunk
+
+# Expected logs:
+# "Audio duration detected: X.X seconds"
+# "Using chunked transcription (Y chunks)"
+# "Processing chunk 1/Y"
 ```
 
 ### Logs

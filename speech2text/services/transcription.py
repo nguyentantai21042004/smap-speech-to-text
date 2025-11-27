@@ -34,10 +34,10 @@ class TranscribeService:
     def _get_transcriber(self):
         """Get transcriber using library adapter"""
         # Use library adapter (direct C library integration)
-            from adapters.whisper.library_adapter import get_whisper_library_adapter
-
-            logger.info("Using WhisperLibraryAdapter (direct C library integration)")
-            return get_whisper_library_adapter()
+        from adapters.whisper.library_adapter import get_whisper_library_adapter
+        
+        logger.info("Using WhisperLibraryAdapter (direct C library integration)")
+        return get_whisper_library_adapter()
 
     def _is_library_adapter(self) -> bool:
         """Check if using library adapter"""
@@ -48,6 +48,7 @@ class TranscribeService:
     ) -> Dict[str, Any]:
         """
         Download audio from URL and transcribe it with timeout protection.
+        Automatically uses chunking for audio > 30 seconds with adaptive timeout.
 
         Args:
             audio_url: URL to download audio from
@@ -72,7 +73,28 @@ class TranscribeService:
             download_duration = time.time() - start_download
             logger.info(f"Downloaded {file_size_mb:.2f}MB in {download_duration:.2f}s")
 
-            # 2. Transcribe with timeout
+            # 2. Detect audio duration for adaptive timeout
+            audio_duration = 0.0
+            try:
+                if self.use_library:
+                    audio_duration = self.transcriber._get_audio_duration(str(temp_file_path))
+                    logger.info(f"Detected audio duration: {audio_duration:.2f}s")
+            except Exception as e:
+                logger.warning(f"Failed to detect audio duration: {e}")
+
+            # 3. Calculate adaptive timeout
+            # Formula: min(base_timeout, audio_duration * 1.5)
+            # For long audio, give more time; for short audio, keep it snappy
+            base_timeout = settings.transcribe_timeout_seconds
+            if audio_duration > 0:
+                # Allow 1.5x audio duration for processing (accounts for ~0.5-1.0x realtime speed)
+                adaptive_timeout = max(base_timeout, int(audio_duration * 1.5))
+            else:
+                adaptive_timeout = base_timeout
+
+            logger.info(f"Using adaptive timeout: {adaptive_timeout}s (base={base_timeout}s, audio={audio_duration:.2f}s)")
+
+            # 4. Transcribe with timeout
             # Whisper engine is synchronous/blocking, so run in executor
             loop = asyncio.get_running_loop()
             start_transcribe = time.time()
@@ -80,10 +102,9 @@ class TranscribeService:
             # Use provided language or fall back to config
             lang = language or settings.whisper_language
             model = settings.whisper_model
-            timeout_seconds = settings.transcribe_timeout_seconds
 
             logger.info(
-                f"Starting transcription (language={lang}, timeout={timeout_seconds}s)"
+                f"Starting transcription (language={lang}, timeout={adaptive_timeout}s)"
             )
 
             # Wrap transcription in timeout
@@ -98,7 +119,7 @@ class TranscribeService:
 
             transcription_text = await asyncio.wait_for(
                 loop.run_in_executor(None, _transcribe),
-                timeout=timeout_seconds,
+                timeout=adaptive_timeout,
             )
 
             transcribe_duration = time.time() - start_transcribe
@@ -111,12 +132,12 @@ class TranscribeService:
                 "file_size_mb": file_size_mb,
                 "model": model,
                 "language": lang,
-                "audio_duration": 0.0,  # TODO: Extract from whisper metadata if available
+                "audio_duration": audio_duration,
             }
 
         except asyncio.TimeoutError:
             logger.error(
-                f"Transcription timeout after {settings.transcribe_timeout_seconds}s"
+                f"Transcription timeout after {adaptive_timeout}s"
             )
             raise
         except Exception as e:

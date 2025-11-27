@@ -40,13 +40,17 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ==============================================================================
 FROM python:3.12-slim-bookworm AS runtime
 
-# Install runtime dependencies (FFmpeg, wget, libgomp1)
+# Install runtime dependencies (FFmpeg for chunking, wget for downloads, libgomp1 for Whisper.cpp threading)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ffmpeg \
+    ffprobe \
     wget \
+    curl \
     libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
 
 # Standard OCI Metadata
 LABEL org.opencontainers.image.title="SMAP Speech2Text API Service" \
@@ -62,10 +66,20 @@ ENV PATH="/app/.venv/bin:$PATH" \
     HOST=0.0.0.0 \
     PORT=8000 \
     WORKERS=2 \
+    # Whisper Model Configuration
     WHISPER_MODEL_SIZE=small \
+    WHISPER_LANGUAGE=en \
+    WHISPER_N_THREADS=0 \
+    # Chunking Configuration (NEW - Production Ready)
+    WHISPER_CHUNK_ENABLED=true \
+    WHISPER_CHUNK_DURATION=30 \
+    WHISPER_CHUNK_OVERLAP=1 \
+    # MinIO Configuration (Override in production with secrets)
     MINIO_ENDPOINT=http://172.16.19.115:9000 \
     MINIO_ACCESS_KEY=smap \
-    MINIO_SECRET_KEY=hcmut2025
+    MINIO_SECRET_KEY=hcmut2025 \
+    # Timeout Configuration
+    TRANSCRIBE_TIMEOUT_SECONDS=90
 
 WORKDIR /app
 
@@ -88,8 +102,8 @@ RUN chmod +x /app/scripts/download_whisper_artifacts.py || true
 COPY scripts/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Native Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+# Native Healthcheck (Optimized for Kubernetes liveness/readiness probes)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD ["python3", "-c", "import http.client, os, sys; conn = http.client.HTTPConnection('127.0.0.1', int(os.getenv('PORT', 8000))); conn.request('GET', '/health'); r = conn.getresponse(); sys.exit(0 if r.status == 200 else 1)"]
 
 # Expose port
