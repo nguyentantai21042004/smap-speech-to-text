@@ -59,6 +59,12 @@ async def lifespan(app: FastAPI):
             # For API service, dependency check is optional (warn, don't fail)
             logger.warning(f"Dependency validation warning: {e}")
 
+        # Initialize DI Container
+        from core.container import bootstrap_container
+
+        bootstrap_container()
+        logger.info("DI Container initialized")
+
         # Initialize MongoDB connection
         try:
             logger.info("Initializing MongoDB connection...")

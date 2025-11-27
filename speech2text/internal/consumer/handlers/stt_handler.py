@@ -10,8 +10,12 @@ from aio_pika import IncomingMessage
 from aio_pika.abc import AbstractIncomingMessage
 
 from core.logger import logger, format_exception_short
-from worker.processor import process_stt_job
-from worker.errors import TransientError, PermanentError
+from core.errors import TransientError, PermanentError
+from core.container import Container
+from pipelines.stt.use_cases.process_job import ProcessJobUseCase
+from ports.repository import TaskRepositoryPort
+from ports.storage import StoragePort
+from ports.transcriber import TranscriberPort
 
 
 async def handle_stt_message(message: AbstractIncomingMessage) -> None:
@@ -60,7 +64,14 @@ async def handle_stt_message(message: AbstractIncomingMessage) -> None:
         logger.info(
             f"========== HANDLER: Starting STT processing: job_id={job_id} =========="
         )
-        result = await process_stt_job(job_id)
+
+        # Resolve dependencies and execute use case
+        repo = Container.resolve(TaskRepositoryPort)
+        storage = Container.resolve(StoragePort)
+        transcriber = Container.resolve(TranscriberPort)
+
+        use_case = ProcessJobUseCase(repo, storage, transcriber)
+        result = await use_case.execute(job_id)
         logger.info(
             f"========== HANDLER: STT processing completed: job_id={job_id} =========="
         )
@@ -88,9 +99,7 @@ async def handle_stt_message(message: AbstractIncomingMessage) -> None:
 
         # Reject without requeue (permanent failure)
         await message.reject(requeue=False)
-        logger.warning(
-            f"HANDLER: Message rejected (permanent error): job_id={job_id}"
-        )
+        logger.warning(f"HANDLER: Message rejected (permanent error): job_id={job_id}")
 
         # Job status should already be updated to FAILED in the processor
 

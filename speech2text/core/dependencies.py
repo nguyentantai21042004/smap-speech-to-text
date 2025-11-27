@@ -10,7 +10,7 @@ from typing import Tuple, Optional
 
 from core.logger import logger
 from core.config import get_settings
-from worker.errors import MissingDependencyError
+from core.errors import MissingDependencyError
 
 
 def check_ffmpeg() -> Tuple[bool, Optional[str]]:

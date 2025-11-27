@@ -16,9 +16,10 @@ from core.logger import logger
 from core.database import get_database
 from core.messaging import get_queue_manager
 from core.dependencies import validate_dependencies
+from core.container import bootstrap_container
 from internal.consumer.handlers.stt_handler import handle_stt_message
-from worker.transcriber import get_whisper_transcriber
-from worker.model_downloader import get_model_downloader
+from adapters.whisper.engine import get_whisper_transcriber
+from adapters.whisper.model_downloader import get_model_downloader
 
 
 class ConsumerService:
@@ -61,6 +62,10 @@ class ConsumerService:
             except Exception as e:
                 logger.error(f"Dependency validation failed: {e}")
                 raise
+
+            # Initialize DI Container
+            bootstrap_container()
+            logger.info("DI Container initialized")
 
             # Connect to MongoDB
             try:

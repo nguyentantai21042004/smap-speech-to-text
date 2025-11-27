@@ -12,12 +12,12 @@ from typing import Optional
 
 from core.config import get_settings
 from core.logger import logger
-from worker.errors import (
+from core.errors import (
     WhisperCrashError,
     TimeoutError as STTTimeoutError,
     FileNotFoundError as STTFileNotFoundError,
 )
-from worker.model_downloader import get_model_downloader
+from adapters.whisper.model_downloader import get_model_downloader
 
 settings = get_settings()
 
@@ -224,7 +224,7 @@ class WhisperTranscriber:
                 # Lazy-load model downloader (singleton, shared across all chunks)
                 if self._model_downloader is None:
                     self._model_downloader = get_model_downloader()
-                
+
                 # Check and cache model path (only first time, subsequent chunks use cache)
                 model_path = self._model_downloader.ensure_model_exists(model)
                 self._model_path_cache[model] = model_path

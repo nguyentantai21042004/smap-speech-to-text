@@ -4,12 +4,12 @@
 
 ```mermaid
 graph TD
-    Presentation[Presentation Layer\n(FastAPI, Pydantic)] --> Application[Application Core\n(Use Cases, Orchestrators)]
-    Application --> Domain[Domain Services\n(Job, Chunk, Audio)]
-    Application --> Pipeline[Pipeline Engines\n(STT, Diarization)]
+    Presentation[Presentation Layer FastAPI, Pydantic] --> Application[Application Core Use Cases, Orchestrators]
+    Application --> Domain[Domain Services Job, Chunk, Audio]
+    Application --> Pipeline[Pipeline Engines STT, Diarization]
     Domain --> Ports[Ports/Interfaces]
     Pipeline --> Ports
-    Ports --> Infrastructure[Infrastructure Adapters\n(Mongo, MinIO, RabbitMQ, Whisper)]
+    Ports --> Infrastructure[Infrastructure Adapters Mongo, MinIO, RabbitMQ, Whisper]
     Ports --> External[External Services]
 ```
 

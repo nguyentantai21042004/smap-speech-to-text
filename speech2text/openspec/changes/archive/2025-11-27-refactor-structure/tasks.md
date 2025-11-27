@@ -1,0 +1,27 @@
+# Refactor Tasks
+
+- [x] **Phase 0: Foundations**
+    - [x] Create `core/container.py` and implement DI provider.
+    - [x] Create `domain/` package and define `entities.py`, `value_objects.py`, `events.py`.
+    - [x] Define abstract interfaces in `ports/` (Repository, Storage, Messaging).
+- [x] **Phase 1: Application Layer**
+    - [x] Refactor `services/task_service.py` into `services/task_use_case.py`.
+    - [x] Update API routers to use `Depends` and the DI container.
+    - [x] Create `pipelines/stt/use_cases/process_job.py` for job processing logic.
+- [x] **Phase 2: Infrastructure Adapters**
+    - [x] Implement `MongoTaskRepository` in `adapters/mongo/` implementing `TaskRepositoryPort`.
+    - [x] Implement `MinioStorageAdapter` in `adapters/minio/`.
+    - [x] Implement `RabbitMQAdapter` in `adapters/rabbitmq/`.
+    - [x] Implement `WhisperRunnerAdapter` in `adapters/whisper/`.
+    - [x] Configure Container to bind ports to these adapters.
+- [x] **Phase 3: Worker Modularity**
+    - [x] Move and restructure `worker/` code into `pipelines/stt/` (chunker, transcriber, merger).
+    - [x] Implement `pipelines/base.py` base classes.
+    - [x] Update `internal/consumer/handlers/stt_handler.py` to use the new pipeline structure.
+- [x] **Phase 4: Cross-cutting**
+    - [x] Add contract tests for new Ports.
+    - [x] Update `docs/ARCHITECTURE.md` with the new design.
+    - [x] Verify system with end-to-end tests.
+    - [x] Remove old code and files, folders.
+    - [x] Update `README.md` with new setup instructions.
+    - [x] Check entire source code for hardcoded system values and replace with env config.

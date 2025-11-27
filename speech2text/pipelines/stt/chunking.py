@@ -19,12 +19,12 @@ with warnings.catch_warnings():
 
 from core.config import get_settings
 from core.logger import logger, format_exception_short
-from worker.errors import (
+from core.errors import (
     InvalidAudioFormatError,
     CorruptedFileError,
     MissingDependencyError,
 )
-from worker.constants import (
+from core.constants import (
     SUPPORTED_FORMATS,
 )
 

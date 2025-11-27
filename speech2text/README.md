@@ -78,15 +78,15 @@ A high-performance Speech-to-Text (STT) system built with **FastAPI**, **RabbitM
 #### 1. **API Service** (`cmd/api/main.py`)
 - RESTful API with FastAPI
 - File upload to MinIO
-- Job creation and status tracking
+- Job creation and status tracking (`TaskUseCase`)
 - Query transcription results
 - Health checks and monitoring
 
 #### 2. **Consumer Service** (`cmd/consumer/main.py`)
 - RabbitMQ message consumer
-- Audio preprocessing and chunking
-- Parallel transcription with Whisper.cpp
-- Result aggregation and storage
+- Audio preprocessing and chunking (`pipelines/stt/chunking.py`)
+- Parallel transcription with Whisper.cpp (`adapters/whisper/engine.py`)
+- Result aggregation and storage (`pipelines/stt/merger.py`)
 - Singleton transcriber for optimal performance
 
 #### 3. **Supporting Services**
@@ -647,65 +647,61 @@ smap-speech-to-text/
 │       ├── main.py                   # Consumer service (RabbitMQ)
 │       └── Dockerfile
 │
-├── internal/                         # Internal implementation
-│   ├── api/                          # API layer
-│   │   ├── routes/                   # HTTP route handlers
-│   │   │   ├── file_routes.py        # File upload endpoints
-│   │   │   ├── task_routes.py        # STT task endpoints
-│   │   │   └── health_routes.py      # Health check endpoints
-│   │   ├── schemas/                  # Request/Response models
-│   │   │   ├── task_schemas.py       # Task data models
-│   │   │   └── common_schemas.py     # Shared models
-│   │   └── dependencies/             # Dependency injection
-│   │
-│   └── consumer/                     # Consumer layer
-│       └── handlers/                 # Message handlers
-│           └── stt_handler.py        # STT job handler
-│
-├── services/                         # Business logic layer
-│   ├── interfaces/                   # Service interfaces
-│   ├── file_service.py               # File upload/management
-│   └── task_service.py               # Job creation/tracking
-│
-├── repositories/                     # Data access layer
-│   ├── interfaces/                   # Repository interfaces
-│   │   └── task_repository_interface.py
-│   ├── base_repository.py            # Base repository pattern
-│   ├── models.py                     # Database models
-│   └── task_repository.py            # Job repository
-│
-├── worker/                           # STT processing
-│   ├── processor.py                  # Main job processor
-│   ├── transcriber.py                # Whisper.cpp interface (singleton)
-│   ├── model_downloader.py           # Model management (singleton)
-│   ├── chunking.py                   # Audio chunking
-│   ├── merger.py                     # Result aggregation
-│   └── errors.py                     # Custom exceptions
-│
-├── core/                             # Core utilities
-│   ├── config.py                     # Configuration (Pydantic)
+├── core/                             # Shared utilities & DI
+│   ├── container.py                  # Dependency Injection
+│   ├── config.py                     # Configuration
 │   ├── database.py                   # MongoDB connection
 │   ├── messaging.py                  # RabbitMQ client
 │   ├── storage.py                    # MinIO client
 │   ├── logger.py                     # Logging utilities
-│   └── dependencies.py               # System validation
+│   └── errors.py                     # System errors
+│
+├── domain/                           # Domain Layer (Business Logic)
+│   ├── entities.py                   # Domain Entities (Job, Chunk)
+│   ├── value_objects.py              # Value Objects
+│   └── events.py                     # Domain Events
+│
+├── ports/                            # Ports Layer (Interfaces)
+│   ├── repository.py                 # Repository Port
+│   ├── storage.py                    # Storage Port
+│   ├── messaging.py                  # Messaging Port
+│   └── transcriber.py                # Transcriber Port
+│
+├── adapters/                         # Adapters Layer (Infrastructure)
+│   ├── mongo/                        # MongoDB Adapter
+│   ├── minio/                        # MinIO Adapter
+│   ├── rabbitmq/                     # RabbitMQ Adapter
+│   └── whisper/                      # Whisper.cpp Adapter
+│
+├── services/                         # Application Layer (API Use Cases)
+│   └── task_use_case.py              # Task Management Use Case
+│
+├── pipelines/                        # Application Layer (Worker Pipelines)
+│   └── stt/
+│       ├── use_cases/
+│       │   └── process_job.py        # STT Job Processing Use Case
+│       ├── chunking.py               # Audio Chunking Logic
+│       └── merger.py                 # Result Merging Logic
+│
+├── internal/                         # Internal Implementation
+│   ├── api/                          # API Implementation
+│   │   ├── routes/                   # HTTP Routes
+│   │   └── dependencies/             # DI Dependencies
+│   └── consumer/                     # Consumer Implementation
+│       └── handlers/                 # Message Handlers
 │
 ├── docs/                             # Documentation
-│   ├── CONFIGURATION_GUIDE.md        # Configuration reference
-│   ├── PARALLEL_PROCESSING.md        # Parallel optimization guide
-│   ├── QUICK_START_PARALLEL.md       # Quick reference
-│   ├── MODEL_DOWNLOAD_GUIDE.md       # Model setup
-│   └── DOCKER_SETUP.md               # Docker deployment
+│   ├── ARCHITECTURE.md               # Architecture Design
+│   └── ...
+│
+├── whisper/                          # Whisper.cpp Resources
+│   ├── bin/                          # Executables (whisper-cli)
+│   └── models/                       # Model files (.bin)
 │
 ├── scripts/                          # Utility scripts
-│   ├── setup_whisper.sh       # Whisper setup
-│   ├── setup_models.py               # Model downloader
-│   └── test_upload.py                # API testing
-│
-├── docker-compose.yml                # Multi-service orchestration
+├── docker-compose.yml                # Orchestration
 ├── Makefile                          # Build commands
-├── requirements.txt                  # Python dependencies
-├── .env.example                      # Environment template
+├── requirements.txt                  # Dependencies
 └── README.md                         # This file
 ```
 

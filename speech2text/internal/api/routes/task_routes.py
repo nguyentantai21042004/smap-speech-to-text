@@ -3,14 +3,17 @@ STT Task API Routes.
 Includes detailed logging and comprehensive error handling.
 """
 
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, status, Depends
 from typing import Optional
 import time
 
 from core.logger import logger, format_exception_short
-from services.task_service import get_task_service
 from internal.api.utils import success_response, error_response
 from internal.api.schemas.common_schemas import StandardResponse
+from internal.api.dependencies.task_dependencies import get_task_use_case
+from services.task_use_case import ITaskUseCase
+from services.file_service import get_file_service
+from core.config import get_settings
 
 router = APIRouter(prefix="/api/v1/tasks", tags=["STT Tasks"])
 
@@ -53,23 +56,10 @@ async def create_stt_task(
         default=None,
         description="Optional language code (defaults to 'vi' if not provided)",
     ),
+    use_case: ITaskUseCase = Depends(get_task_use_case),
 ):
     """
     Create a speech-to-text job from an uploaded file_id.
-
-    **Parameters:**
-    - **file_id**: File ID from `/api/v1/files/upload` endpoint
-    - **language**: Optional language code (defaults to 'vi' if not provided)
-
-    **Returns:**
-    - **job_id**: Unique identifier for the transcription job
-    - **id**: Job ID (same as job_id)
-    - **details**: Job metadata including file_id, filename, size, language, model
-
-    **Notes:**
-    - **Model**: Automatically determined by system (not user-configurable)
-    - **Language**: Defaults to 'vi' if not provided (auto-detection may be added in future)
-    - The file must be uploaded first using `/api/v1/files/upload`
     """
     start_time = time.time()
 
@@ -83,21 +73,55 @@ async def create_stt_task(
             logger.error("No file_id provided")
             return error_response(message="file_id is required", error_code=1)
 
-        # Create task from file_id
-        task_service = get_task_service()
+        # Get file record
+        file_service = get_file_service()
+        file_record = await file_service.get_file(file_id)
 
-        result = await task_service.create_stt_task_from_file_id(
-            file_id=file_id,
-            language=language if language else None,
+        if not file_record:
+            logger.error(f"File not found: file_id={file_id}")
+            return error_response(message="File not found", error_code=1)
+
+        filename = file_record["original_filename"]
+        minio_path = file_record["minio_path"]
+        file_size_mb = file_record["file_size_mb"]
+
+        settings = get_settings()
+        model = settings.default_whisper_model
+
+        if not language:
+            language = "vi"
+
+        # Create job using Use Case
+        job = await use_case.create_job_from_existing_file(
+            filename=filename,
+            minio_path=minio_path,
+            file_size_mb=file_size_mb,
+            language=language,
+            model=model,
         )
 
         elapsed_time = time.time() - start_time
         logger.info(
-            f"API: STT task created successfully: job_id={result['job_id']}, time={elapsed_time:.2f}s"
+            f"API: STT task created successfully: job_id={job.id}, time={elapsed_time:.2f}s"
         )
 
+        result = {
+            "status": "success",
+            "job_id": job.id,
+            "id": job.id,
+            "message": "Task created and queued for processing",
+            "details": {
+                "file_id": file_id,
+                "filename": filename,
+                "size_mb": file_size_mb,
+                "language": language,
+                "model": model,
+                "minio_path": minio_path,
+            },
+        }
+
         return success_response(
-            message=result.get("message", "Task created and queued for processing"),
+            message=result.get("message"),
             data=result,
         )
 
@@ -127,99 +151,54 @@ async def create_stt_task(
     summary="Get Job Status",
     description="Get the current status of a transcription job",
     responses={
-        200: {
-            "description": "Job status retrieved successfully",
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "pending": {
-                            "summary": "Job pending",
-                            "value": {
-                                "job_id": "stt_6541234abcdef",
-                                "status": "PENDING",
-                                "progress": 0,
-                                "chunks_total": 5,
-                                "chunks_completed": 0,
-                                "created_at": "2024-11-02T16:00:00Z",
-                            },
-                        },
-                        "processing": {
-                            "summary": "Job processing",
-                            "value": {
-                                "job_id": "stt_6541234abcdef",
-                                "status": "PROCESSING",
-                                "progress": 60,
-                                "chunks_total": 5,
-                                "chunks_completed": 3,
-                                "created_at": "2024-11-02T16:00:00Z",
-                                "started_at": "2024-11-02T16:00:05Z",
-                            },
-                        },
-                        "completed": {
-                            "summary": "Job completed",
-                            "value": {
-                                "job_id": "stt_6541234abcdef",
-                                "status": "COMPLETED",
-                                "progress": 100,
-                                "chunks_total": 5,
-                                "chunks_completed": 5,
-                                "created_at": "2024-11-02T16:00:00Z",
-                                "started_at": "2024-11-02T16:00:05Z",
-                                "completed_at": "2024-11-02T16:05:30Z",
-                            },
-                        },
-                    }
-                }
-            },
-        },
+        200: {"description": "Job status retrieved successfully"},
         404: {"description": "Job not found"},
         500: {"description": "Internal server error"},
     },
 )
-async def get_job_status(job_id: str):
+async def get_job_status(
+    job_id: str, use_case: ITaskUseCase = Depends(get_task_use_case)
+):
     """
     Get the status of a transcription job.
-
-    **Parameters:**
-    - **job_id**: Job identifier
-
-    **Returns:**
-    - job_id: Job identifier
-    - status: Current status (PENDING, PROCESSING, COMPLETED, FAILED)
-    - progress: Processing progress (0-100%)
-    - chunks_total: Total number of audio chunks
-    - chunks_completed: Number of completed chunks
-    - created_at: Job creation timestamp
-    - started_at: Job start timestamp (if started)
-    - completed_at: Job completion timestamp (if completed)
-
-    **Status values:**
-    - PENDING: Job is queued, waiting to be processed
-    - PROCESSING: Job is currently being processed
-    - COMPLETED: Job completed successfully
-    - FAILED: Job failed (check error_message)
     """
     try:
         logger.info(f"API: Status request for job_id={job_id}")
 
-        task_service = get_task_service()
-        result = await task_service.get_task_status(job_id)
+        job = await use_case.get_task_status(job_id)
 
-        if not result:
+        if not job:
             logger.warning(f"API: Job not found: job_id={job_id}")
             return error_response(message=f"Job not found: {job_id}", error_code=1)
 
+        # Calculate progress
+        progress = 0
+        if job.chunks_total and job.chunks_total > 0:
+            progress = (job.chunks_completed / job.chunks_total) * 100
+
+        result = {
+            "job_id": job.id,
+            "id": job.id,
+            "status": job.status.value,
+            "filename": job.original_filename,
+            "language": job.language,
+            "model": job.model_used,
+            "progress": round(progress, 2),
+            "chunks_total": job.chunks_total,
+            "chunks_completed": job.chunks_completed,
+            "error_message": job.error_message,
+            "created_at": job.created_at.isoformat(),
+            "started_at": job.started_at.isoformat() if job.started_at else None,
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+        }
+
         logger.info(
-            f"API: Status retrieved: job_id={job_id}, status={result['status']}"
+            f"API: Status retrieved: job_id={job_id}, status={job.status.value}"
         )
 
         return success_response(
             message="Job status retrieved successfully", data=result
         )
-
-    except HTTPException as e:
-        logger.error(f"API: HTTP error: {e.detail}")
-        return error_response(message=e.detail, error_code=1)
 
     except Exception as e:
         error_msg = format_exception_short(e, "API: Status check failed")
@@ -234,81 +213,71 @@ async def get_job_status(job_id: str):
     summary="Get Transcription Result",
     description="Get the transcription result for a completed job",
     responses={
-        200: {
-            "description": "Result retrieved successfully",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "job_id": "stt_6541234abcdef",
-                        "status": "COMPLETED",
-                        "text": "Đây là nội dung được chuyển đổi từ audio sang văn bản.",
-                        "transcription_url": "https://minio.tantai.dev/stt-results/stt_6541234abcdef.json",
-                        "processing_time": 125.5,
-                        "chunks_total": 5,
-                        "chunks_completed": 5,
-                        "created_at": "2024-11-02T16:00:00Z",
-                        "completed_at": "2024-11-02T16:05:30Z",
-                    }
-                }
-            },
-        },
-        400: {"description": "Job not completed yet - check status first"},
+        200: {"description": "Result retrieved successfully"},
+        400: {"description": "Job not completed yet"},
         404: {"description": "Job not found"},
         500: {"description": "Internal server error"},
     },
 )
-async def get_job_result(job_id: str):
+async def get_job_result(
+    job_id: str, use_case: ITaskUseCase = Depends(get_task_use_case)
+):
     """
     Get the transcription result for a completed job.
-
-    **Parameters:**
-    - **job_id**: Job identifier
-
-    **Returns:**
-    - job_id: Job identifier
-    - status: Job status
-    - transcription: Transcribed text
-    - filename: Original filename
-    - language: Language used
-    - duration_seconds: Audio duration
-    - processing_time_seconds: Processing time
-    - download_url: URL to download result file (valid for 1 hour)
-
-    **Note:**
-    - Only available for COMPLETED jobs
-    - For jobs still processing, returns status information
     """
     try:
         logger.info(f"API: Result request for job_id={job_id}")
 
-        task_service = get_task_service()
-        result = await task_service.get_task_result(job_id)
+        result_data = await use_case.get_task_result(job_id)
 
-        if not result:
+        if not result_data:
             logger.warning(f"API: Job not found: job_id={job_id}")
             return error_response(message=f"Job not found: {job_id}", error_code=1)
 
-        if result["status"] != "COMPLETED":
+        job = result_data["job"]
+        download_url = result_data["download_url"]
+
+        if job.status.value != "COMPLETED":
             logger.info(
-                f"API: Job not completed: job_id={job_id}, status={result['status']}"
+                f"API: Job not completed: job_id={job_id}, status={job.status.value}"
             )
+            # Return status info but indicate not completed?
+            # Legacy returned 200 with message.
+            # But let's follow legacy behavior if possible or improve.
+            # Legacy: returns dict with status, message "Job not yet completed", transcription=None
+            pass
+
+        response_data = {
+            "job_id": job.id,
+            "id": job.id,
+            "status": job.status.value,
+            "filename": job.original_filename,
+            "language": job.language,
+            "transcription": job.transcription_text,
+            "download_url": download_url,
+            "duration_seconds": job.audio_duration_seconds,
+            "processing_time_seconds": (
+                (job.completed_at - job.started_at).total_seconds()
+                if job.started_at and job.completed_at
+                else None
+            ),
+            "created_at": job.created_at.isoformat(),
+            "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+        }
+
+        if job.status.value != "COMPLETED":
+            response_data["message"] = "Job not yet completed"
 
         logger.info(
-            f"API: Result retrieved: job_id={job_id}, status={result['status']}"
+            f"API: Result retrieved: job_id={job_id}, status={job.status.value}"
         )
 
         return success_response(
-            message="Job result retrieved successfully", data=result
+            message="Job result retrieved successfully", data=response_data
         )
-
-    except HTTPException as e:
-        logger.error(f"API: HTTP error: {e.detail}")
-        return error_response(message=e.detail, error_code=1)
 
     except Exception as e:
         logger.error(f"API: Failed to get result for {job_id}: {e}")
-        error_msg = format_exception_short(e, "API: Result retrieval failed")
-        logger.error(f"{error_msg}")
         return error_response(
             message=f"Failed to get job result: {str(e)}", error_code=1
         )
@@ -318,57 +287,37 @@ async def get_job_result(job_id: str):
     "",
     summary="List Jobs",
     description="List transcription jobs with optional status filter",
-    responses={
-        200: {
-            "description": "Jobs retrieved successfully",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "total": 10,
-                        "limit": 10,
-                        "status_filter": None,
-                        "jobs": [
-                            {
-                                "job_id": "stt_6541234abcdef",
-                                "status": "COMPLETED",
-                                "filename": "audio.mp3",
-                                "created_at": "2024-11-02T16:00:00Z",
-                                "completed_at": "2024-11-02T16:05:30Z",
-                            },
-                            {
-                                "job_id": "stt_6541234xyz",
-                                "status": "PROCESSING",
-                                "filename": "audio2.mp3",
-                                "created_at": "2024-11-02T16:10:00Z",
-                            },
-                        ],
-                    }
-                }
-            },
-        },
-        500: {"description": "Internal server error"},
-    },
 )
-async def list_jobs(status: Optional[str] = None, limit: int = 10):
+async def list_jobs(
+    status: Optional[str] = None,
+    limit: int = 10,
+    use_case: ITaskUseCase = Depends(get_task_use_case),
+):
     """
     List transcription jobs.
-
-    **Query Parameters:**
-    - **status**: Filter by status (PENDING, PROCESSING, COMPLETED, FAILED)
-    - **limit**: Maximum number of jobs to return (default: 10, max: 100)
-
-    **Returns:**
-    Array of job summaries with basic information.
     """
     try:
         logger.info(f"API: List jobs request: status={status}, limit={limit}")
 
-        # Validate limit
         if limit > 100:
             limit = 100
 
-        task_service = get_task_service()
-        results = await task_service.list_tasks(limit=limit, status=status)
+        jobs = await use_case.list_tasks(limit=limit, status=status)
+
+        results = [
+            {
+                "job_id": job.id,
+                "id": job.id,
+                "filename": job.original_filename,
+                "status": job.status.value,
+                "language": job.language,
+                "created_at": job.created_at.isoformat(),
+                "completed_at": (
+                    job.completed_at.isoformat() if job.completed_at else None
+                ),
+            }
+            for job in jobs
+        ]
 
         logger.info(f"API: Jobs listed: count={len(results)}")
 
@@ -379,16 +328,8 @@ async def list_jobs(status: Optional[str] = None, limit: int = 10):
 
     except Exception as e:
         logger.error(f"API: Failed to list jobs: {e}")
-        error_msg = format_exception_short(e, "API: Task listing failed")
-        logger.error(f"{error_msg}")
         return error_response(message=f"Failed to list jobs: {str(e)}", error_code=1)
 
 
 def create_task_routes() -> APIRouter:
-    """
-    Factory function to create task routes.
-
-    Returns:
-        APIRouter: Configured router with task endpoints
-    """
     return router
