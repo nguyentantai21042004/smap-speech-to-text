@@ -38,8 +38,6 @@ class HealthResponse(BaseModel):
     status: str
     service: str
     version: str
-    database: str
-    message_broker: str
 
     class Config:
         json_schema_extra = {
@@ -48,8 +46,6 @@ class HealthResponse(BaseModel):
                     "status": "healthy",
                     "service": "SMAP Service",
                     "version": "1.0.0",
-                    "database": "connected",
-                    "message_broker": "connected",
                 }
             ]
         }

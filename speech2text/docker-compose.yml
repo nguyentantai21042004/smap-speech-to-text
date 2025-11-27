@@ -24,36 +24,17 @@ services:
       API_WORKERS: ${API_WORKERS:-1}
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-500}
 
-      # MongoDB
-      MONGODB_URL: ${MONGODB_URL:-mongodb://mongodb:27017}
-      MONGODB_DATABASE: ${MONGODB_DATABASE:-smap}
-      MONGODB_MIN_POOL_SIZE: ${MONGODB_MIN_POOL_SIZE:-10}
-      MONGODB_MAX_POOL_SIZE: ${MONGODB_MAX_POOL_SIZE:-100}
-      MONGODB_ROOT_USER: ${MONGODB_ROOT_USER:-smap}
-      MONGODB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-hcmut2025}
-
-      # RabbitMQ
-      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_USER: ${RABBITMQ_USER:-smap}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hcmut}
-      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
-      RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:-stt_jobs_queue}
-      RABBITMQ_EXCHANGE_NAME: ${RABBITMQ_EXCHANGE_NAME:-stt_exchange}
-      RABBITMQ_ROUTING_KEY: ${RABBITMQ_ROUTING_KEY:-stt.job}
-
-      # MinIO
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-admin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-admin123}
-      MINIO_BUCKET: ${MINIO_BUCKET:-smap-stt-audio-files}
-      MINIO_BUCKET_MODEL: ${MINIO_BUCKET_MODEL:-smap-whisper}
-      MINIO_USE_SSL: ${MINIO_USE_SSL:-False}
+      # Storage
+      TEMP_DIR: ${TEMP_DIR:-/tmp/stt_processing}
 
       # Whisper
       WHISPER_EXECUTABLE: ${WHISPER_EXECUTABLE:-/app/whisper/bin/whisper-cli}
       WHISPER_MODELS_DIR: ${WHISPER_MODELS_DIR:-/app/whisper/models}
       DEFAULT_WHISPER_MODEL: ${DEFAULT_WHISPER_MODEL:-medium}
+      WHISPER_LANGUAGE: ${WHISPER_LANGUAGE:-vi}
+      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      
+      # Whisper Flags
       WHISPER_MAX_CONTEXT: ${WHISPER_MAX_CONTEXT:-0}
       WHISPER_NO_SPEECH_THOLD: ${WHISPER_NO_SPEECH_THOLD:-0.7}
       WHISPER_ENTROPY_THOLD: ${WHISPER_ENTROPY_THOLD:-2.6}
@@ -61,33 +42,16 @@ services:
       WHISPER_NO_FALLBACK: ${WHISPER_NO_FALLBACK:-true}
       WHISPER_SUPPRESS_REGEX: ${WHISPER_SUPPRESS_REGEX:-}
 
-      # Chunking
-      CHUNK_DURATION: ${CHUNK_DURATION:-30}
-      SILENCE_THRESHOLD: ${SILENCE_THRESHOLD:--40}
-      MIN_SILENCE_DURATION: ${MIN_SILENCE_DURATION:-1.0}
-      FILTER_INTRO_OUTRO: ${FILTER_INTRO_OUTRO:-true}
-      MIN_CHUNK_DURATION: ${MIN_CHUNK_DURATION:-2.0}
-      MAX_CHUNK_DURATION: ${MAX_CHUNK_DURATION:-60.0}
-
-      # Parallel Processing
-      MAX_PARALLEL_WORKERS: ${MAX_PARALLEL_WORKERS:-4}
-      USE_PARALLEL_TRANSCRIPTION: ${USE_PARALLEL_TRANSCRIPTION:-true}
-
       # Processing
-      MAX_RETRIES: ${MAX_RETRIES:-3}
-      JOB_TIMEOUT: ${JOB_TIMEOUT:-3600}
       CHUNK_TIMEOUT: ${CHUNK_TIMEOUT:-300}
-      MAX_CONCURRENT_JOBS: ${MAX_CONCURRENT_JOBS:-1}
 
       # Logging
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_FILE: ${LOG_FILE:-logs/stt.log}
 
-      # Scheduler
-      SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Asia/Ho_Chi_Minh}
-
     volumes:
       - ./logs:/app/logs
+      - whisper_models:/app/whisper/models
     networks:
       - smap-network
     healthcheck:
@@ -97,80 +61,7 @@ services:
       retries: 3
       start_period: 40s
 
-  # ========================================
-  # Consumer Service (STT Worker)
-  # ========================================
-  consumer:
-    build:
-      context: .
-      dockerfile: cmd/consumer/Dockerfile
-    container_name: smap-consumer
-    restart: unless-stopped
-    environment:
-      APP_NAME: ${APP_NAME:-SMAP Speech-to-Text}
-      ENVIRONMENT: ${ENVIRONMENT:-production}
-      DEBUG: ${DEBUG:-False}
 
-      # MongoDB
-      MONGODB_URL: ${MONGODB_URL:-mongodb://mongodb:27017}
-      MONGODB_DATABASE: ${MONGODB_DATABASE:-smap}
-      MONGODB_MIN_POOL_SIZE: ${MONGODB_MIN_POOL_SIZE:-10}
-      MONGODB_MAX_POOL_SIZE: ${MONGODB_MAX_POOL_SIZE:-100}
-      MONGODB_ROOT_USER: ${MONGODB_ROOT_USER:-smap}
-      MONGODB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD:-hcmut2025}
-
-      # RabbitMQ
-      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_USER: ${RABBITMQ_USER:-smap}
-      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-hcmut}
-      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
-      RABBITMQ_QUEUE_NAME: ${RABBITMQ_QUEUE_NAME:-stt_jobs_queue}
-      RABBITMQ_EXCHANGE_NAME: ${RABBITMQ_EXCHANGE_NAME:-stt_exchange}
-      RABBITMQ_ROUTING_KEY: ${RABBITMQ_ROUTING_KEY:-stt.job}
-
-      # MinIO
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio:9000}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-admin}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-admin123}
-      MINIO_BUCKET: ${MINIO_BUCKET:-smap-stt-audio-files}
-      MINIO_BUCKET_MODEL: ${MINIO_BUCKET_MODEL:-smap-whisper}
-      MINIO_USE_SSL: ${MINIO_USE_SSL:-False}
-
-      # Whisper
-      WHISPER_EXECUTABLE: ${WHISPER_EXECUTABLE:-/app/whisper/bin/whisper-cli}
-      WHISPER_MODELS_DIR: ${WHISPER_MODELS_DIR:-/app/whisper/models}
-      DEFAULT_WHISPER_MODEL: ${DEFAULT_WHISPER_MODEL:-medium}
-      SKIP_MODEL_DOWNLOAD: ${SKIP_MODEL_DOWNLOAD:-false}
-      MODEL_TO_DOWNLOAD: ${MODEL_TO_DOWNLOAD:-medium}
-
-      # Chunking
-      CHUNK_DURATION: ${CHUNK_DURATION:-30}
-      SILENCE_THRESHOLD: ${SILENCE_THRESHOLD:--40}
-      MIN_SILENCE_DURATION: ${MIN_SILENCE_DURATION:-1.0}
-      FILTER_INTRO_OUTRO: ${FILTER_INTRO_OUTRO:-true}
-      MIN_CHUNK_DURATION: ${MIN_CHUNK_DURATION:-2.0}
-      MAX_CHUNK_DURATION: ${MAX_CHUNK_DURATION:-60.0}
-
-      # Parallel Processing
-      MAX_PARALLEL_WORKERS: ${MAX_PARALLEL_WORKERS:-4}
-      USE_PARALLEL_TRANSCRIPTION: ${USE_PARALLEL_TRANSCRIPTION:-true}
-
-      # Processing
-      MAX_RETRIES: ${MAX_RETRIES:-3}
-      JOB_TIMEOUT: ${JOB_TIMEOUT:-3600}
-      CHUNK_TIMEOUT: ${CHUNK_TIMEOUT:-300}
-      MAX_CONCURRENT_JOBS: ${MAX_CONCURRENT_JOBS:-1}
-
-      # Logging
-      LOG_LEVEL: ${LOG_LEVEL:-INFO}
-      LOG_FILE: ${LOG_FILE:-logs/stt.log}
-      
-    volumes:
-      - ./logs:/app/logs
-      - whisper_models:/app/whisper/models
-    networks:
-      - smap-network
 
 networks:
   smap-network:

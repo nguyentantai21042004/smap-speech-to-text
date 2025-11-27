@@ -36,9 +36,15 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev
 
 # ==============================================================================
-# STAGE 2: RUNTIME (Distroless - Maximum Security & Minimal Size)
+# STAGE 2: RUNTIME (Python Slim - Includes FFmpeg)
 # ==============================================================================
-FROM gcr.io/distroless/python3-debian12:nonroot AS runtime
+FROM python:3.12-slim-bookworm AS runtime
+
+# Install runtime dependencies (FFmpeg)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
 # Standard OCI Metadata
 LABEL org.opencontainers.image.title="SMAP Speech2Text API Service" \
@@ -58,24 +64,21 @@ ENV PATH="/app/.venv/bin:$PATH" \
 WORKDIR /app
 
 # Copy virtual environment from Builder
-COPY --from=builder --chown=nonroot:nonroot /app/.venv /app/.venv
+COPY --from=builder /app/.venv /app/.venv
 
 # Copy source code (all required modules)
-COPY --from=builder --chown=nonroot:nonroot /app/cmd /app/cmd
-COPY --from=builder --chown=nonroot:nonroot /app/core /app/core
-COPY --from=builder --chown=nonroot:nonroot /app/internal /app/internal
-COPY --from=builder --chown=nonroot:nonroot /app/repositories /app/repositories
-COPY --from=builder --chown=nonroot:nonroot /app/services /app/services
-COPY --from=builder --chown=nonroot:nonroot /app/worker /app/worker
+COPY --from=builder /app/cmd /app/cmd
+COPY --from=builder /app/core /app/core
+COPY --from=builder /app/internal /app/internal
+COPY --from=builder /app/services /app/services
+COPY --from=builder /app/whisper /app/whisper
 
-# Native Healthcheck - Use Python http.client (no curl/wget needed)
-# Distroless has no shell, so must run python command directly
+# Native Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD ["/usr/bin/python3", "-c", "import http.client, os, sys; conn = http.client.HTTPConnection('127.0.0.1', int(os.getenv('PORT', 8000))); conn.request('GET', '/health'); r = conn.getresponse(); sys.exit(0 if r.status == 200 else 1)"]
+    CMD ["python3", "-c", "import http.client, os, sys; conn = http.client.HTTPConnection('127.0.0.1', int(os.getenv('PORT', 8000))); conn.request('GET', '/health'); r = conn.getresponse(); sys.exit(0 if r.status == 200 else 1)"]
 
 # Expose port
 EXPOSE 8000
 
 # Run API service with uvicorn
-# Default distroless python3 entrypoint is /usr/bin/python3
-ENTRYPOINT ["/usr/bin/python3", "-m", "uvicorn", "cmd.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["python3", "-m", "uvicorn", "cmd.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

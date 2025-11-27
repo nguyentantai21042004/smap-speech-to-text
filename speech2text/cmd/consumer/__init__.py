@@ -1,4 +1,0 @@
-"""
-Consumer Service entry point.
-"""
-

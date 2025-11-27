@@ -1,33 +1,29 @@
 # SMAP Speech-to-Text System
 
-A high-performance Speech-to-Text (STT) system built with **FastAPI**, **RabbitMQ**, and **Whisper.cpp**. Designed for scalability, parallel processing, and asynchronous job handling.
+A high-performance **stateless** Speech-to-Text (STT) API built with **FastAPI** and **Whisper.cpp**. Designed for simplicity, direct transcription, and minimal infrastructure dependencies.
 
 ---
 
 ## Key Features
 
 ### Core Capabilities
-- **Asynchronous Processing** - Non-blocking job queue with RabbitMQ for high throughput
-- **Parallel Transcription** - Multi-threaded chunk processing for **3.6x faster** transcription
+- **Direct Transcription** - Transcribe audio from URL with a single API call
+- **Stateless Architecture** - No database, no message queue, no object storage
 - **High-Quality STT** - Powered by Whisper.cpp (medium model) with anti-hallucination filters
-- **Auto-Chunking** - Intelligent audio segmentation with intro/outro silence removal
 - **Multiple Languages** - Support for Vietnamese, English, and 90+ languages
-- **Scalable Storage** - MinIO object storage for audio files and results
-- **Production-Ready** - Comprehensive logging, error handling, and monitoring
+- **Production-Ready** - Comprehensive logging, error handling, and health monitoring
 
 ### Performance Optimizations
-- **Consumer-Level Singleton** - Transcriber initialized once at startup (50x faster job startup)
+- **Singleton Transcriber** - Whisper engine initialized once at startup
 - **In-Memory Caching** - Model validation cached to eliminate redundant I/O
-- **Parallel Chunk Processing** - ThreadPoolExecutor with shared instances (90% efficiency)
-- **Batch Database Updates** - Reduced DB calls from N to ~4 per job
-- **Model Pre-warming** - Models validated and loaded at consumer startup
+- **Efficient Downloads** - Streaming audio download with size validation
+- **Automatic Cleanup** - Temporary files cleaned up after transcription
 
 ### Architecture Highlights
-- **Microservices Design** - Separate API and consumer services
-- **Clean Architecture** - Repository pattern, service layer, dependency injection
-- **Interface-Based** - All services implement interfaces for testability
-- **Docker-Ready** - Full Docker Compose setup with health checks
-- **MongoDB + MinIO** - Document database + object storage for optimal performance
+- **Stateless Design** - Each request is independent, no session state
+- **Clean Architecture** - Service layer, dependency injection, interface-based design
+- **Docker-Ready** - Minimal Docker setup with health checks
+- **Simple Deployment** - Single service, no external dependencies
 
 ---
 
@@ -41,12 +37,9 @@ A high-performance Speech-to-Text (STT) system built with **FastAPI**, **RabbitM
   - [Docker Deployment](#docker-deployment)
 - [API Documentation](#api-documentation)
 - [Configuration](#configuration)
-- [Performance](#performance)
 - [Project Structure](#project-structure)
 - [Development Guide](#development-guide)
-- [Documentation](#documentation)
 - [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
 
 ---
 
@@ -56,44 +49,26 @@ A high-performance Speech-to-Text (STT) system built with **FastAPI**, **RabbitM
 
 ```
 ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│   Client     │─────▶│  API Service │─────▶│   RabbitMQ   │
-│  (Upload)    │      │  (FastAPI)   │      │ (Message Bus)│
+│   Client     │─────▶│  API Service │─────▶│  Whisper.cpp │
+│  (Request)   │      │  (FastAPI)   │      │     (STT)    │
 └──────────────┘      └──────────────┘      └──────────────┘
-                              │                     │
-                              ▼                     ▼
-                      ┌──────────────┐      ┌──────────────┐
-                      │    MinIO     │      │   Consumer   │
-                      │   (Storage)  │◀────▶│   Service    │
-                      └──────────────┘      └──────────────┘
-                              │                     │
-                              ▼                     ▼
-                      ┌──────────────┐      ┌──────────────┐
-                      │   MongoDB    │      │  Whisper.cpp │
-                      │  (Database)  │      │     (STT)    │
-                      └──────────────┘      └──────────────┘
+                              │
+                              ▼
+                      ┌──────────────┐
+                      │  Audio URL   │
+                      │  (Download)  │
+                      └──────────────┘
 ```
 
-### Core Services
+### Core Service
 
-#### 1. **API Service** (`cmd/api/main.py`)
+#### **API Service** (`cmd/api/main.py`)
 - RESTful API with FastAPI
-- File upload to MinIO
-- Job creation and status tracking (`TaskUseCase`)
-- Query transcription results
+- `/transcribe` endpoint for direct transcription
+- Downloads audio from provided URL
+- Transcribes using Whisper.cpp
+- Returns result immediately
 - Health checks and monitoring
-
-#### 2. **Consumer Service** (`cmd/consumer/main.py`)
-- RabbitMQ message consumer
-- Audio preprocessing and chunking (`pipelines/stt/chunking.py`)
-- Parallel transcription with Whisper.cpp (`adapters/whisper/engine.py`)
-- Result aggregation and storage (`pipelines/stt/merger.py`)
-- Singleton transcriber for optimal performance
-
-#### 3. **Supporting Services**
-- **MongoDB** - Job metadata and results storage
-- **RabbitMQ** - Asynchronous message queue
-- **MinIO** - Object storage for audio files
-- **Whisper.cpp** - High-performance STT engine
 
 ---
 
@@ -104,33 +79,26 @@ A high-performance Speech-to-Text (STT) system built with **FastAPI**, **RabbitM
 |------------|---------|---------|
 | **FastAPI** | 0.104+ | Web framework |
 | **Pydantic** | 2.5+ | Data validation |
-| **Motor** | 3.3+ | Async MongoDB driver |
-| **aio-pika** | 9.3+ | Async RabbitMQ client |
+| **httpx** | Latest | Async HTTP client |
 | **Whisper.cpp** | Latest | Speech-to-text engine |
 
 ### Audio Processing
 | Library | Purpose |
 |---------|---------|
-| **pydub** | Audio manipulation |
-| **librosa** | Audio analysis |
-| **soundfile** | Audio I/O |
 | **FFmpeg** | Audio format conversion |
 
 ### Infrastructure
 | Service | Purpose |
 |---------|---------|
-| **MongoDB** | Document database |
-| **RabbitMQ** | Message broker |
-| **MinIO** | Object storage (S3-compatible) |
 | **Docker** | Containerization |
-| **Docker Compose** | Multi-container orchestration |
+| **Docker Compose** | Container orchestration |
 
 ---
 
 ## Quick Start
 
 ### Prerequisites
-- **Python 3.10+**
+- **Python 3.12+**
 - **Docker & Docker Compose** (for containerized deployment)
 - **FFmpeg** (for audio processing)
 - **Whisper.cpp** (compiled binary)
@@ -138,7 +106,7 @@ A high-performance Speech-to-Text (STT) system built with **FastAPI**, **RabbitM
 ### 1. Clone Repository
 ```bash
 git clone <repository-url>
-cd smap-speech-to-text
+cd speech2text
 ```
 
 ### 2. Environment Setup
@@ -149,320 +117,118 @@ cp .env.example .env
 
 ### 3. Install Dependencies
 ```bash
-# Create virtual environment
-python -m venv myenv
-source myenv/bin/activate  # Linux/Mac
-# or
-myenv\Scripts\activate  # Windows
+# Using uv (recommended)
+uv sync
 
-# Install dependencies
-pip install -r requirements.txt
+# Or using pip
+pip install -e .
 ```
 
-### 4. Start Services
+### 4. Start Service
 
 #### Option A: Docker (Recommended)
 ```bash
-# Start all services
-make docker-up
+# Start service
+docker-compose up -d
 
 # View logs
-make docker-logs
+docker-compose logs -f api
 
-# Stop services
-make docker-down
+# Stop service
+docker-compose down
 ```
 
 #### Option B: Local Development
 ```bash
-# Terminal 1: Start API
-make run-api
+# Start API
+uv run python cmd/api/main.py
 
-# Terminal 2: Start Consumer
-make run-consumer
+# Or with uvicorn directly
+uv run uvicorn cmd.api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### 5. Test the System
 ```bash
-# Upload audio file
-curl -X POST http://localhost:8000/files/upload \
-  -F "file=@audio.mp3"
+# Transcribe audio from URL
+curl -X POST http://localhost:8000/transcribe \
+  -H "Content-Type: application/json" \
+  -d '{"audio_url": "http://example.com/audio.mp3"}'
 
-# Create STT task (use file_id from upload response)
-curl -X POST http://localhost:8000/api/v1/tasks/create \
-  -F "file_id=<file_id>" \
-  -F "language=vi"
-
-# Check job status
-curl http://localhost:8000/api/v1/tasks/<job_id>
-
-# Get transcription result
-curl http://localhost:8000/api/v1/tasks/<job_id>/result
-```
-
----
-
-## Installation
-
-### Local Development
-
-#### 1. System Dependencies
-```bash
-# Ubuntu/Debian
-sudo apt-get update
-sudo apt-get install -y ffmpeg python3-dev build-essential
-
-# macOS
-brew install ffmpeg
-
-# Verify installation
-ffmpeg -version
-```
-
-#### 2. Whisper.cpp Setup
-```bash
-# Clone and build Whisper.cpp
-git clone https://github.com/ggerganov/whisper.cpp
-cd whisper.cpp
-make
-
-# Copy binary to project
-mkdir -p whisper/bin
-cp main whisper/bin/whisper-cli
-
-# Download models
-bash scripts/setup_whisper.sh
-```
-
-#### 3. MongoDB Setup
-```bash
-# Install MongoDB Community Edition
-# https://docs.mongodb.com/manual/installation/
-
-# Or use Docker
-docker run -d -p 27017:27017 --name mongodb mongo:latest
-```
-
-#### 4. RabbitMQ Setup
-```bash
-# Install RabbitMQ
-# https://www.rabbitmq.com/download.html
-
-# Or use Docker
-docker run -d -p 5672:5672 -p 15672:15672 --name rabbitmq rabbitmq:3-management
-```
-
-#### 5. MinIO Setup
-```bash
-# Use Docker
-docker run -d \
-  -p 9000:9000 \
-  -p 9001:9001 \
-  --name minio \
-  -e "MINIO_ROOT_USER=minioadmin" \
-  -e "MINIO_ROOT_PASSWORD=minioadmin" \
-  minio/minio server /data --console-address ":9001"
-```
-
-#### 6. Python Environment
-```bash
-# Create virtual environment
-python3 -m venv myenv
-source myenv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Verify installation
-python -c "import fastapi; print('FastAPI installed successfully')"
-```
-
-### Docker Deployment
-
-#### 1. Build Images
-```bash
-make docker-build
-```
-
-#### 2. Start Services
-```bash
-# Start all services
-make docker-up
-
-# Check service status
-docker-compose ps
-
-# View logs
-docker-compose logs -f api
-docker-compose logs -f consumer
-```
-
-#### 3. Scale Consumers
-```bash
-# Scale to 3 consumer instances
-docker-compose up -d --scale consumer=3
-```
-
-#### 4. Stop Services
-```bash
-# Stop all services
-make docker-down
-
-# Stop and remove volumes (clean slate)
-make docker-clean
+# Check health
+curl http://localhost:8000/health
 ```
 
 ---
 
 ## API Documentation
 
-### Base URL
-```
-http://localhost:8000
-```
-
-### API Endpoints
-
-#### 1. Health Check
-```http
-GET /health
-```
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "services": {
-    "api": "ok",
-    "mongodb": "ok",
-    "rabbitmq": "ok",
-    "minio": "ok"
-  },
-  "timestamp": "2025-11-02T12:00:00Z"
-}
-```
-
-#### 2. Upload Audio File
-```http
-POST /files/upload
-Content-Type: multipart/form-data
-
-file: <audio_file>
-```
-
-**Supported Formats:**
-- Audio: MP3, WAV, M4A, AAC, OGG, FLAC, WMA
-- Video: MP4, WEBM, MKV, AVI, MOV (audio extracted)
-
-**Response:**
-```json
-{
-  "status": "success",
-  "file_id": "69073cc61dc7aa422463d537",
-  "message": "File uploaded successfully",
-  "details": {
-    "filename": "audio.mp3",
-    "size_mb": 5.2,
-    "minio_path": "uploads/xxx-xxx-xxx.mp3"
-  }
-}
-```
-
-#### 3. Create STT Task
-```http
-POST /api/v1/tasks/create
-Content-Type: application/x-www-form-urlencoded
-
-file_id: <file_id>
-language: vi (optional, defaults to 'vi')
-```
-
-**Response:**
-```json
-{
-  "status": "success",
-  "job_id": "69073cc61dc7aa422463d538",
-  "id": "69073cc61dc7aa422463d538",
-  "message": "Task created and queued for processing",
-  "details": {
-    "file_id": "69073cc61dc7aa422463d537",
-    "filename": "audio.mp3",
-    "language": "vi",
-    "model": "medium",
-    "status": "QUEUED"
-  }
-}
-```
-
-#### 4. Get Job Status
-```http
-GET /api/v1/tasks/{job_id}
-```
-
-**Response:**
-```json
-{
-  "status": "success",
-  "job": {
-    "job_id": "69073cc61dc7aa422463d538",
-    "status": "PROCESSING",
-    "progress": {
-      "chunks_total": 60,
-      "chunks_completed": 30,
-      "percentage": 50.0
-    },
-    "file_info": {
-      "filename": "audio.mp3",
-      "size_mb": 5.2,
-      "duration_seconds": 1800
-    },
-    "created_at": "2025-11-02T12:00:00Z",
-    "started_at": "2025-11-02T12:00:05Z"
-  }
-}
-```
-
-**Job Statuses:**
-- `QUEUED` - Job in queue, waiting for consumer
-- `PROCESSING` - Currently being processed
-- `COMPLETED` - Transcription complete
-- `FAILED` - Processing failed (see error_message)
-
-#### 5. Get Transcription Result
-```http
-GET /api/v1/tasks/{job_id}/result
-```
-
-**Response:**
-```json
-{
-  "status": "success",
-  "job_id": "69073cc61dc7aa422463d538",
-  "transcription": "Đây là nội dung được chuyển đổi từ giọng nói sang văn bản...",
-  "metadata": {
-    "language": "vi",
-    "model": "medium",
-    "chunks_processed": 60,
-    "total_duration": 1800,
-    "processing_time": 165.3
-  }
-}
-```
-
-#### 6. Download Result File
-```http
-GET /api/v1/tasks/{job_id}/download
-```
-
-**Response:**
-- Content-Type: `text/plain; charset=utf-8`
-- Downloads transcription as `.txt` file
-
-### Interactive API Documentation
-
-Once the API is running, visit:
+### Interactive Documentation
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
+
+### Endpoints
+
+#### POST `/transcribe`
+Transcribe audio from URL.
+
+**Request:**
+```json
+{
+  "audio_url": "http://example.com/audio.mp3"
+}
+```
+
+**Response:**
+```json
+{
+  "error_code": 0,
+  "message": "Transcription successful",
+  "data": {
+    "text": "Transcribed text content...",
+    "duration": 1.5,
+    "download_duration": 0.5,
+    "file_size_mb": 1.0,
+    "model": "small"
+  }
+}
+```
+
+**Error Responses:**
+- `413` - File too large
+- `400` - Invalid URL or download failed
+- `500` - Internal server error
+
+#### GET `/health`
+Service health check.
+
+**Response:**
+```json
+{
+  "error_code": 0,
+  "message": "Service is healthy",
+  "data": {
+    "status": "healthy",
+    "service": "SMAP Speech-to-Text",
+    "version": "1.0.0"
+  }
+}
+```
+
+#### GET `/`
+Root endpoint with service information.
+
+**Response:**
+```json
+{
+  "error_code": 0,
+  "message": "API service is running",
+  "data": {
+    "service": "SMAP Speech-to-Text",
+    "version": "1.0.0",
+    "status": "running"
+  }
+}
+```
 
 ---
 
@@ -470,365 +236,126 @@ Once the API is running, visit:
 
 ### Environment Variables
 
-Key configuration options in `.env`:
-
-#### Application Settings
 ```bash
-APP_NAME=SMAP Speech-to-Text
-ENVIRONMENT=production
-DEBUG=false
-```
+# Application
+APP_NAME="SMAP Speech-to-Text"
+APP_VERSION="1.0.0"
+ENVIRONMENT="development"
+DEBUG=true
 
-#### API Service
-```bash
-API_HOST=0.0.0.0
+# API Service
+API_HOST="0.0.0.0"
 API_PORT=8000
-API_WORKERS=4
+API_RELOAD=true
+API_WORKERS=1
 MAX_UPLOAD_SIZE_MB=500
+
+# Storage
+TEMP_DIR="/tmp/stt_processing"
+
+# Whisper Settings
+WHISPER_EXECUTABLE="./whisper/bin/whisper-cli"
+WHISPER_MODELS_DIR="./whisper/models"
+WHISPER_LANGUAGE="vi"
+WHISPER_MODEL="small"
+
+# Whisper Quality/Accuracy Flags
+WHISPER_MAX_CONTEXT=0
+WHISPER_NO_SPEECH_THOLD=0.7
+WHISPER_ENTROPY_THOLD=2.6
+WHISPER_LOGPROB_THOLD=-0.8
+WHISPER_NO_FALLBACK=true
+
+# Logging
+LOG_LEVEL="INFO"
+LOG_FILE="logs/stt.log"
 ```
 
-#### MongoDB
-```bash
-MONGODB_URL=mongodb://localhost:27017
-MONGODB_DATABASE=stt_system
-MONGODB_MAX_POOL_SIZE=10
-```
-
-#### RabbitMQ
-```bash
-RABBITMQ_HOST=localhost
-RABBITMQ_PORT=5672
-RABBITMQ_USER=guest
-RABBITMQ_PASSWORD=guest
-RABBITMQ_QUEUE_NAME=stt_jobs_queue
-```
-
-#### MinIO
-```bash
-MINIO_ENDPOINT=localhost:9000
-MINIO_ACCESS_KEY=minioadmin
-MINIO_SECRET_KEY=minioadmin
-MINIO_BUCKET=stt-audio-files
-```
-
-#### Whisper Settings
-```bash
-WHISPER_EXECUTABLE=./whisper/bin/whisper-cli
-WHISPER_MODELS_DIR=./whisper/models
-DEFAULT_WHISPER_MODEL=medium
-```
-
-#### Parallel Processing
-```bash
-# Enable parallel transcription (recommended)
-USE_PARALLEL_TRANSCRIPTION=true
-
-# Number of parallel workers (set to CPU core count)
-MAX_PARALLEL_WORKERS=4
-
-# Number of concurrent jobs per consumer
-MAX_CONCURRENT_JOBS=1
-```
-
-#### Audio Processing
-```bash
-# Chunk duration in seconds
-CHUNK_DURATION=30
-
-# Minimum chunk duration (filter out short chunks)
-MIN_CHUNK_DURATION=1.0
-
-# Intro/outro silence filtering
-INTRO_DURATION=2.0
-OUTRO_DURATION=2.0
-
-# Transcription timeout per chunk
-CHUNK_TIMEOUT=120
-```
-
-#### Anti-Hallucination Settings
-```bash
-# Whisper quality parameters (anti-hallucination)
-WHISPER_MAX_CONTEXT=0              # Disable context reuse (prevents repetition)
-WHISPER_NO_SPEECH_THOLD=0.7        # Higher = less false positives
-WHISPER_ENTROPY_THOLD=2.6          # Higher = less hallucination
-WHISPER_LOGPROB_THOLD=-0.8         # Filter low-quality predictions
-WHISPER_NO_FALLBACK=true           # Consistent output quality
-```
-
-### Performance Tuning
-
-#### Recommended Configurations
-
-**Development Laptop (4 cores, 8GB RAM)**
-```bash
-MAX_PARALLEL_WORKERS=2
-MAX_CONCURRENT_JOBS=1
-DEFAULT_WHISPER_MODEL=small
-```
-
-**Production Server (8 cores, 16GB RAM)**
-```bash
-MAX_PARALLEL_WORKERS=6
-MAX_CONCURRENT_JOBS=2
-DEFAULT_WHISPER_MODEL=medium
-```
-
-**High-Performance Server (16+ cores, 32GB RAM)**
-```bash
-MAX_PARALLEL_WORKERS=8
-MAX_CONCURRENT_JOBS=4
-DEFAULT_WHISPER_MODEL=medium
-```
-
-For detailed configuration guide, see: [`docs/CONFIGURATION_GUIDE.md`](docs/CONFIGURATION_GUIDE.md)
-
----
-
-## Performance
-
-### Benchmarks
-
-**Test Setup:** 30-minute audio file, Whisper medium model, 4 CPU cores
-
-| Mode | Time | Speedup | Efficiency |
-|------|------|---------|-----------|
-| Sequential | 600s (10 min) | 1x | 25% CPU |
-| Parallel (2 workers) | 310s (5.2 min) | 1.9x | 50% CPU |
-| **Parallel (4 workers)** | **165s (2.8 min)** | **3.6x** | **90% CPU** |
-| Parallel (8 workers) | 105s (1.8 min) | 5.7x | 100% CPU |
-
-### Performance Optimizations
-
-#### Three-Level Optimization Architecture
-
-**Level 1: Chunk-Level Sharing (V2)**
-- Transcriber shared across chunks within a job
-- Eliminated per-chunk initialization overhead
-- **Result:** 60x reduction in per-chunk overhead
-
-**Level 2: In-Memory Caching (V2)**
-- Model validation cached in memory
-- Avoids redundant file I/O operations
-- **Result:** Instant cache hits after first validation
-
-**Level 3: Consumer-Level Singleton (V3)**
-- Transcriber initialized once at consumer startup
-- Shared across all jobs in consumer process
-- **Result:** 50x faster job startup (<1ms vs 50ms)
-
-### Performance Metrics
-
-**Job Processing Overhead:**
-- **Before optimization:** 50ms per job + 10.8s per 60 chunks = 11.3s overhead
-- **After optimization:** <1ms per job + 0.18s per 60 chunks = 0.18s overhead
-- **Reduction:** 60x faster (11.3s → 0.18s)
-
-**Scalability:**
-- **Parallel efficiency:** 90% with 4 workers
-- **Throughput:** ~2.5x real-time (30-min audio in 12 minutes with 4 consumers)
-- **Resource usage:** ~1.5GB RAM per worker (medium model)
-
-For detailed performance analysis, see:
-- [`docs/PARALLEL_OPTIMIZATION_V2.md`](docs/PARALLEL_OPTIMIZATION_V2.md) - Chunk-level optimization
-- [`docs/PARALLEL_OPTIMIZATION_V3.md`](docs/PARALLEL_OPTIMIZATION_V3.md) - Consumer-level optimization
+### Supported Audio Formats
+MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
 
 ---
 
 ## Project Structure
 
 ```
-smap-speech-to-text/
-├── cmd/                              # Service entry points
-│   ├── api/
-│   │   ├── main.py                   # API service (FastAPI)
-│   │   └── Dockerfile
-│   └── consumer/
-│       ├── main.py                   # Consumer service (RabbitMQ)
-│       └── Dockerfile
-│
-├── core/                             # Shared utilities & DI
-│   ├── container.py                  # Dependency Injection
-│   ├── config.py                     # Configuration
-│   ├── database.py                   # MongoDB connection
-│   ├── messaging.py                  # RabbitMQ client
-│   ├── storage.py                    # MinIO client
-│   ├── logger.py                     # Logging utilities
-│   └── errors.py                     # System errors
-│
-├── domain/                           # Domain Layer (Business Logic)
-│   ├── entities.py                   # Domain Entities (Job, Chunk)
-│   ├── value_objects.py              # Value Objects
-│   └── events.py                     # Domain Events
-│
-├── ports/                            # Ports Layer (Interfaces)
-│   ├── repository.py                 # Repository Port
-│   ├── storage.py                    # Storage Port
-│   ├── messaging.py                  # Messaging Port
-│   └── transcriber.py                # Transcriber Port
-│
-├── adapters/                         # Adapters Layer (Infrastructure)
-│   ├── mongo/                        # MongoDB Adapter
-│   ├── minio/                        # MinIO Adapter
-│   ├── rabbitmq/                     # RabbitMQ Adapter
-│   └── whisper/                      # Whisper.cpp Adapter
-│
-├── services/                         # Application Layer (API Use Cases)
-│   └── task_use_case.py              # Task Management Use Case
-│
-├── pipelines/                        # Application Layer (Worker Pipelines)
-│   └── stt/
-│       ├── use_cases/
-│       │   └── process_job.py        # STT Job Processing Use Case
-│       ├── chunking.py               # Audio Chunking Logic
-│       └── merger.py                 # Result Merging Logic
-│
-├── internal/                         # Internal Implementation
-│   ├── api/                          # API Implementation
-│   │   ├── routes/                   # HTTP Routes
-│   │   └── dependencies/             # DI Dependencies
-│   └── consumer/                     # Consumer Implementation
-│       └── handlers/                 # Message Handlers
-│
-├── docs/                             # Documentation
-│   ├── ARCHITECTURE.md               # Architecture Design
-│   └── ...
-│
-├── whisper/                          # Whisper.cpp Resources
-│   ├── bin/                          # Executables (whisper-cli)
-│   └── models/                       # Model files (.bin)
-│
-├── scripts/                          # Utility scripts
-├── docker-compose.yml                # Orchestration
-├── Makefile                          # Build commands
-├── requirements.txt                  # Dependencies
-└── README.md                         # This file
+speech2text/
+├── adapters/
+│   └── whisper/              # Whisper.cpp integration
+│       ├── engine.py         # Whisper transcriber
+│       └── model_downloader.py
+├── cmd/
+│   └── api/                  # API service entry point
+│       ├── Dockerfile
+│       └── main.py
+├── core/                     # Core configuration and utilities
+│   ├── config.py             # Settings management
+│   ├── logger.py             # Logging setup
+│   ├── errors.py             # Custom exceptions
+│   ├── dependencies.py       # Dependency validation
+│   └── container.py          # DI container
+├── internal/
+│   └── api/                  # API layer
+│       ├── routes/           # API endpoints
+│       │   ├── transcribe_routes.py
+│       │   └── health_routes.py
+│       ├── schemas/          # Request/response models
+│       │   └── common_schemas.py
+│       └── utils.py          # API utilities
+├── services/
+│   └── transcription.py      # Transcription service
+├── tests/                    # Unit tests
+├── whisper/                  # Whisper models and binaries
+├── docker-compose.yml
+├── pyproject.toml
+└── README.md
 ```
 
 ---
 
 ## Development Guide
 
-### Adding New Features
-
-#### 1. Add New API Endpoint
-
-Create route in `internal/api/routes/`:
-```python
-# internal/api/routes/custom_routes.py
-from fastapi import APIRouter
-
-router = APIRouter(prefix="/api/v1/custom", tags=["Custom"])
-
-@router.get("/endpoint")
-async def custom_endpoint():
-    return {"message": "Custom endpoint"}
-```
-
-Register in `cmd/api/main.py`:
-```python
-from internal.api.routes import custom_routes
-
-app.include_router(custom_routes.router)
-```
-
-#### 2. Add New Service
-
-Create service in `services/`:
-```python
-# services/custom_service.py
-class CustomService:
-    def __init__(self, repo):
-        self.repo = repo
-
-    async def process(self, data):
-        # Business logic here
-        return result
-
-def get_custom_service():
-    return CustomService(get_custom_repository())
-```
-
-#### 3. Add New Repository
-
-Create repository in `repositories/`:
-```python
-# repositories/custom_repository.py
-from repositories.base_repository import BaseRepository
-
-class CustomRepository(BaseRepository):
-    def __init__(self):
-        super().__init__("custom_collection")
-
-    async def custom_query(self, filter):
-        return await self.find_one(filter)
-
-def get_custom_repository():
-    return CustomRepository()
-```
-
-### Testing
-
-#### Unit Tests
+### Running Tests
 ```bash
 # Run all tests
-make test
-
-# Run specific test file
-pytest tests/test_processor.py -v
+uv run pytest
 
 # Run with coverage
-pytest --cov=worker --cov=services --cov-report=html
-```
+uv run pytest --cov=. --cov-report=html
 
-#### Integration Tests
-```bash
-# Test file upload
-python scripts/test_upload.py
-
-# Test full pipeline
-curl -X POST http://localhost:8000/files/upload -F "file=@test.mp3"
+# Run specific test
+uv run pytest tests/test_transcription_service.py
 ```
 
 ### Code Quality
-
-#### Format Code
 ```bash
-make format
+# Format code
+uv run black .
+
+# Lint code
+uv run ruff check .
+
+# Type checking
+uv run mypy .
 ```
 
-#### Lint Code
+### Docker Development
 ```bash
-make lint
+# Build image
+docker-compose build
+
+# Start service
+docker-compose up -d
+
+# View logs
+docker-compose logs -f api
+
+# Restart service
+docker-compose restart api
+
+# Stop service
+docker-compose down
 ```
-
-#### Type Checking
-```bash
-mypy core/ repositories/ services/
-```
-
----
-
-## Documentation
-
-### Complete Documentation
-
-- **[START_HERE.md](docs/START_HERE.md)** - Getting started guide
-- **[CONFIGURATION_GUIDE.md](docs/CONFIGURATION_GUIDE.md)** - Complete configuration reference
-- **[DOCKER_SETUP.md](docs/DOCKER_SETUP.md)** - Docker deployment guide
-- **[MODEL_DOWNLOAD_GUIDE.md](docs/MODEL_DOWNLOAD_GUIDE.md)** - Model setup and management
-
-### Performance Optimization
-
-- **[PARALLEL_PROCESSING.md](docs/PARALLEL_PROCESSING.md)** - Parallel transcription overview
-- **[QUICK_START_PARALLEL.md](docs/QUICK_START_PARALLEL.md)** - Quick parallel setup
-- **[PARALLEL_OPTIMIZATION_V2.md](docs/PARALLEL_OPTIMIZATION_V2.md)** - Chunk-level optimization
-- **[PARALLEL_OPTIMIZATION_V3.md](docs/PARALLEL_OPTIMIZATION_V3.md)** - Consumer-level optimization
-
-### Implementation Details
-
-- **[MIGRATION_COMPLETE.md](docs/MIGRATION_COMPLETE.md)** - RabbitMQ migration details
-- **[IMPLEMENTATION_GUIDE.md](docs/IMPLEMENTATION_GUIDE.md)** - Implementation reference
 
 ---
 
@@ -836,137 +363,75 @@ mypy core/ repositories/ services/
 
 ### Common Issues
 
-#### 1. Consumer Not Processing Jobs
+#### 1. Whisper executable not found
 ```bash
-# Check RabbitMQ connection
-docker-compose logs rabbitmq
+# Check whisper path
+ls -la whisper/bin/whisper-cli
 
-# Check consumer logs
-docker-compose logs consumer
-
-# Verify queue exists
-# Visit: http://localhost:15672 (RabbitMQ Management UI)
+# Update .env
+WHISPER_EXECUTABLE="./whisper/bin/whisper-cli"
 ```
 
-#### 2. Transcription Timeout
+#### 2. FFmpeg not installed
 ```bash
-# Increase timeout in .env
-CHUNK_TIMEOUT=180
-
-# Or use smaller model
-DEFAULT_WHISPER_MODEL=small
-```
-
-#### 3. Out of Memory
-```bash
-# Reduce parallel workers
-MAX_PARALLEL_WORKERS=2
-
-# Or use smaller model
-DEFAULT_WHISPER_MODEL=small
-```
-
-#### 4. Model Not Found
-```bash
-# Download models manually
-bash scripts/setup_whisper.sh
-
-# Or configure custom model path
-WHISPER_MODELS_DIR=/path/to/models
-```
-
-#### 5. FFmpeg Not Found
-```bash
-# Ubuntu/Debian
-sudo apt-get install ffmpeg
-
 # macOS
 brew install ffmpeg
 
-# Verify
+# Ubuntu/Debian
+sudo apt-get install ffmpeg
+
+# Verify installation
 ffmpeg -version
 ```
 
-### Log Locations
-
-- **API Logs:** `logs/app.log`
-- **Consumer Logs:** `logs/app.log`
-- **Docker Logs:** `docker-compose logs -f <service>`
-
-### Debug Mode
-
-Enable debug logging in `.env`:
+#### 3. Port already in use
 ```bash
-DEBUG=true
-LOG_LEVEL=DEBUG
+# Change port in .env
+API_PORT=8001
+
+# Or kill process using port 8000
+lsof -ti:8000 | xargs kill -9
+```
+
+#### 4. Audio download fails
+- Verify URL is accessible
+- Check firewall/proxy settings
+- Ensure audio format is supported
+- Verify file size is within limits
+
+### Logs
+```bash
+# View application logs
+tail -f logs/stt.log
+
+# Docker logs
+docker-compose logs -f api
 ```
 
 ---
 
-## Contributing
+## Migration from Stateful Architecture
 
-### Development Workflow
+This service was previously a stateful architecture with MongoDB, RabbitMQ, and MinIO. It has been migrated to a stateless API for simplicity and reduced infrastructure dependencies.
 
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** your changes (`git commit -m 'Add amazing feature'`)
-4. **Push** to the branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request
+### Key Changes
+- ❌ Removed MongoDB (job storage)
+- ❌ Removed RabbitMQ (message queue)
+- ❌ Removed MinIO (object storage)
+- ❌ Removed consumer service
+- ✅ Added direct `/transcribe` endpoint
+- ✅ Simplified configuration
+- ✅ Reduced infrastructure requirements
 
-### Code Style
-
-- Follow **PEP 8** guidelines
-- Use **type hints** for function signatures
-- Write **docstrings** for all public functions
-- Add **unit tests** for new features
-- Run **linters** before committing
-
-### Commit Messages
-
-```
-feat: Add new feature
-fix: Fix bug in processor
-docs: Update README
-refactor: Refactor chunking logic
-test: Add unit tests for transcriber
-perf: Optimize parallel processing
-```
+For migration details, see `docs/STATELESS_MIGRATION.md`.
 
 ---
 
-## Acknowledgments
+## License
 
-- **[Whisper.cpp](https://github.com/ggerganov/whisper.cpp)** - High-performance speech recognition
-- **[FastAPI](https://fastapi.tiangolo.com/)** - Modern Python web framework
-- **[RabbitMQ](https://www.rabbitmq.com/)** - Reliable message broker
-- **[MinIO](https://min.io/)** - High-performance object storage
+[Your License Here]
 
----
+## Contact
 
-## Support
-
-For issues and questions:
-- **Issues:** [GitHub Issues](https://github.com/your-repo/issues)
-- **Discussions:** [GitHub Discussions](https://github.com/your-repo/discussions)
-- **Documentation:** [docs/](docs/)
-
----
-
-## Roadmap
-
-### Planned Features
-
-- [ ] **GPU Acceleration** - CUDA support for faster transcription
-- [ ] **Real-time Streaming** - WebSocket for live transcription
-- [ ] **Speaker Diarization** - Multi-speaker identification
-- [ ] **Language Auto-detection** - Automatic language detection
-- [ ] **Custom Vocabulary** - Domain-specific vocabulary support
-- [ ] **REST API v2** - Enhanced API with more features
-- [ ] **Web UI** - Browser-based upload and monitoring
-- [ ] **Kubernetes** - K8s deployment manifests
-
----
-
-**Version:** 1.0.0
-**Last Updated:** November 2025
-**Maintained by:** SMAP Team
+- **Email**: nguyentantai.dev@gmail.com
+- **Team**: SMAP Team

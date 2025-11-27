@@ -1,10 +1,6 @@
 """
 FastAPI Service - Main entry point for SMAP Speech-to-Text API.
-Implements clean separation of concerns with comprehensive logging and error handling:
-- Routes are separated into modules
-- MongoDB for data persistence
-- RabbitMQ for job processing
-- Comprehensive logging for all operations
+Stateless transcription service using Whisper.cpp.
 """
 
 import warnings
@@ -17,18 +13,15 @@ warnings.filterwarnings(
 warnings.filterwarnings("ignore", message=".*ffmpeg.*", category=RuntimeWarning)
 warnings.filterwarnings("ignore", message=".*avconv.*", category=RuntimeWarning)
 
-from fastapi import FastAPI, Request, HTTPException, status as http_status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
+from fastapi import FastAPI, Request, HTTPException, status as http_status  # type: ignore
+from fastapi.middleware.cors import CORSMiddleware  # type: ignore
+from fastapi.responses import JSONResponse  # type: ignore
+from fastapi.exceptions import RequestValidationError  # type: ignore
 
 from core.config import get_settings
 from core.logger import logger
-from core.database import get_database
-from core.messaging import get_queue_manager
 from core.dependencies import validate_dependencies
-from internal.api.routes.task_routes import router as task_router
-from internal.api.routes.file_routes import router as file_router
+from internal.api.routes.transcribe_routes import router as transcribe_router
 from internal.api.routes.health_routes import create_health_routes
 from internal.api.utils import error_response
 
@@ -38,7 +31,6 @@ from internal.api.utils import error_response
 async def lifespan(app: FastAPI):
     """
     Manage application lifespan - startup and shutdown.
-    Connects to MongoDB and RabbitMQ on startup with comprehensive logging.
     """
     try:
         settings = get_settings()
@@ -65,55 +57,6 @@ async def lifespan(app: FastAPI):
         bootstrap_container()
         logger.info("DI Container initialized")
 
-        # Initialize MongoDB connection
-        try:
-            logger.info("Initializing MongoDB connection...")
-            db = await get_database()
-            await db.connect()
-            logger.info("MongoDB connected successfully")
-
-            # Create indexes (optional - will not fail if auth is missing)
-            await db.create_indexes()
-
-            # Health check
-            logger.info("Performing MongoDB health check...")
-            db_healthy = await db.health_check()
-            if db_healthy:
-                logger.info("MongoDB health check passed")
-            else:
-                logger.warning("MongoDB health check failed")
-
-        except Exception as e:
-            logger.error(f"Failed to initialize MongoDB: {e}")
-            logger.exception("MongoDB initialization error details:")
-            raise
-
-        # Initialize RabbitMQ connection
-        try:
-            logger.info("Initializing RabbitMQ connection...")
-            queue_manager = get_queue_manager()
-
-            # Connect to RabbitMQ
-            await queue_manager.connect()
-            logger.info("RabbitMQ connected successfully")
-
-            # Health check
-            logger.info("Performing RabbitMQ health check...")
-            rabbitmq_healthy = queue_manager.health_check()
-            if rabbitmq_healthy:
-                logger.info("RabbitMQ health check passed")
-            else:
-                logger.warning("RabbitMQ health check failed")
-
-            # Store queue manager in app state
-            app.state.queue_manager = queue_manager
-            logger.info("RabbitMQ initialized successfully")
-
-        except Exception as e:
-            logger.error(f"Failed to initialize RabbitMQ: {e}")
-            logger.exception("RabbitMQ initialization error details:")
-            raise
-
         logger.info(
             f"========== {settings.app_name} API service started successfully =========="
         )
@@ -122,27 +65,6 @@ async def lifespan(app: FastAPI):
 
         # Shutdown sequence
         logger.info("========== Shutting down API service ==========")
-
-        # Disconnect from RabbitMQ
-        try:
-            if hasattr(app.state, "queue_manager"):
-                logger.info("Disconnecting from RabbitMQ...")
-                await app.state.queue_manager.disconnect()
-                logger.info("RabbitMQ disconnected successfully")
-        except Exception as e:
-            logger.error(f"Error disconnecting from RabbitMQ: {e}")
-            logger.exception("RabbitMQ disconnect error details:")
-
-        # Disconnect from MongoDB
-        try:
-            logger.info("Disconnecting from MongoDB...")
-            db = await get_database()
-            await db.disconnect()
-            logger.info("MongoDB disconnected successfully")
-        except Exception as e:
-            logger.error(f"Error disconnecting from MongoDB: {e}")
-            logger.exception("MongoDB disconnect error details:")
-
         logger.info("========== API service stopped successfully ==========")
 
     except Exception as e:
@@ -167,24 +89,21 @@ def create_app() -> FastAPI:
         description = """
 ## SMAP Speech-to-Text API
 
-A Speech-to-Text service powered by Whisper.cpp with MongoDB and RabbitMQ.
+A stateless Speech-to-Text service powered by Whisper.cpp.
 
 ### Key Features
 
-* **Audio Upload** - Upload audio files for transcription (MP3, WAV, M4A, etc.)
-* **Async Processing** - Queue-based processing with RabbitMQ for heavy workloads
-* **Real-time Progress** - Track transcription progress with chunk-level status
+* **Direct Transcription** - Transcribe audio from URL with `/transcribe` endpoint
 * **Multi-language Support** - Support for Vietnamese, English, and other languages
 * **Multiple Models** - Choose from Whisper models: tiny, base, small, medium, large
-* **Result Storage** - Results stored in MongoDB with MinIO object storage
-* **Health Monitoring** - System health checks for MongoDB and RabbitMQ
+* **Health Monitoring** - System health checks
 
 ### Processing Flow
 
-1. **Upload** - Upload audio file via `/api/v1/tasks/upload`
-2. **Queue** - Job is queued in RabbitMQ for processing
-3. **Process** - Worker chunks audio, transcribes each chunk, and merges results
-4. **Retrieve** - Get results via `/api/v1/tasks/{job_id}/result`
+1. **Request** - POST audio URL to `/transcribe`
+2. **Download** - Service downloads audio from provided URL
+3. **Transcribe** - Whisper.cpp processes the audio
+4. **Response** - Get transcription result immediately
 
 ### Supported Audio Formats
 
@@ -194,16 +113,12 @@ MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
 
         tags_metadata = [
             {
-                "name": "Files",
-                "description": "File upload operations. Upload audio files to MinIO and get file_id for STT processing.",
-            },
-            {
-                "name": "STT Tasks",
-                "description": "Speech-to-text task operations. Create STT jobs from file_id, track transcription progress, and retrieve results. Supports asynchronous processing with real-time status updates.",
+                "name": "Transcription",
+                "description": "Direct audio transcription from URL.",
             },
             {
                 "name": "Health",
-                "description": "Health check endpoints for monitoring API status and dependencies (MongoDB, RabbitMQ).",
+                "description": "Health check endpoints for monitoring API status.",
             },
         ]
 
@@ -240,13 +155,9 @@ MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
         # Include all API routes
         logger.debug("Including API routes...")
 
-        # File routes (upload)
-        app.include_router(file_router)
-        logger.info("File routes registered")
-
-        # Task routes (STT)
-        app.include_router(task_router)
-        logger.info("Task routes registered")
+        # Transcribe routes (Stateless)
+        app.include_router(transcribe_router)
+        logger.info("Transcribe routes registered")
 
         # Health routes (no prefix - uses root "/" and "/health")
         health_router = create_health_routes(app)
@@ -312,7 +223,7 @@ except Exception as e:
 
 # Run with: uvicorn cmd.api.main:app --host 0.0.0.0 --port 8000 --reload
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn  # type: ignore
     import sys
     import os
 

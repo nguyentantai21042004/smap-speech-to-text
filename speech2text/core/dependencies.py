@@ -39,12 +39,12 @@ def check_ffmpeg() -> Tuple[bool, Optional[str]]:
     return False, None
 
 
-def validate_dependencies(check_ffmpeg: bool = True) -> None:
+def validate_dependencies(should_check_ffmpeg: bool = True) -> None:
     """
     Validate all required system dependencies for STT processing.
 
     Args:
-        check_ffmpeg: If True, check for ffmpeg/ffprobe (required for Consumer service).
+        should_check_ffmpeg: If True, check for ffmpeg/ffprobe (required for Consumer service).
                     If False, skip ffmpeg check (for API service which doesn't need it).
 
     Raises:
@@ -53,7 +53,7 @@ def validate_dependencies(check_ffmpeg: bool = True) -> None:
     logger.info("Validating system dependencies...")
 
     # Check ffmpeg/ffprobe (only if requested)
-    if check_ffmpeg:
+    if should_check_ffmpeg:
         ffmpeg_available, ffmpeg_path = check_ffmpeg()
 
         if not ffmpeg_available:
