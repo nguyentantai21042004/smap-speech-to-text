@@ -38,15 +38,20 @@ dev-build:
 dev-test:
 	docker-compose -f docker-compose.dev.yml exec api-dev uv run pytest
 
-# Switch to medium model
-dev-medium:
-	@echo "🔄 Switching to medium model..."
-	WHISPER_MODEL_SIZE=medium docker-compose -f docker-compose.dev.yml up -d
+# Switch to base model (default)
+dev-base:
+	@echo "🔄 Switching to base model..."
+	WHISPER_MODEL_SIZE=base docker-compose -f docker-compose.dev.yml up -d
 
 # Switch to small model
 dev-small:
 	@echo "🔄 Switching to small model..."
 	WHISPER_MODEL_SIZE=small docker-compose -f docker-compose.dev.yml up -d
+
+# Switch to medium model
+dev-medium:
+	@echo "🔄 Switching to medium model..."
+	WHISPER_MODEL_SIZE=medium docker-compose -f docker-compose.dev.yml up -d
 
 # Clean volumes
 dev-clean:

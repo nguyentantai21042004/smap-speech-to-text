@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Download Whisper artifacts from MinIO based on model size.
-Usage: python scripts/download_whisper_artifacts.py [small|medium]
+Usage: python scripts/download_whisper_artifacts.py [base|small|medium]
 """
 import os
 import sys
@@ -116,10 +116,10 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         model_size = sys.argv[1].lower()
     else:
-        model_size = os.getenv("WHISPER_MODEL_SIZE", "small")
+        model_size = os.getenv("WHISPER_MODEL_SIZE", "base")
 
-    if model_size not in ["small", "medium"]:
-        print("Usage: python download_whisper_artifacts.py [small|medium]")
+    if model_size not in ["base", "small", "medium"]:
+        print("Usage: python download_whisper_artifacts.py [base|small|medium]")
         print(f"Or set WHISPER_MODEL_SIZE environment variable")
         sys.exit(1)
 

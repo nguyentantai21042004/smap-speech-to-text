@@ -123,6 +123,12 @@ class TranscriptionError(WhisperLibraryError):
 
 # Model configuration mapping
 MODEL_CONFIGS = {
+    "base": {
+        "dir": "whisper_base_xeon",
+        "model": "ggml-base-q5_1.bin",
+        "size_mb": 60,
+        "ram_mb": 1000,
+    },
     "small": {
         "dir": "whisper_small_xeon",
         "model": "ggml-small-q5_1.bin",

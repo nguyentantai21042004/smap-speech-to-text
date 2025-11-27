@@ -34,13 +34,13 @@ class Settings(BaseSettings):
     max_upload_size_mb: int = Field(default=500, alias="MAX_UPLOAD_SIZE_MB")
 
     # Storage (temporary processing)
-    temp_dir: str = Field(default="/tmp/stt_processing", alias="TEMP_DIR")
+    temp_dir: str = Field(default="/tmp/stt_processing", alias="TEMP;_DIR")
 
     # Whisper Library Settings (for direct C library integration)
-    whisper_model_size: str = Field(default="small", alias="WHISPER_MODEL_SIZE")
+    whisper_model_size: str = Field(default="base", alias="WHISPER_MODEL_SIZE")
     whisper_artifacts_dir: str = Field(default=".", alias="WHISPER_ARTIFACTS_DIR")
     whisper_language: str = Field(default="vi", alias="WHISPER_LANGUAGE")
-    whisper_model: str = Field(default="small", alias="WHISPER_MODEL")
+    whisper_model: str = Field(default="base", alias="WHISPER_MODEL")
     whisper_n_threads: int = Field(default=0, alias="WHISPER_N_THREADS")  # 0 = auto-detect
 
     # Chunking Configuration (for long audio processing)

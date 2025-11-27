@@ -66,8 +66,8 @@ ENV PATH="/app/.venv/bin:$PATH" \
     HOST=0.0.0.0 \
     PORT=8000 \
     WORKERS=2 \
-    # Whisper Model Configuration
-    WHISPER_MODEL_SIZE=small \
+    # Whisper Model Configuration (base = default, balanced performance)
+    WHISPER_MODEL_SIZE=base \
     WHISPER_LANGUAGE=en \
     WHISPER_N_THREADS=0 \
     # Chunking Configuration (NEW - Production Ready)

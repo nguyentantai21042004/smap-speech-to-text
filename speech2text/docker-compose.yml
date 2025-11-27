@@ -32,10 +32,10 @@ services:
       WHISPER_MODELS_DIR: ${WHISPER_MODELS_DIR:-/app/whisper/models}
       DEFAULT_WHISPER_MODEL: ${DEFAULT_WHISPER_MODEL:-medium}
       WHISPER_LANGUAGE: ${WHISPER_LANGUAGE:-vi}
-      WHISPER_MODEL: ${WHISPER_MODEL:-small}
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
 
       # Whisper Library Settings (Dynamic Model Loading)
-      WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE:-small}  # Change to 'medium' to switch models
+      WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE:-base}  # Options: base (default), small, medium
       WHISPER_ARTIFACTS_DIR: ${WHISPER_ARTIFACTS_DIR:-.}
 
       # MinIO Configuration (for artifact download)
@@ -62,6 +62,7 @@ services:
       - ./logs:/app/logs
       - whisper_models:/app/whisper/models
       # Cache downloaded Whisper library artifacts between restarts
+      - whisper_library_base:/app/whisper_base_xeon
       - whisper_library_small:/app/whisper_small_xeon
       - whisper_library_medium:/app/whisper_medium_xeon
     networks:
@@ -81,6 +82,8 @@ networks:
 
 volumes:
   whisper_models:
+    driver: local
+  whisper_library_base:
     driver: local
   whisper_library_small:
     driver: local

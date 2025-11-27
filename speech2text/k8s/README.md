@@ -89,25 +89,25 @@ curl http://localhost:8000/health
 
 ## Resource Configuration
 
-### Small Model (Default)
+### Base Model (Default)
 
-Optimized for **development** and **fast transcription**:
+Optimized for **balanced performance** and **good accuracy**:
 
 ```yaml
 resources:
   requests:
-    memory: "1Gi"
-    cpu: "500m"
-    ephemeral-storage: "2Gi"
+    memory: "1Gi"     # Base model ~1GB + overhead
+    cpu: "500m"       # 0.5 CPU cores minimum
+    ephemeral-storage: "2Gi"  # For chunking temp files
   limits:
-    memory: "2Gi"
-    cpu: "4000m"
-    ephemeral-storage: "5Gi"
+    memory: "2Gi"     # Maximum memory (allows spikes)
+    cpu: "4000m"      # 4 CPU cores (optimal threading)
+    ephemeral-storage: "5Gi"  # Max temp storage for long audio
 ```
 
 **Specifications:**
-- **Memory:** 500MB base + 500MB buffer = 1GB request
-- **CPU:** 4 cores limit for optimal Whisper threading
+- **Memory:** ~1GB base model + overhead = 1GB request, 2GB limit for safety
+- **CPU:** 4 cores limit for optimal Whisper threading (8 threads)
 - **Storage:** 5GB for chunking temp files (long audio)
 
 ### Medium Model

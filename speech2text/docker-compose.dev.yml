@@ -38,8 +38,8 @@ services:
       # Storage
       TEMP_DIR: "/tmp/stt_processing"
 
-      # Whisper Library Settings
-      WHISPER_MODEL_SIZE: "${WHISPER_MODEL_SIZE:-small}"
+      # Whisper Library Settings (base = default, balanced performance)
+      WHISPER_MODEL_SIZE: "${WHISPER_MODEL_SIZE:-base}"
       WHISPER_ARTIFACTS_DIR: "."
       
       # MinIO Configuration
@@ -51,7 +51,7 @@ services:
       WHISPER_EXECUTABLE: "/app/whisper/bin/whisper-cli"
       WHISPER_MODELS_DIR: "/app/whisper/models"
       WHISPER_LANGUAGE: "vi"
-      WHISPER_MODEL: "small"
+      WHISPER_MODEL: "base"
       WHISPER_N_THREADS: "${WHISPER_N_THREADS:-0}"  # 0=auto (min(cpu_count, 8)), or set explicit value
 
       # Chunking Configuration (for long audio processing)
@@ -97,6 +97,8 @@ networks:
 
 volumes:
   whisper_models:
+    driver: local
+  whisper_library_base:
     driver: local
   whisper_library_small:
     driver: local

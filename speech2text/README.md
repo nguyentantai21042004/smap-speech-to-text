@@ -205,8 +205,9 @@ The system now supports **dynamic model loading** with direct C library integrat
 
 ```bash
 # Download model artifacts
-make setup-artifacts-small    # Download small model (181MB, ~500MB RAM)
-make setup-artifacts-medium   # Download medium model (1.5GB, ~2GB RAM)
+make setup-artifacts-base      # Download base model (60MB, ~1GB RAM) - DEFAULT
+make setup-artifacts-small     # Download small model (181MB, ~500MB RAM)
+make setup-artifacts-medium    # Download medium model (1.5GB, ~2GB RAM)
 
 # Run tests
 make test-library             # Test library adapter
@@ -219,20 +220,22 @@ make run-api
 #### Docker Deployment
 
 ```bash
-# Run with small model (default)
+# Run with base model (default)
 docker-compose up
 
-# Switch to medium model (no rebuild!)
+# Switch to other models (no rebuild!)
+WHISPER_MODEL_SIZE=small docker-compose up
 WHISPER_MODEL_SIZE=medium docker-compose up
 
 # Or edit docker-compose.yml:
-# WHISPER_MODEL_SIZE: medium
+# WHISPER_MODEL_SIZE: base  # or small, medium
 ```
 
 ### Model Specifications
 
 | Model | Size | RAM | Use Case |
 |-------|------|-----|----------|
+| **base** | ~60 MB | ~1 GB | Default balance of speed vs accuracy |
 | **small** | 181 MB | ~500 MB | Development, fast transcription |
 | **medium** | 1.5 GB | ~2 GB | Production, high accuracy |
 
@@ -250,6 +253,12 @@ WHISPER_MODEL_SIZE=medium docker-compose up
 - [User Guide](docs/DYNAMIC_MODEL_LOADING_GUIDE.md)
 - [Implementation Summary](IMPLEMENTATION_SUMMARY.md)
 - [Change Log](CHANGES.md)
+
+### Building / Updating Whisper Artifacts
+
+If you need to regenerate shared libraries or quantized models (e.g., to add the **base** variant alongside `small`/`medium`), reuse the Xeon-optimized builder pipeline in [`nguyentantai21042004/whisper-xeon-builde`](https://github.com/nguyentantai21042004/whisper-xeon-builde). It ships Docker automation that compiles `libwhisper.so`, quantizes the requested models (base/small/medium), and publishes deployment-ready folders (`whisper_base_xeon/`, `whisper_small_xeon/`, …) suitable for this repo’s loader flow.[^builder-ref]
+
+[^builder-ref]: Artifact build reference: [nguyentantai21042004/whisper-xeon-builde](https://github.com/nguyentantai21042004/whisper-xeon-builde)
 
 ### Makefile Commands
 
@@ -383,10 +392,10 @@ MAX_UPLOAD_SIZE_MB=500
 TEMP_DIR="/tmp/stt_processing"
 
 # Whisper Library (Dynamic Model Loading)
-WHISPER_MODEL_SIZE="small"       # or "medium"
+WHISPER_MODEL_SIZE="base"        # Options: base (default), small, medium
 WHISPER_ARTIFACTS_DIR="."
 WHISPER_LANGUAGE="vi"
-WHISPER_MODEL="small"
+WHISPER_MODEL="base"
 
 # Chunking Configuration (NEW - Production Ready)
 WHISPER_CHUNK_ENABLED=true       # Enable/disable chunking
