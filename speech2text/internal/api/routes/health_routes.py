@@ -6,7 +6,8 @@ from fastapi import APIRouter
 from typing import Dict
 
 from internal.api.schemas import HealthResponse
-from internal.api.utils import success_response, error_response
+from internal.api.schemas.common_schemas import StandardResponse
+from internal.api.utils import success_response
 from core import get_settings
 
 
@@ -26,7 +27,7 @@ def create_health_routes(app) -> APIRouter:
 
     @router.get(
         "/",
-        response_model=Dict,
+        response_model=StandardResponse,
         summary="Root Endpoint",
         description="Get basic API information",
         operation_id="get_root",
@@ -36,9 +37,13 @@ def create_health_routes(app) -> APIRouter:
                 "content": {
                     "application/json": {
                         "example": {
-                            "service": "SMAP Service",
-                            "version": "1.0.0",
-                            "status": "running",
+                            "error_code": 0,
+                            "message": "API service is running",
+                            "data": {
+                                "service": "SMAP Service",
+                                "version": "1.0.0",
+                                "status": "running",
+                            },
                         }
                     }
                 },
@@ -67,7 +72,7 @@ def create_health_routes(app) -> APIRouter:
 
     @router.get(
         "/health",
-        response_model=HealthResponse,
+        response_model=StandardResponse,
         summary="Health Check",
         description="Check service health",
         operation_id="health_check",
@@ -78,12 +83,16 @@ def create_health_routes(app) -> APIRouter:
                     "application/json": {
                         "examples": {
                             "healthy": {
-                                "summary": "Service operational",
-                                "value": {
+                            "summary": "Service operational",
+                            "value": {
+                                "error_code": 0,
+                                "message": "Service is healthy",
+                                "data": {
                                     "status": "healthy",
                                     "service": "SMAP Service",
                                     "version": "1.0.0",
                                 },
+                            },
                             },
                         }
                     }

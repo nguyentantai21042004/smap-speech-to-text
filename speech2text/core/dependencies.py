@@ -22,30 +22,27 @@ def check_ffmpeg() -> Tuple[bool, Optional[str]]:
         - is_available: True if ffmpeg/ffprobe found
         - path: Path to executable, or None if not found
     """
-    # Check ffprobe first (usually comes with ffmpeg)
     ffprobe_path = shutil.which("ffprobe")
     if ffprobe_path:
         logger.debug(f"ffprobe found at: {ffprobe_path}")
         return True, ffprobe_path
 
-    # Check ffmpeg as fallback
     ffmpeg_path = shutil.which("ffmpeg")
     if ffmpeg_path:
         logger.debug(f"ffmpeg found at: {ffmpeg_path}")
         return True, ffmpeg_path
 
-    # Not found
     logger.warning("ffmpeg/ffprobe not found in PATH")
     return False, None
 
 
-def validate_dependencies(should_check_ffmpeg: bool = True) -> None:
+def validate_dependencies(check_ffmpeg: bool = True) -> None:
     """
     Validate all required system dependencies for STT processing.
 
     Args:
-        should_check_ffmpeg: If True, check for ffmpeg/ffprobe (required for Consumer service).
-                    If False, skip ffmpeg check (for API service which doesn't need it).
+        check_ffmpeg: If True, check for ffmpeg/ffprobe (required for Consumer service).
+                     If False, skip ffmpeg check (for API service which doesn't need it).
 
     Raises:
         MissingDependencyError: If required dependencies are missing
@@ -53,7 +50,7 @@ def validate_dependencies(should_check_ffmpeg: bool = True) -> None:
     logger.info("Validating system dependencies...")
 
     # Check ffmpeg/ffprobe (only if requested)
-    if should_check_ffmpeg:
+    if check_ffmpeg:
         ffmpeg_available, ffmpeg_path = check_ffmpeg()
 
         if not ffmpeg_available:
@@ -69,11 +66,9 @@ def validate_dependencies(should_check_ffmpeg: bool = True) -> None:
         logger.debug("Skipping ffmpeg check (not required for this service)")
 
     # Check Whisper executable (optional - warn only, don't fail)
-    # Whisper is required for transcription, but validation happens at runtime
     settings = get_settings()
     whisper_path = Path(settings.whisper_executable)
 
-    # Convert to absolute path for better checking
     if not whisper_path.is_absolute():
         whisper_path = whisper_path.resolve()
 
@@ -85,7 +80,6 @@ def validate_dependencies(should_check_ffmpeg: bool = True) -> None:
                 f"Whisper executable exists but not executable: {whisper_path}"
             )
     else:
-        # Try alternative common paths
         alternative_paths = [
             Path("./whisper/bin/whisper-cli"),
             Path("./whisper/whisper.cpp/main"),

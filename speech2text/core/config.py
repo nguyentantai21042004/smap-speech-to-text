@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     # Whisper Library Settings (for direct C library integration)
     whisper_model_size: str = Field(default="small", alias="WHISPER_MODEL_SIZE")
     whisper_artifacts_dir: str = Field(default=".", alias="WHISPER_ARTIFACTS_DIR")
+    whisper_language: str = Field(default="vi", alias="WHISPER_LANGUAGE")
+    whisper_model: str = Field(default="small", alias="WHISPER_MODEL")
 
     # MinIO Configuration (for artifact download)
     minio_endpoint: str = Field(
@@ -50,6 +52,14 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = Field(default="INFO", alias="LOG_LEVEL")
     log_file: str = Field(default="logs/stt.log", alias="LOG_FILE")
+
+    # API Security
+    internal_api_key: str = Field(
+        default="smap-internal-key-changeme", alias="INTERNAL_API_KEY"
+    )
+    transcribe_timeout_seconds: int = Field(
+        default=30, alias="TRANSCRIBE_TIMEOUT_SECONDS"
+    )
 
 
 @lru_cache()

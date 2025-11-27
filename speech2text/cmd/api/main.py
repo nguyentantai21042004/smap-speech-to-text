@@ -17,6 +17,7 @@ from fastapi import FastAPI, Request, HTTPException, status as http_status  # ty
 from fastapi.middleware.cors import CORSMiddleware  # type: ignore
 from fastapi.responses import JSONResponse  # type: ignore
 from fastapi.exceptions import RequestValidationError  # type: ignore
+from fastapi.staticfiles import StaticFiles  # type: ignore
 
 from core.config import get_settings
 from core.logger import logger
@@ -152,6 +153,20 @@ MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
         )
         logger.debug("CORS middleware added")
 
+        # Mount swagger static files for domain/stt/swagger/index.html access
+        # This allows reverse proxy to serve swagger UI at domain/stt/swagger/
+        logger.debug("Mounting swagger static files...")
+        try:
+            from pathlib import Path
+            swagger_dir = Path(__file__).parent / "swagger_static"
+            if swagger_dir.exists():
+                app.mount("/swagger", StaticFiles(directory=str(swagger_dir), html=True), name="swagger")
+                logger.info(f"Swagger static files mounted at /swagger from {swagger_dir}")
+            else:
+                logger.warning(f"Swagger static directory not found: {swagger_dir}")
+        except Exception as e:
+            logger.warning(f"Failed to mount swagger static files: {e}")
+
         # Include all API routes
         logger.debug("Including API routes...")
 
@@ -169,12 +184,12 @@ MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
         async def validation_exception_handler(
             request: Request, exc: RequestValidationError
         ):
-            """Handle validation errors with standard response format."""
+            """Handle validation errors - return 422 status."""
             errors = exc.errors()
             error_msg = "; ".join([f"{e['loc'][-1]}: {e['msg']}" for e in errors])
             logger.error(f"Validation error: {error_msg}")
             return JSONResponse(
-                status_code=http_status.HTTP_200_OK,
+                status_code=http_status.HTTP_422_UNPROCESSABLE_ENTITY,
                 content=error_response(
                     message=f"Validation error: {error_msg}", error_code=1
                 ),
@@ -182,10 +197,13 @@ MP3, WAV, M4A, MP4, AAC, OGG, FLAC, WMA, WEBM, MKV, AVI, MOV
 
         @app.exception_handler(HTTPException)
         async def http_exception_handler(request: Request, exc: HTTPException):
-            """Handle HTTP exceptions with standard response format."""
+            """Handle HTTP exceptions - preserve status codes for auth/client errors."""
             logger.error(f"HTTP error: {exc.detail}")
+            # For auth errors (401, 403) and client errors (4xx), keep original status
+            # For server errors (5xx), use 500
+            # For other cases, use the exception's status code
             return JSONResponse(
-                status_code=http_status.HTTP_200_OK,
+                status_code=exc.status_code,
                 content=error_response(message=exc.detail, error_code=1),
             )
 

@@ -32,38 +32,33 @@ class TranscribeService:
         )
 
     def _get_transcriber(self):
-        """Get transcriber (try library first, fall back to CLI)"""
-        try:
-            # Try library adapter first (NEW dynamic loading)
+        """Get transcriber using library adapter"""
+        # Use library adapter (direct C library integration)
             from adapters.whisper.library_adapter import get_whisper_library_adapter
 
             logger.info("Using WhisperLibraryAdapter (direct C library integration)")
             return get_whisper_library_adapter()
-        except Exception as e:
-            logger.warning(f"Library adapter not available ({e}), falling back to CLI")
-            try:
-                # Fall back to CLI wrapper
-                from adapters.whisper.engine import get_whisper_transcriber
-
-                logger.info("Using WhisperTranscriber (CLI wrapper)")
-                return get_whisper_transcriber()
-            except Exception as e2:
-                logger.error(f"Both library and CLI failed: library={e}, cli={e2}")
-                raise RuntimeError("No transcriber available (neither library nor CLI)")
 
     def _is_library_adapter(self) -> bool:
         """Check if using library adapter"""
         return self.transcriber.__class__.__name__ == "WhisperLibraryAdapter"
 
-    async def transcribe_from_url(self, audio_url: str) -> Dict[str, Any]:
+    async def transcribe_from_url(
+        self, audio_url: str, language: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Download audio from URL and transcribe it.
+        Download audio from URL and transcribe it with timeout protection.
 
         Args:
             audio_url: URL to download audio from
+            language: Optional language hint for transcription (overrides config)
 
         Returns:
             Dictionary containing transcription text and metadata
+
+        Raises:
+            asyncio.TimeoutError: If transcription exceeds configured timeout
+            ValueError: If download fails or file too large
         """
         file_id = str(uuid.uuid4())
         temp_file_path = self.temp_dir / f"{file_id}.tmp"
@@ -77,23 +72,35 @@ class TranscribeService:
             download_duration = time.time() - start_download
             logger.info(f"Downloaded {file_size_mb:.2f}MB in {download_duration:.2f}s")
 
-            # 2. Transcribe
+            # 2. Transcribe with timeout
             # Whisper engine is synchronous/blocking, so run in executor
             loop = asyncio.get_running_loop()
             start_transcribe = time.time()
 
-            # Use configured language and model
-            language = settings.whisper_language
+            # Use provided language or fall back to config
+            lang = language or settings.whisper_language
             model = settings.whisper_model
+            timeout_seconds = settings.transcribe_timeout_seconds
 
-            transcription_text = await loop.run_in_executor(
-                None,
-                self.transcriber.transcribe,
-                str(temp_file_path),
-                language,
-                model,
-                None,  # timeout
+            logger.info(
+                f"Starting transcription (language={lang}, timeout={timeout_seconds}s)"
             )
+
+            # Wrap transcription in timeout
+            if self.use_library:
+                def _transcribe():
+                    return self.transcriber.transcribe(str(temp_file_path), lang)
+            else:
+                def _transcribe():
+                    return self.transcriber.transcribe(
+                        str(temp_file_path), lang, model, None
+                    )
+
+            transcription_text = await asyncio.wait_for(
+                loop.run_in_executor(None, _transcribe),
+                timeout=timeout_seconds,
+            )
+
             transcribe_duration = time.time() - start_transcribe
             logger.info(f"Transcribed in {transcribe_duration:.2f}s")
 
@@ -103,8 +110,15 @@ class TranscribeService:
                 "download_duration": download_duration,
                 "file_size_mb": file_size_mb,
                 "model": model,
+                "language": lang,
+                "audio_duration": 0.0,  # TODO: Extract from whisper metadata if available
             }
 
+        except asyncio.TimeoutError:
+            logger.error(
+                f"Transcription timeout after {settings.transcribe_timeout_seconds}s"
+            )
+            raise
         except Exception as e:
             logger.error(f"Transcription failed: {e}")
             raise

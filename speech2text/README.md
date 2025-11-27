@@ -256,40 +256,65 @@ make clean-old                # Remove old/unused files
 ## API Documentation
 
 ### Interactive Documentation
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI** (Public): http://localhost:8000/swagger/index.html
+- **FastAPI Docs** (Dev): http://localhost:8000/docs
+- **ReDoc** (Dev): http://localhost:8000/redoc
+- **OpenAPI Spec**: http://localhost:8000/openapi.json
 
 ### Endpoints
 
 #### POST `/transcribe`
-Transcribe audio from URL.
+Transcribe audio from presigned URL (e.g., MinIO).
+
+**Authentication:** Requires `X-API-Key` header with internal API key.
 
 **Request:**
 ```json
 {
-  "audio_url": "http://example.com/audio.mp3"
+  "media_url": "https://minio.internal/bucket/audio_123.mp3?token=xyz...",
+  "language": "vi"  // Optional: language hint (default: "vi")
 }
 ```
 
-**Response:**
+**Response (Success):**
 ```json
 {
-  "error_code": 0,
-  "message": "Transcription successful",
-  "data": {
-    "text": "Transcribed text content...",
-    "duration": 1.5,
-    "download_duration": 0.5,
-    "file_size_mb": 1.0,
-    "model": "small"
-  }
+  "status": "success",
+  "transcription": "Nội dung video nói về xe VinFast VF3...",
+  "duration": 45.5,         // Audio duration in seconds
+  "confidence": 0.98,       // AI confidence score
+  "processing_time": 2.1    // Processing time in seconds
+}
+```
+
+**Response (Timeout):**
+```json
+{
+  "status": "timeout",
+  "transcription": "",
+  "duration": 0.0,
+  "confidence": 0.0,
+  "processing_time": 0.0
 }
 ```
 
 **Error Responses:**
+- `401` - Missing or invalid API key
 - `413` - File too large
 - `400` - Invalid URL or download failed
+- `422` - Validation error (missing/invalid fields)
 - `500` - Internal server error
+
+**Example cURL:**
+```bash
+curl -X POST http://localhost:8000/transcribe \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: smap-internal-key-changeme" \
+  -d '{
+    "media_url": "https://minio.internal/bucket/audio_123.mp3?token=xyz",
+    "language": "vi"
+  }'
+```
 
 #### GET `/health`
 Service health check.
@@ -349,6 +374,12 @@ TEMP_DIR="/tmp/stt_processing"
 # Whisper Library (Dynamic Model Loading)
 WHISPER_MODEL_SIZE="small"       # or "medium"
 WHISPER_ARTIFACTS_DIR="."
+WHISPER_LANGUAGE="vi"
+WHISPER_MODEL="small"
+
+# API Security
+INTERNAL_API_KEY="smap-internal-key-changeme"
+TRANSCRIBE_TIMEOUT_SECONDS=30
 
 # MinIO (for artifact download)
 MINIO_ENDPOINT="http://172.16.19.115:9000"

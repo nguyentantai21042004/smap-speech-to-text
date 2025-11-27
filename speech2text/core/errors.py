@@ -64,3 +64,9 @@ class MissingDependencyError(PermanentError):
     """Missing system dependency (e.g., ffmpeg/ffprobe)."""
 
     pass
+
+
+class TranscriptionError(PermanentError):
+    """General transcription error (audio loading, inference failure, etc.)."""
+
+    pass

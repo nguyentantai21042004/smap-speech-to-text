@@ -64,6 +64,10 @@ services:
       LOG_LEVEL: "INFO"
       LOG_FILE: "logs/stt.log"
 
+      # API Security & Timeouts
+      INTERNAL_API_KEY: "${INTERNAL_API_KEY:-smap-internal-key-changeme}"
+      TRANSCRIBE_TIMEOUT_SECONDS: "90"
+
       # Python
       PYTHONPATH: "/app"
       PYTHONUNBUFFERED: "1"
