@@ -51,7 +51,6 @@ whisper/models/.model_cache.json
 # IDE/editor and system files
 .vscode/
 .idea/
-.cursor/
 *.swp
 *.swo
 *~
