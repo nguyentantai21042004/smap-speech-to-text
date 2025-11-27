@@ -1,0 +1,8 @@
+- [ ] Define Stateless API Spec <!-- id: 0 -->
+- [ ] Implement Transcribe Service (Download + Inference) <!-- id: 1 -->
+- [ ] Update API Endpoint to use Transcribe Service <!-- id: 2 -->
+- [ ] Update Configuration (Remove Legacy Env Vars) <!-- id: 3 -->
+- [ ] Remove Legacy Infrastructure Code (Mongo, Rabbit, MinIO) <!-- id: 4 -->
+- [ ] Remove Consumer Service <!-- id: 5 -->
+- [ ] Update Dockerfile and Deployment Scripts <!-- id: 6 -->
+- [ ] Verify Stateless Flow <!-- id: 7 -->
