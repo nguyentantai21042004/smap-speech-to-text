@@ -49,6 +49,10 @@ class Settings(BaseSettings):
     whisper_language: str = Field(default="vi", alias="WHISPER_LANGUAGE")
     whisper_model: str = Field(default="small", alias="WHISPER_MODEL")
 
+    # Whisper Library Settings (for direct C library integration)
+    whisper_model_size: str = Field(default="small", alias="WHISPER_MODEL_SIZE")
+    whisper_artifacts_dir: str = Field(default=".", alias="WHISPER_ARTIFACTS_DIR")
+
     # Whisper Quality/Accuracy Flags
     whisper_max_context: int = Field(
         default=0, alias="WHISPER_MAX_CONTEXT"

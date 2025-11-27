@@ -1,69 +1,65 @@
-# .gitignore template for Python/uv
+# .gitignore for Python + uv + Whisper.cpp STT project
 
-# 1. Ignore Bytecode (IMPORTANT)
-
+# --- Bytecode ---
 __pycache__/
 *.py[cod]
 *$py.class
 
-# 2. Ignore virtual environments (IMPORTANT)
-# uv creates .venv, legacy pip may create venv or env
-
+# --- Virtual environment directories ---
 .venv/
-venv/
-env/
 ENV/
+env/
+venv/
 
-# 3. Ignore build/dist files
-
+# --- Build outputs / Distribution artifacts ---
+*.egg-info/
 build/
 dist/
-*.egg-info/
 
-# 4. Ignore environment config files (SECURITY)
-
+# --- Environment variable files ---
 .env
 .env.local
 
-# 5. Tool test/lint cache files
-
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+# --- Test & Lint tool caches ---
 .coverage
-htmlcov/
+.htmlcov/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
 
-# ========== Additional section for project-specific ignores ==========
-
-# Whisper Models (Large files not committed to Git)
+# --- Whisper Models & Artifacts (Large/untracked) ---
 whisper/models/*
 whisper/models/*.bin
-whisper/models/*.pt
-whisper/models/*.onnx
 whisper/models/*.json
-
-# Keep the directory structure
+whisper/models/*.onnx
+whisper/models/*.pt
 !whisper/models/.gitkeep
-
-# Model cache file
 whisper/models/.model_cache.json
 
-# IDE/editor and system files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-.DS_Store
-Thumbs.db
+# Downloaded model libraries / artifacts
+whisper_*_xeon/
+whisper_medium_xeon/
+whisper_small_xeon/
+*.so
+*.so.*
+ggml-*.bin
 
-# Log files
+# --- Logs ---
 logs/
 *.log
 
-# Docker files
+# --- Temporary files & directories ---
+temp/
+tmp/
+
+# --- Docker ---
 .docker/
 
-# Temporary files
-tmp/
-temp/
+# --- IDE/editor/system files ---
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db
+*~
+*.swo
+*.swp

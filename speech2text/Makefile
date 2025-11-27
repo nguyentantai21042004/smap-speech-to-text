@@ -1,25 +1,43 @@
-.PHONY: help install dev-install run-api run-queue run-scheduler setup-models setup-model setup-model-tiny setup-model-base setup-model-small setup-model-medium setup-model-large setup-whisper setup-whisper-custom docker-build docker-up docker-down docker-logs clean test format lint upgrade
+.PHONY: help install dev-install run-api run-queue run-scheduler setup-models setup-model setup-model-tiny setup-model-base setup-model-small setup-model-medium setup-model-large setup-whisper setup-whisper-custom setup-artifacts setup-artifacts-small setup-artifacts-medium docker-build docker-up docker-down docker-logs clean clean-old test test-library test-integration format lint upgrade
 
 # ==============================================================================
 # HELPERS
 # ==============================================================================
 help:
 	@echo "Available commands (Managed by uv):"
-	@echo "  make install            - Install dependencies (Sync environment)"
-	@echo "  make dev-install        - Install all dependencies including dev tools"
-	@echo "  make upgrade            - Upgrade all packages in lock file"
-	@echo "  make run-api            - Run API service"
-	@echo "  make run-consumer       - Run Consumer service"
-	@echo "  make setup-models       - Download all Whisper models from MinIO"
-	@echo "  make setup-model-medium - Download specific model (tiny/base/small/medium/large)"
-	@echo "  make setup-whisper      - Build whisper.cpp binary from source"
-	@echo "  make docker-build       - Build Docker images"
-	@echo "  make docker-up          - Start all services"
-	@echo "  make docker-down        - Stop all services"
-	@echo "  make test               - Run tests"
-	@echo "  make format             - Format code (black)"
-	@echo "  make lint               - Lint code (flake8)"
-	@echo "  make clean              - Clean up compiled files and caches"
+	@echo ""
+	@echo "📦 DEPENDENCIES:"
+	@echo "  make install                 - Install dependencies (Sync environment)"
+	@echo "  make dev-install             - Install all dependencies including dev tools"
+	@echo "  make upgrade                 - Upgrade all packages in lock file"
+	@echo ""
+	@echo "🚀 RUN SERVICES:"
+	@echo "  make run-api                 - Run API service locally"
+	@echo "  make run-consumer            - Run Consumer service"
+	@echo ""
+	@echo "📥 WHISPER ARTIFACTS (Dynamic Model Loading):"
+	@echo "  make setup-artifacts         - Download Whisper library artifacts (default: small)"
+	@echo "  make setup-artifacts-small   - Download small model artifacts"
+	@echo "  make setup-artifacts-medium  - Download medium model artifacts"
+	@echo ""
+	@echo "🧪 TESTING:"
+	@echo "  make test                    - Run all tests"
+	@echo "  make test-library            - Test Whisper library adapter"
+	@echo "  make test-integration        - Test model switching"
+	@echo ""
+	@echo "🐳 DOCKER:"
+	@echo "  make docker-build            - Build Docker images"
+	@echo "  make docker-up               - Start all services"
+	@echo "  make docker-down             - Stop all services"
+	@echo "  make docker-logs             - View logs"
+	@echo ""
+	@echo "🧹 CLEANUP:"
+	@echo "  make clean                   - Clean up compiled files and caches"
+	@echo "  make clean-old               - Remove old/unused files"
+	@echo ""
+	@echo "✨ CODE QUALITY:"
+	@echo "  make format                  - Format code (black)"
+	@echo "  make lint                    - Lint code (flake8)"
 
 # ==============================================================================
 # DEPENDENCY MANAGEMENT (UV)
@@ -102,6 +120,22 @@ setup-whisper-custom:
 	bash scripts/setup_whisper.sh --models "$(MODELS)"
 
 # ==============================================================================
+# WHISPER LIBRARY ARTIFACTS (Dynamic Model Loading)
+# ==============================================================================
+# Download Whisper library artifacts from MinIO
+setup-artifacts:
+	@echo "📦 Downloading Whisper library artifacts (default: small)..."
+	PYTHONPATH=. uv run python scripts/download_whisper_artifacts.py small
+
+setup-artifacts-small:
+	@echo "📦 Downloading SMALL model artifacts..."
+	PYTHONPATH=. uv run python scripts/download_whisper_artifacts.py small
+
+setup-artifacts-medium:
+	@echo "📦 Downloading MEDIUM model artifacts..."
+	PYTHONPATH=. uv run python scripts/download_whisper_artifacts.py medium
+
+# ==============================================================================
 # DOCKER OPERATIONS
 # ==============================================================================
 docker-build:
@@ -126,6 +160,7 @@ docker-clean:
 # CODE QUALITY & TESTING
 # ==============================================================================
 clean:
+	@echo "🧹 Cleaning up compiled files and caches..."
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
 	find . -type f -name "*.pyo" -delete
@@ -136,17 +171,42 @@ clean:
 	rm -rf dist
 	rm -rf build
 	rm -rf *.egg-info
-	# Dọn dẹp cache của uv (tuỳ chọn)
-	uv clean
+	uv cache clean
+
+clean-old:
+	@echo "🧹 Removing old/unused files and directories..."
+	@echo "Removing backup files..."
+	find . -name "*.bak" -type f -delete
+	find . -name "*~" -type f -delete
+	@echo "Removing old __init__.py.bak files..."
+	find . -name "__init__.py.bak" -type f -delete
+	@echo "✅ Cleanup complete!"
 
 test:
-	uv run pytest -v
+	@echo "🧪 Running all tests..."
+	PYTHONPATH=. uv run pytest -v
+
+test-library:
+	@echo "🧪 Testing Whisper Library Adapter..."
+	PYTHONPATH=. uv run pytest tests/test_whisper_library.py -v
+
+test-integration:
+	@echo "🧪 Testing Model Switching Integration..."
+	PYTHONPATH=. uv run pytest tests/test_model_switching.py -v
+
+test-small:
+	@echo "🧪 Testing with SMALL model..."
+	WHISPER_MODEL_SIZE=small PYTHONPATH=. uv run pytest tests/test_model_switching.py -v
+
+test-medium:
+	@echo "🧪 Testing with MEDIUM model..."
+	WHISPER_MODEL_SIZE=medium PYTHONPATH=. uv run pytest tests/test_model_switching.py -v
 
 format:
-	uv run black core/ repositories/ services/ cmd/
+	uv run black core/ services/ cmd/ adapters/ internal/ tests/
 
 lint:
-	uv run flake8 core/ repositories/ services/ cmd/ --max-line-length=100
+	uv run flake8 core/ services/ cmd/ adapters/ internal/ tests/ --max-line-length=100
 
 # ==============================================================================
 # LOGS & SCALING

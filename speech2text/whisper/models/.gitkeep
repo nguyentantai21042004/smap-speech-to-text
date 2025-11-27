@@ -1,4 +1,0 @@
-# This directory contains Whisper model files
-# Models are automatically downloaded from MinIO at runtime
-# See scripts/setup_models.py for manual download
-

@@ -40,10 +40,12 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 # ==============================================================================
 FROM python:3.12-slim-bookworm AS runtime
 
-# Install runtime dependencies (FFmpeg)
+# Install runtime dependencies (FFmpeg, wget, libgomp1)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ffmpeg \
+    wget \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Standard OCI Metadata
@@ -59,7 +61,11 @@ ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     HOST=0.0.0.0 \
     PORT=8000 \
-    WORKERS=2
+    WORKERS=2 \
+    WHISPER_MODEL_SIZE=small \
+    MINIO_ENDPOINT=http://172.16.19.115:9000 \
+    MINIO_ACCESS_KEY=smap \
+    MINIO_SECRET_KEY=hcmut2025
 
 WORKDIR /app
 
@@ -71,7 +77,16 @@ COPY --from=builder /app/cmd /app/cmd
 COPY --from=builder /app/core /app/core
 COPY --from=builder /app/internal /app/internal
 COPY --from=builder /app/services /app/services
+COPY --from=builder /app/adapters /app/adapters
 COPY --from=builder /app/whisper /app/whisper
+
+# Copy scripts for artifact download
+COPY scripts/download_whisper_artifacts.py /app/scripts/
+RUN chmod +x /app/scripts/download_whisper_artifacts.py
+
+# Copy and setup entrypoint
+COPY cmd/api/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Native Healthcheck
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
@@ -80,5 +95,6 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 # Expose port
 EXPOSE 8000
 
-# Run API service with uvicorn
-ENTRYPOINT ["python3", "-m", "uvicorn", "cmd.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use entrypoint for dynamic model loading
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["python3", "-m", "uvicorn", "cmd.api.main:app", "--host", "0.0.0.0", "--port", "8000"]

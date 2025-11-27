@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 from core.config import get_settings
 from core.logger import logger
-from adapters.whisper.engine import get_whisper_transcriber
 
 settings = get_settings()
 
@@ -16,14 +15,42 @@ settings = get_settings()
 class TranscribeService:
     """
     Stateless service to download audio from URL and transcribe it.
+    Supports both CLI and library-based transcription.
     """
 
     def __init__(self):
-        self.transcriber = get_whisper_transcriber()
+        # Try to use library adapter first (preferred), fall back to CLI
+        self.transcriber = self._get_transcriber()
+        self.use_library = self._is_library_adapter()
+
         # Use configured temp dir
         self.temp_dir = Path(settings.temp_dir)
         self.temp_dir.mkdir(parents=True, exist_ok=True)
         self.max_size_mb = settings.max_upload_size_mb
+
+        logger.info(f"TranscribeService initialized (mode: {'library' if self.use_library else 'CLI'})")
+
+    def _get_transcriber(self):
+        """Get transcriber (try library first, fall back to CLI)"""
+        try:
+            # Try library adapter first (NEW dynamic loading)
+            from adapters.whisper.library_adapter import get_whisper_library_adapter
+            logger.info("Using WhisperLibraryAdapter (direct C library integration)")
+            return get_whisper_library_adapter()
+        except Exception as e:
+            logger.warning(f"Library adapter not available ({e}), falling back to CLI")
+            try:
+                # Fall back to CLI wrapper
+                from adapters.whisper.engine import get_whisper_transcriber
+                logger.info("Using WhisperTranscriber (CLI wrapper)")
+                return get_whisper_transcriber()
+            except Exception as e2:
+                logger.error(f"Both library and CLI failed: library={e}, cli={e2}")
+                raise RuntimeError("No transcriber available (neither library nor CLI)")
+
+    def _is_library_adapter(self) -> bool:
+        """Check if using library adapter"""
+        return self.transcriber.__class__.__name__ == "WhisperLibraryAdapter"
 
     async def transcribe_from_url(self, audio_url: str) -> Dict[str, Any]:
         """

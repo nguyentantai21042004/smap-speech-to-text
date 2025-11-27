@@ -33,6 +33,15 @@ services:
       DEFAULT_WHISPER_MODEL: ${DEFAULT_WHISPER_MODEL:-medium}
       WHISPER_LANGUAGE: ${WHISPER_LANGUAGE:-vi}
       WHISPER_MODEL: ${WHISPER_MODEL:-small}
+
+      # Whisper Library Settings (Dynamic Model Loading)
+      WHISPER_MODEL_SIZE: ${WHISPER_MODEL_SIZE:-small}  # Change to 'medium' to switch models
+      WHISPER_ARTIFACTS_DIR: ${WHISPER_ARTIFACTS_DIR:-.}
+
+      # MinIO Configuration (for artifact download)
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-http://172.16.19.115:9000}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-smap}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-hcmut2025}
       
       # Whisper Flags
       WHISPER_MAX_CONTEXT: ${WHISPER_MAX_CONTEXT:-0}
@@ -52,6 +61,9 @@ services:
     volumes:
       - ./logs:/app/logs
       - whisper_models:/app/whisper/models
+      # Cache downloaded Whisper library artifacts between restarts
+      - whisper_library_small:/app/whisper_small_xeon
+      - whisper_library_medium:/app/whisper_medium_xeon
     networks:
       - smap-network
     healthcheck:
@@ -69,4 +81,8 @@ networks:
 
 volumes:
   whisper_models:
+    driver: local
+  whisper_library_small:
+    driver: local
+  whisper_library_medium:
     driver: local
